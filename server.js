@@ -26,22 +26,37 @@ if (bot) {
 
         // Проверка: сообщение начинается с /start
         // Сработает на: "/start", "/start@BotName", "/start 123"
-        if (text.startsWith('/start')) {
+if (bot) {
+    // Слушаем ВСЕ сообщения
+    bot.on('message', (msg) => {
+        const chatId = msg.chat.id;
+        const text = (msg.text || '').trim();
+        
+        console.log(`[MSG] From: ${chatId}, Text: ${text}`);
+
+        // Проверяем, содержит ли текст /start
+        if (text.toLowerCase().includes('/start')) {
+            
+            // --- ВАЖНО: ВПИШИ СЮДА СВОЮ ССЫЛКУ С RENDER (ОБЯЗАТЕЛЬНО HTTPS) ---
+            const MY_URL = 'https://liarsdicezmss.onrender.com/'; 
+            // -------------------------------------------------------------------
+
             const introText = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nЖми кнопку ниже!`;
+            
             const opts = {
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "🎲 Играть в кости", web_app: { url: webAppUrl || "http://localhost:3000" } }]
+                        [{ text: "🎲 Играть в кости", web_app: { url: MY_URL } }]
                     ]
                 }
             };
             
             bot.sendMessage(chatId, introText, opts)
                 .then(() => console.log(`[SUCCESS] Ответ отправлен в чат ${chatId}`))
-                .catch((err) => console.error(`[ERROR] Не могу отправить сообщение:`, err.message));
+                .catch((err) => console.error(`[ERROR] Ошибка отправки:`, err.message));
         }
     });
-    console.log('Bot started (Group Compatible Mode)...');
+    console.log('Bot started (Hardcoded URL Mode)...');
 } else {
     console.log('Bot token not provided.');
 }
@@ -387,4 +402,5 @@ function broadcastGameState(room) {
 
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+
 });
