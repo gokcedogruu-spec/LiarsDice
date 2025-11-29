@@ -12,6 +12,7 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
+const TURN_DURATION_MS = 30000; 
 
 // --- RATING SYSTEM (HARDCORE) ---
 const RANKS = [
@@ -33,7 +34,6 @@ function getUserData(username) {
     return userDB.get(username);
 }
 
-// Синхронизация с данными из Телеграма
 function syncUserData(username, savedData) {
     const user = getUserData(username);
     if (savedData && typeof savedData.xp === 'number') {
@@ -93,10 +93,9 @@ if (bot) {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
         if (text.toLowerCase().includes('/start')) {
-            // ВПИШИ СЮДА СВОЮ ССЫЛКУ
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
-            bot.sendMessage(chatId, "☠️ Кости Лжеца: Рейтинговая битва!", opts).catch(e=>{});
+            bot.sendMessage(chatId, "☠️ Кости Лжеца: Мультяшная битва!", opts).catch(e=>{});
         }
     });
 }
@@ -119,13 +118,12 @@ function resetTurnTimer(room) {
 function handleTimeout(room) {
     if (room.status !== 'PLAYING') return;
     const loser = room.players[room.currentTurn];
-    io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} проспал ход!`, type: 'error' });
+    io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул!`, type: 'error' });
     loser.diceCount--;
     checkEliminationAndContinue(room, loser, null);
 }
 
 io.on('connection', (socket) => {
-    // ВХОД (АВТОМАТИЧЕСКИЙ)
     socket.on('login', ({ username, savedData }) => {
         const data = syncUserData(username, savedData);
         const rank = getRankInfo(data.xp, data.streak);
@@ -266,7 +264,6 @@ function checkEliminationAndContinue(room, loser, killer) {
         const d = updateUserXP(winner.name, 'win_game');
         const rInfo = getRankInfo(d.xp, d.streak);
         io.to(winner.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
-        
         io.to(room.id).emit('gameOver', { winner: winner.name });
     } else {
         let idx = room.players.indexOf(loser);
