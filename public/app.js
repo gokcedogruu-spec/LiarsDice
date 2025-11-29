@@ -7,10 +7,7 @@ let state = {
     createDice: 5, createPlayers: 10, createTime: 30
 };
 
-if (tg) {
-    tg.ready(); tg.expand();
-    tg.setHeaderColor('#2b2d42'); tg.setBackgroundColor('#2b2d42');
-}
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#2b2d42'); tg.setBackgroundColor('#2b2d42'); }
 
 const screens = ['login', 'home', 'create-settings', 'lobby', 'game', 'result'];
 function showScreen(name) {
@@ -19,27 +16,42 @@ function showScreen(name) {
 }
 
 window.addEventListener('load', () => {
-    if (tg?.initDataUnsafe?.user) { state.username = tg.initDataUnsafe.user.first_name; loginSuccess(); }
+    // Если мы в Телеграме - сразу берем имя и логинимся
+    if (tg?.initDataUnsafe?.user) {
+        state.username = tg.initDataUnsafe.user.first_name;
+        // Убираем активный класс у логина, чтобы не мелькал
+        document.getElementById('screen-login').classList.remove('active');
+        loginSuccess();
+    } else {
+        // Иначе показываем логин
+        document.getElementById('screen-login').classList.add('active');
+    }
 });
+
 document.getElementById('btn-login').addEventListener('click', () => {
     const val = document.getElementById('input-username').value.trim();
     if (val) { state.username = val; loginSuccess(); }
 });
 
 function loginSuccess() {
-    showScreen('home');
-    document.getElementById('user-display').textContent = state.username;
+    // Загрузка сохранения
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
-            let savedData = null; try { savedData = JSON.parse(val); } catch (e) {}
+            let savedData = null;
+            try { if (val) savedData = JSON.parse(val); } catch (e) {}
             socket.emit('login', { username: state.username, savedData });
         });
-    } else socket.emit('login', { username: state.username, savedData: null });
+    } else {
+        socket.emit('login', { username: state.username, savedData: null });
+    }
 }
 
 socket.on('profileUpdate', (data) => {
+    showScreen('home'); // Переход в меню
+    document.getElementById('user-display').textContent = state.username;
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
+    
     let rankIcon = '🦠';
     if (data.rankName === 'Юнга') rankIcon = '⚓';
     if (data.rankName === 'Матрос') rankIcon = '🌊';
@@ -48,18 +60,18 @@ socket.on('profileUpdate', (data) => {
     if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
     if (data.rankName === 'Капитан') rankIcon = '☠️';
     document.getElementById('rank-badge').textContent = rankIcon;
+
     const next = data.nextRankXP === 'MAX' ? data.xp : data.nextRankXP;
     const pct = Math.min(100, (data.xp / next) * 100);
     document.getElementById('xp-fill').style.width = `${pct}%`;
     document.getElementById('xp-text').textContent = `${data.xp} / ${next} XP`;
+
     if (tg && tg.CloudStorage) tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ xp: data.xp, streak: data.streak }));
 });
 
-// Navigation
 document.getElementById('btn-to-create').addEventListener('click', () => showScreen('create-settings'));
 document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
 
-// Settings
 window.setTime = (sec) => {
     state.createTime = sec;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
@@ -73,7 +85,6 @@ document.getElementById('btn-confirm-create').addEventListener('click', () => {
     socket.emit('joinOrCreateRoom', { roomId: null, username: state.username, options: { dice: state.createDice, players: state.createPlayers, time: state.createTime } });
 });
 
-// Lobby
 document.getElementById('btn-join-room').addEventListener('click', () => {
     const code = prompt("Код:"); if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), username: state.username });
 });
@@ -89,7 +100,6 @@ document.getElementById('btn-ready').addEventListener('click', function() {
 });
 document.getElementById('btn-start-game').addEventListener('click', () => socket.emit('startGame'));
 
-// Game Controls
 window.adjBid = (type, delta) => {
     if (type === 'qty') { state.bidQty = Math.max(1, state.bidQty + delta); document.getElementById('display-qty').textContent = state.bidQty; }
     else { state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta)); document.getElementById('display-val').textContent = state.bidVal; }
@@ -99,7 +109,6 @@ document.getElementById('btn-call-bluff').addEventListener('click', () => socket
 document.getElementById('btn-restart').addEventListener('click', () => socket.emit('requestRestart'));
 document.getElementById('btn-home').addEventListener('click', () => location.reload());
 
-// Sockets
 socket.on('errorMsg', (msg) => tg ? tg.showAlert(msg) : alert(msg));
 socket.on('roomUpdate', (room) => {
     state.roomId = room.roomId;
@@ -127,7 +136,6 @@ socket.on('yourDice', (dice) => document.getElementById('my-dice').innerHTML = d
 socket.on('gameState', (gs) => {
     showScreen('game');
     const bar = document.getElementById('players-bar');
-    // Compact avatars for Game Screen
     bar.innerHTML = gs.players.map(p => `
         <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''}">
             <b>${p.name}</b>
@@ -148,8 +156,7 @@ socket.on('gameState', (gs) => {
     const myTurn = gs.players.find(p => p.isTurn)?.name === state.username;
     const controls = document.getElementById('game-controls');
     if(myTurn) { 
-        controls.classList.remove('hidden'); 
-        controls.classList.add('slide-up');
+        controls.classList.remove('hidden'); controls.classList.add('slide-up');
         document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
         if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     } else {
