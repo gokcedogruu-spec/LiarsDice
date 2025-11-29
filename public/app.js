@@ -33,23 +33,21 @@ function loginSuccess() {
     showScreen('home');
     document.getElementById('user-display').textContent = state.username;
     
-    // --- ЗАГРУЗКА ИЗ ТЕЛЕГРАМА ---
+    // ЗАГРУЗКА ИЗ CLOUD STORAGE
     if (tg && tg.CloudStorage) {
-        tg.CloudStorage.getItem('liarsDiceSave', (err, val) => {
+        tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null;
             if (!err && val) {
                 try { savedData = JSON.parse(val); } catch (e) {}
             }
-            // Отправляем серверу имя и данные сохранения
             socket.emit('login', { username: state.username, savedData: savedData });
         });
     } else {
-        // Если не в Телеграме, просто логинимся с 0
         socket.emit('login', { username: state.username, savedData: null });
     }
 }
 
-// --- ОБНОВЛЕНИЕ И СОХРАНЕНИЕ ---
+// ОБНОВЛЕНИЕ И СОХРАНЕНИЕ
 socket.on('profileUpdate', (data) => {
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия побед: ${data.streak} 🔥`;
@@ -68,12 +66,11 @@ socket.on('profileUpdate', (data) => {
     document.getElementById('xp-fill').style.width = `${percent}%`;
     document.getElementById('xp-text').textContent = `${data.xp} / ${next} XP`;
 
-    // --- СОХРАНЯЕМ В ТЕЛЕГРАМ ---
+    // СОХРАНЕНИЕ В ОБЛАКО
     if (tg && tg.CloudStorage) {
         const saveObj = { xp: data.xp, streak: data.streak };
-        tg.CloudStorage.setItem('liarsDiceSave', JSON.stringify(saveObj), (err, stored) => {
+        tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify(saveObj), (err, stored) => {
             if (err) console.error('Save error:', err);
-            else console.log('Saved to cloud!');
         });
     }
 });
@@ -100,7 +97,8 @@ document.getElementById('btn-join-room').addEventListener('click', () => {
 });
 document.getElementById('share-btn').addEventListener('click', () => {
     const code = state.roomId;
-    navigator.clipboard.writeText(code).then(() => tg ? tg.showAlert('Код скопирован!') : alert('Код скопирован!')).catch(()=>prompt("Code:", code));
+    navigator.clipboard.writeText(code).then(() => tg ? tg.showAlert(`Код "${code}" скопирован!`) : alert(`Код "${code}" скопирован!`))
+        .catch(()=>prompt("Код:", code));
 });
 document.getElementById('btn-ready').addEventListener('click', function() {
     const isReady = this.textContent === "Я ГОТОВ";
