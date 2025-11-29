@@ -11,37 +11,28 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const webAppUrl = process.env.WEBAPP_URL;
+// Мы не используем webAppUrl из env, чтобы избежать ошибки, впишем его ниже вручную
 
 // --- Telegram Bot Setup ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 
 if (bot) {
-    // Слушаем ВСЕ сообщения (bot.on вместо bot.onText)
-    bot.on('message', (msg) => {
-        const chatId = msg.chat.id;
-        const text = msg.text || '';
-        
-        console.log(`[MSG] From: ${chatId}, Text: ${text}`); // Лог для проверки
+    console.log('Bot is running...');
 
-        // Проверка: сообщение начинается с /start
-        // Сработает на: "/start", "/start@BotName", "/start 123"
-if (bot) {
-    // Слушаем ВСЕ сообщения
     bot.on('message', (msg) => {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
-        
-        console.log(`[MSG] From: ${chatId}, Text: ${text}`);
 
-        // Проверяем, содержит ли текст /start
+        // --- ВАЖНО: ВПИШИ СЮДА СВОЮ ССЫЛКУ С RENDER ---
+        // Например: const MY_URL = 'https://game-name.onrender.com';
+        const MY_URL = 'https://liarsdicezmss.onrender.com/'; 
+        // ----------------------------------------------
+
+        console.log(`[MSG] From: ${chatId}, Text: "${text}"`);
+
+        // Реагируем на /start в любом виде (в личке или группе)
         if (text.toLowerCase().includes('/start')) {
-            
-            // --- ВАЖНО: ВПИШИ СЮДА СВОЮ ССЫЛКУ С RENDER (ОБЯЗАТЕЛЬНО HTTPS) ---
-            const MY_URL = 'https://liarsdicezmss.onrender.com/'; 
-            // -------------------------------------------------------------------
-
-            const introText = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nЖми кнопку ниже!`;
+            const introText = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nСоберите друзей и узнайте, кто из вас лучший блефующий пират.\n\nЖми кнопку ниже!`;
             
             const opts = {
                 reply_markup: {
@@ -52,28 +43,24 @@ if (bot) {
             };
             
             bot.sendMessage(chatId, introText, opts)
-                .then(() => console.log(`[SUCCESS] Ответ отправлен в чат ${chatId}`))
+                .then(() => console.log(`[SUCCESS] Ответ отправлен в ${chatId}`))
                 .catch((err) => console.error(`[ERROR] Ошибка отправки:`, err.message));
         }
     });
-    console.log('Bot started (Hardcoded URL Mode)...');
 } else {
-    console.log('Bot token not provided.');
+    console.log('Bot token not provided, running without bot features.');
 }
 
 // --- Express Setup ---
-// Раздаем файлы из папки public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Game State ---
+// --- Game State & Logic ---
 const rooms = new Map(); 
 
-// Генерация ID комнаты
 function generateRoomId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-// Бросок костей (случайные числа 1-6)
 function rollDice(count) {
     const dice = [];
     for (let i = 0; i < count; i++) {
@@ -82,7 +69,6 @@ function rollDice(count) {
     return dice.sort((a, b) => a - b);
 }
 
-// Поиск комнаты по socket.id игрока
 function getRoomBySocketId(socketId) {
     for (const [roomId, room] of rooms) {
         if (room.players.find(p => p.id === socketId)) {
@@ -96,9 +82,8 @@ function getRoomBySocketId(socketId) {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // 1. Присоединение или создание комнаты
+    // 1. Join or Create Room
     socket.on('joinOrCreateRoom', ({ roomId, username }) => {
-        // Если игрок уже где-то был - удаляем
         const oldRoom = getRoomBySocketId(socket.id);
         if (oldRoom) leaveRoom(socket, oldRoom);
 
@@ -106,7 +91,6 @@ io.on('connection', (socket) => {
         let isCreator = false;
 
         if (roomId) {
-            // Вход в существующую
             room = rooms.get(roomId);
             if (!room) {
                 socket.emit('errorMsg', 'Комната не найдена');
@@ -121,7 +105,6 @@ io.on('connection', (socket) => {
                 return;
             }
         } else {
-            // Создание новой
             const newId = generateRoomId();
             room = {
                 id: newId,
@@ -136,7 +119,6 @@ io.on('connection', (socket) => {
             isCreator = true;
         }
 
-        // Добавляем игрока
         const player = {
             id: socket.id,
             name: username || `Пират ${room.players.length + 1}`,
@@ -148,7 +130,6 @@ io.on('connection', (socket) => {
         room.players.push(player);
         socket.join(roomId);
 
-        // Обновляем всех в комнате
         io.to(roomId).emit('roomUpdate', {
             roomId: room.id,
             players: room.players.map(p => ({ name: p.name, ready: p.ready, isCreator: p.isCreator, diceCount: p.diceCount, id: p.id })),
@@ -156,7 +137,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    // 2. Статус "Готов"
+    // 2. Toggle Ready
     socket.on('setReady', (isReady) => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'LOBBY') return;
@@ -172,7 +153,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. Старт игры (только создатель)
+    // 3. Start Game
     socket.on('startGame', () => {
         const room = getRoomBySocketId(socket.id);
         if (!room) return;
@@ -192,24 +173,21 @@ io.on('connection', (socket) => {
         startNewRound(room, true);
     });
 
-    // 4. Сделать ставку
+    // 4. Make Bid
     socket.on('makeBid', ({ quantity, faceValue }) => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'PLAYING') return;
 
         const playerIndex = room.players.findIndex(p => p.id === socket.id);
-        if (playerIndex !== room.currentTurn) return; // Не ваш ход
+        if (playerIndex !== room.currentTurn) return;
 
         quantity = parseInt(quantity);
         faceValue = parseInt(faceValue);
 
-        // Проверка правил повышения ставки
         let isValid = false;
         if (!room.currentBid) {
-            // Первая ставка
             isValid = quantity > 0 && faceValue >= 1 && faceValue <= 6;
         } else {
-            // Повышение
             if (quantity > room.currentBid.quantity) isValid = true;
             else if (quantity === room.currentBid.quantity && faceValue > room.currentBid.faceValue) isValid = true;
         }
@@ -229,7 +207,7 @@ io.on('connection', (socket) => {
         broadcastGameState(room);
     });
 
-    // 5. "Не верю" (Call Bluff)
+    // 5. Call Bluff
     socket.on('callBluff', () => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'PLAYING' || !room.currentBid) return;
@@ -243,7 +221,6 @@ io.on('connection', (socket) => {
 
         io.to(room.id).emit('gameEvent', { text: `${challenger.name} кричит «НЕ ВЕРЮ!» игроку ${bidder.name}` });
 
-        // Подсчет реальных кубиков
         let totalCount = 0;
         const allDice = {};
         
@@ -256,47 +233,39 @@ io.on('connection', (socket) => {
             }
         });
 
-        // Вскрываем карты всем
         io.to(room.id).emit('revealDice', allDice);
 
         let loser;
         let message = `На столе ${totalCount} кубиков с числом ${room.currentBid.faceValue}. Ставка была ${room.currentBid.quantity}. `;
 
         if (totalCount < room.currentBid.quantity) {
-            // Тот, кто ставил - соврал
             message += `Блеф раскрыт! ${bidder.name} теряет кубик.`;
             loser = bidder;
         } else {
-            // Тот, кто не верил - ошибся
             message += `Ставка сыграла! ${challenger.name} ошибся и теряет кубик.`;
             loser = challenger;
         }
 
         io.to(room.id).emit('roundResult', { message });
 
-        // Отнимаем кубик
         loser.diceCount--;
         
-        // Пауза перед следующим действием
         setTimeout(() => {
             if (loser.diceCount === 0) {
                 io.to(room.id).emit('gameEvent', { text: `☠️ ${loser.name} выбывает из игры!` });
             }
 
-            // Проверка на победителя
             const activePlayers = room.players.filter(p => p.diceCount > 0);
             if (activePlayers.length === 1) {
                 const winner = activePlayers[0];
                 room.status = 'FINISHED';
                 io.to(room.id).emit('gameOver', { winner: winner.name });
             } else {
-                // Следующий раунд. Ходит тот, кто проиграл (если жив), иначе следующий.
                 startNewRound(room, false, loser.diceCount > 0 ? room.players.indexOf(loser) : null);
             }
-        }, 4000);
+        }, 5000);
     });
 
-    // Рестарт в той же комнате
     socket.on('requestRestart', () => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'FINISHED') return;
@@ -332,7 +301,9 @@ function leaveRoom(socket, room) {
         if (room.players.length === 0) {
             rooms.delete(room.id);
         } else {
-            if (wasCreator) room.players[0].isCreator = true;
+            if (wasCreator) {
+                room.players[0].isCreator = true;
+            }
             io.to(room.id).emit('roomUpdate', {
                 roomId: room.id,
                 players: room.players.map(p => ({ name: p.name, ready: p.ready, isCreator: p.isCreator, diceCount: p.diceCount, id: p.id })),
@@ -346,7 +317,6 @@ function startNewRound(room, isFirstRound = false, startingPlayerIndex = null) {
     room.status = 'PLAYING';
     room.currentBid = null;
     
-    // Бросаем кости только живым
     room.players.forEach(p => {
         if (p.diceCount > 0) {
             p.dice = rollDice(p.diceCount);
@@ -363,12 +333,10 @@ function startNewRound(room, isFirstRound = false, startingPlayerIndex = null) {
         nextTurn(room);
     }
 
-    // Пропуск выбывших
     while (room.players[room.currentTurn].diceCount === 0) {
         room.currentTurn = (room.currentTurn + 1) % room.players.length;
     }
 
-    // Отправляем каждому его кости ЛИЧНО
     room.players.forEach(p => {
         if (p.diceCount > 0) {
             io.to(p.id).emit('yourDice', p.dice);
@@ -396,11 +364,11 @@ function broadcastGameState(room) {
     io.to(room.id).emit('gameState', {
         players: publicPlayers,
         currentBid: room.currentBid,
-        history: room.history
+        history: room.history,
+        round: 1
     });
 }
 
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-
 });
