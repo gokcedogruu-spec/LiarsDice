@@ -4,18 +4,11 @@ const tg = window.Telegram?.WebApp;
 let state = {
     username: null,
     roomId: null,
-    bidQty: 1,
-    bidVal: 2,
-    timerInterval: null,
-    createDice: 5,
-    createPlayers: 10
+    bidQty: 1, bidVal: 2, timerInterval: null, createDice: 5, createPlayers: 10
 };
 
 if (tg) {
-    tg.ready();
-    tg.expand();
-    tg.setHeaderColor('#2D3250');
-    tg.setBackgroundColor('#2D3250');
+    tg.ready(); tg.expand(); tg.setHeaderColor('#2D3250'); tg.setBackgroundColor('#2D3250');
 }
 
 const screens = ['login', 'home', 'create-settings', 'lobby', 'game', 'result'];
@@ -37,12 +30,26 @@ document.getElementById('btn-login').addEventListener('click', () => {
 });
 
 function loginSuccess() {
-    socket.emit('login', state.username);
     showScreen('home');
     document.getElementById('user-display').textContent = state.username;
+    
+    // --- ЗАГРУЗКА ИЗ ТЕЛЕГРАМА ---
+    if (tg && tg.CloudStorage) {
+        tg.CloudStorage.getItem('liarsDiceSave', (err, val) => {
+            let savedData = null;
+            if (!err && val) {
+                try { savedData = JSON.parse(val); } catch (e) {}
+            }
+            // Отправляем серверу имя и данные сохранения
+            socket.emit('login', { username: state.username, savedData: savedData });
+        });
+    } else {
+        // Если не в Телеграме, просто логинимся с 0
+        socket.emit('login', { username: state.username, savedData: null });
+    }
 }
 
-// --- PROFILE UPDATE ---
+// --- ОБНОВЛЕНИЕ И СОХРАНЕНИЕ ---
 socket.on('profileUpdate', (data) => {
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия побед: ${data.streak} 🔥`;
@@ -60,6 +67,15 @@ socket.on('profileUpdate', (data) => {
     const percent = Math.min(100, (data.xp / next) * 100);
     document.getElementById('xp-fill').style.width = `${percent}%`;
     document.getElementById('xp-text').textContent = `${data.xp} / ${next} XP`;
+
+    // --- СОХРАНЯЕМ В ТЕЛЕГРАМ ---
+    if (tg && tg.CloudStorage) {
+        const saveObj = { xp: data.xp, streak: data.streak };
+        tg.CloudStorage.setItem('liarsDiceSave', JSON.stringify(saveObj), (err, stored) => {
+            if (err) console.error('Save error:', err);
+            else console.log('Saved to cloud!');
+        });
+    }
 });
 
 document.getElementById('btn-to-create').addEventListener('click', () => showScreen('create-settings'));
@@ -78,27 +94,14 @@ window.adjSetting = (type, delta) => {
 document.getElementById('btn-confirm-create').addEventListener('click', () => {
     socket.emit('joinOrCreateRoom', { roomId: null, username: state.username, options: { dice: state.createDice, players: state.createPlayers } });
 });
-
 document.getElementById('btn-join-room').addEventListener('click', () => {
-    const code = prompt("Введи код комнаты:");
+    const code = prompt("Код комнаты:");
     if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), username: state.username });
 });
-
-// --- ИСПРАВЛЕННАЯ КНОПКА (ТОЛЬКО КОД) ---
 document.getElementById('share-btn').addEventListener('click', () => {
     const code = state.roomId;
-    // Копируем ТОЛЬКО код
-    navigator.clipboard.writeText(code)
-        .then(() => {
-            if (tg) tg.showAlert(`Код "${code}" скопирован!`);
-            else alert(`Код "${code}" скопирован!`);
-        })
-        .catch(() => {
-            // Резерв для старых устройств
-            prompt("Скопируй код:", code);
-        });
+    navigator.clipboard.writeText(code).then(() => tg ? tg.showAlert('Код скопирован!') : alert('Код скопирован!')).catch(()=>prompt("Code:", code));
 });
-
 document.getElementById('btn-ready').addEventListener('click', function() {
     const isReady = this.textContent === "Я ГОТОВ";
     socket.emit('setReady', isReady);
