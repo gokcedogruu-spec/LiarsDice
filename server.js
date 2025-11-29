@@ -14,26 +14,36 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const webAppUrl = process.env.WEBAPP_URL;
 
 // --- Telegram Bot Setup ---
-// Если токен есть, запускаем бота. Если нет (локальный тест без инета) - пропускаем.
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 
 if (bot) {
-    bot.onText(/\/start/, (msg) => {
+    // Слушаем ВСЕ сообщения (bot.on вместо bot.onText)
+    bot.on('message', (msg) => {
         const chatId = msg.chat.id;
-        const text = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nСоберите друзей (до 10 человек) и узнайте, кто из вас лучший блефующий пират.\n\nНажмите кнопку ниже, чтобы начать игру.`;
+        const text = msg.text || '';
         
-        const opts = {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "🎲 Играть в кости", web_app: { url: webAppUrl || "http://localhost:3000" } }]
-                ]
-            }
-        };
-        bot.sendMessage(chatId, text, opts);
+        console.log(`[MSG] From: ${chatId}, Text: ${text}`); // Лог для проверки
+
+        // Проверка: сообщение начинается с /start
+        // Сработает на: "/start", "/start@BotName", "/start 123"
+        if (text.startsWith('/start')) {
+            const introText = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nЖми кнопку ниже!`;
+            const opts = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🎲 Играть в кости", web_app: { url: webAppUrl || "http://localhost:3000" } }]
+                    ]
+                }
+            };
+            
+            bot.sendMessage(chatId, introText, opts)
+                .then(() => console.log(`[SUCCESS] Ответ отправлен в чат ${chatId}`))
+                .catch((err) => console.error(`[ERROR] Не могу отправить сообщение:`, err.message));
+        }
     });
-    console.log('Bot started...');
+    console.log('Bot started (Group Compatible Mode)...');
 } else {
-    console.log('Bot token not provided or invalid. Running server only.');
+    console.log('Bot token not provided.');
 }
 
 // --- Express Setup ---
