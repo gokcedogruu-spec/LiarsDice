@@ -18,33 +18,38 @@ const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     console.log('Bot started...');
 
-    // Слушаем любые сообщения (чтобы работать в группах без прав админа)
     bot.on('message', (msg) => {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
         
         console.log(`[MSG] From: ${chatId}, Text: "${text}"`);
 
-        // Проверяем, содержит ли текст команду /start (в любом регистре)
-        // Это сработает на "/start", "/start@MyBot", "привет /start" и т.д.
         if (text.toLowerCase().includes('/start')) {
             
-            // !!! ТВОЯ ССЫЛКА (ЖЕСТКО ВПИСАНА, ЧТОБЫ НЕ БЫЛО ОШИБОК) !!!
-            const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
-
             const message = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nЖми кнопку ниже, чтобы начать игру!`;
             
+            // ПРЯМОЕ ВСТАИВАНИЕ ССЫЛКИ (Без переменных)
+            // Добавлен слеш в конце '/' для надежности
             const opts = {
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]
+                        [{ 
+                            text: "🎲 ИГРАТЬ", 
+                            web_app: { url: 'https://liarsdicezmss.onrender.com/' } 
+                        }]
                     ]
                 }
             };
             
+            console.log('[DEBUG] Отправляю кнопку с опциями:', JSON.stringify(opts));
+
             bot.sendMessage(chatId, message, opts)
                 .then(() => console.log(`[SUCCESS] Ответ с кнопкой отправлен в ${chatId}`))
-                .catch((err) => console.error(`[ERROR] Ошибка отправки:`, err.message));
+                .catch((err) => {
+                    console.error(`[ERROR] Ошибка отправки:`, err.message);
+                    // Если снова ошибка - бот отправит просто текст со ссылкой, чтобы игра хотя бы работала
+                    bot.sendMessage(chatId, `⚠️ Не удалось показать кнопку. Откройте игру по ссылке:\nhttps://liarsdicezmss.onrender.com/`);
+                });
         }
     });
 } else {
@@ -82,7 +87,6 @@ function getRoomBySocketId(socketId) {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // 1. Join or Create Room
     socket.on('joinOrCreateRoom', ({ roomId, username }) => {
         const oldRoom = getRoomBySocketId(socket.id);
         if (oldRoom) leaveRoom(socket, oldRoom);
@@ -137,7 +141,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // 2. Toggle Ready
     socket.on('setReady', (isReady) => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'LOBBY') return;
@@ -153,7 +156,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. Start Game
     socket.on('startGame', () => {
         const room = getRoomBySocketId(socket.id);
         if (!room) return;
@@ -173,7 +175,6 @@ io.on('connection', (socket) => {
         startNewRound(room, true);
     });
 
-    // 4. Make Bid
     socket.on('makeBid', ({ quantity, faceValue }) => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'PLAYING') return;
@@ -207,7 +208,6 @@ io.on('connection', (socket) => {
         broadcastGameState(room);
     });
 
-    // 5. Call Bluff
     socket.on('callBluff', () => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'PLAYING' || !room.currentBid) return;
