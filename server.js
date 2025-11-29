@@ -14,18 +14,17 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const TURN_DURATION_MS = 30000; 
 
-// --- RATING SYSTEM ---
+// --- ХАРДКОРНЫЕ РАНГИ ---
 const RANKS = [
     { name: "Пороховая обезьяна", min: 0 },
     { name: "Юнга", min: 500 },
     { name: "Матрос", min: 1500 },
     { name: "Старший матрос", min: 5000 },
     { name: "Боцман", min: 10000 },
-    { name: "Первый помощник", min: 25000 },
-    { name: "Капитан", min: 50000, reqStreak: 100 }
+    { name: "Первый помощник", min: 25000 }, // Высокий риск
+    { name: "Капитан", min: 50000, reqStreak: 100 } // Элита
 ];
 
-// БД в памяти (теперь работает как кэш)
 const userDB = new Map();
 
 function getUserData(username) {
@@ -35,13 +34,16 @@ function getUserData(username) {
     return userDB.get(username);
 }
 
-// Функция обновления данных (пришла из CloudStorage)
+// Синхронизация с облаком Телеграм (если там больше опыта, берем оттуда)
 function syncUserData(username, savedData) {
     const user = getUserData(username);
-    // Если в сохранении опыта больше, чем в памяти - берем из сохранения
-    if (savedData && savedData.xp > user.xp) {
-        user.xp = savedData.xp;
-        user.streak = savedData.streak || 0;
+    if (savedData && typeof savedData.xp === 'number') {
+        // Берем сохраненные данные, если они валидны
+        // (можно добавить проверку, чтобы не откатывать опыт назад, но для синхронизации лучше просто брать актуальное)
+        if (savedData.xp > user.xp) {
+            user.xp = savedData.xp;
+            user.streak = savedData.streak || 0;
+        }
     }
     return user;
 }
@@ -49,12 +51,19 @@ function syncUserData(username, savedData) {
 function getRankInfo(xp, streak) {
     let current = RANKS[0];
     let next = RANKS[1];
+    
     for (let i = 0; i < RANKS.length; i++) {
         const r = RANKS[i];
         if (r.name === "Капитан") {
-            if (xp >= r.min && streak >= r.reqStreak) { current = r; next = null; }
+            if (xp >= r.min && streak >= r.reqStreak) {
+                current = r;
+                next = null; 
+            }
         } else {
-            if (xp >= r.min) { current = r; next = RANKS[i+1] || null; }
+            if (xp >= r.min) {
+                current = r;
+                next = RANKS[i+1] || null;
+            }
         }
     }
     return { current, next };
@@ -63,18 +72,34 @@ function getRankInfo(xp, streak) {
 function updateUserXP(username, isWinner) {
     const user = getUserData(username);
     user.matches++;
+    
     const rankInfo = getRankInfo(user.xp, user.streak);
     const isCaptain = rankInfo.current.name === "Капитан";
 
     if (isWinner) {
-        user.wins++; user.streak++;
-        user.xp += isCaptain ? 100 : 15;
+        user.wins++;
+        user.streak++;
+        
+        // Капитаны получают бонус, остальные потеют за +15
+        if (isCaptain) {
+            user.xp += 100; 
+        } else {
+            user.xp += 15;
+        }
+
     } else {
-        user.streak = 0;
-        if (user.xp >= 25000) user.xp -= 100;
-        else if (user.xp >= 5000) user.xp -= 30;
-        else user.xp -= 10;
+        user.streak = 0; // Сброс серии
+        
+        // Хардкорные штрафы
+        if (user.xp >= 25000) { // Первый помощник и выше
+            user.xp -= 100; // Больно
+        } else if (user.xp >= 5000) {
+            user.xp -= 30;
+        } else {
+            user.xp -= 10; // Пороховым обезьянам прощается
+        }
     }
+    
     if (user.xp < 0) user.xp = 0;
     userDB.set(username, user);
     return user;
@@ -87,8 +112,9 @@ if (bot) {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
         if (text.toLowerCase().includes('/start')) {
+            // ТВОЯ ССЫЛКА
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
-            const message = `🏴‍☠️ **Кости Лжеца** 🏴‍☠️\n\nТвой рейтинг теперь хранится в Телеграме!\nЖми кнопку ниже!`;
+            const message = `🏴‍☠️ **Кости Лжеца: Хардкор** 🏴‍☠️\n\nРанги сохраняются в облаке!\nЖми кнопку ниже!`;
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, message, opts).catch(e=>console.log(e.message));
         }
@@ -117,12 +143,11 @@ function handleTimeout(room) {
 }
 
 io.on('connection', (socket) => {
-    // !!! ВАЖНОЕ ИЗМЕНЕНИЕ: Принимаем данные сохранения от клиента !!!
+    
+    // ВХОД С ДАННЫМИ ИЗ CLOUD STORAGE
     socket.on('login', ({ username, savedData }) => {
-        // Синхронизируем память сервера с облаком клиента
         const data = syncUserData(username, savedData);
         const rank = getRankInfo(data.xp, data.streak);
-        // Отправляем обратно подтверждение и ранг
         socket.emit('profileUpdate', { ...data, rankName: rank.current.name, nextRankXP: rank.next?.min || 'MAX' });
     });
 
@@ -130,7 +155,7 @@ io.on('connection', (socket) => {
         const old = getRoomBySocketId(socket.id);
         if (old) leaveRoom(socket, old);
 
-        const uData = getUserData(username); // Берем уже синхронизированные данные
+        const uData = getUserData(username);
         const rInfo = getRankInfo(uData.xp, uData.streak);
         let room; let isCreator = false;
 
@@ -238,7 +263,6 @@ function checkEliminationAndContinue(room, loser) {
         io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
         const d = updateUserXP(loser.name, false);
         const rInfo = getRankInfo(d.xp, d.streak);
-        // Отправляем данные клиенту, чтобы он сохранил их в CloudStorage
         io.to(loser.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
     }
     const active = room.players.filter(p => p.diceCount > 0);
@@ -249,7 +273,6 @@ function checkEliminationAndContinue(room, loser) {
         
         const d = updateUserXP(winner.name, true);
         const rInfo = getRankInfo(d.xp, d.streak);
-        // Отправляем данные победителю для сохранения
         io.to(winner.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
         io.to(room.id).emit('gameOver', { winner: winner.name });
     } else {
@@ -308,7 +331,7 @@ function broadcastGameState(room) {
     });
 }
 
-// KeepAlive всё равно оставим для стабильности сессии
+// KeepAlive (для надежности)
 const PING_INTERVAL = 10 * 60 * 1000;
 const MY_URL = 'https://liarsdicezmss.onrender.com';
 setInterval(() => {
