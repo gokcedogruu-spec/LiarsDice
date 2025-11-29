@@ -5,87 +5,117 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Кости Лжеца</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Google Fonts: Fredoka для мультяшности -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="app">
-        <!-- Экран 1: Логин (если не через Telegram) -->
-        <div id="screen-login" class="screen active">
-            <h1>Кости Лжеца</h1>
-            <div class="input-group">
-                <input type="text" id="input-username" placeholder="Введите ваше имя">
+        <!-- SCREEN: LOGIN -->
+        <div id="screen-login" class="screen active center-content">
+            <h1 class="title">🎲 Кости<br>Лжеца</h1>
+            <div class="card bounce-in">
+                <input type="text" id="input-username" placeholder="Как тебя зовут, пират?">
+                <button id="btn-login" class="btn btn-primary">ВОЙТИ</button>
             </div>
-            <button id="btn-login" class="btn">Войти</button>
         </div>
 
-        <!-- Экран 2: Главное меню -->
-        <div id="screen-home" class="screen">
-            <h1>Главное Меню</h1>
-            <p id="user-display" style="text-align:center; margin-bottom:20px; color:#94a3b8;">...</p>
-            <button id="btn-create-room" class="btn">Создать комнату</button>
-            <button id="btn-join-room" class="btn secondary">Присоединиться</button>
+        <!-- SCREEN: HOME -->
+        <div id="screen-home" class="screen center-content">
+            <h1 class="title">МЕНЮ</h1>
+            <p id="user-display" class="subtitle">Привет!</p>
+            <div class="menu-buttons">
+                <button id="btn-create-room" class="btn btn-primary pulse">СОЗДАТЬ КОМНАТУ</button>
+                <button id="btn-join-room" class="btn btn-secondary">ПРИСОЕДИНИТЬСЯ</button>
+            </div>
         </div>
 
-        <!-- Экран 3: Лобби -->
+        <!-- SCREEN: LOBBY -->
         <div id="screen-lobby" class="screen">
-            <h2>Комната: <span id="lobby-room-id" style="color:var(--accent-color)">...</span></h2>
-            <div class="player-list" id="lobby-players"></div>
-            <p style="text-align:center; font-size:0.8rem; margin-bottom:1rem; color:#64748b;">
-                Ждите, пока все нажмут «Готов».
-            </p>
-            <button id="btn-ready" class="btn">Я готов</button>
-            <button id="btn-start-game" class="btn" style="display:none; background-color:#22c55e;">Начать игру</button>
+            <div class="header">
+                <h2>Комната</h2>
+                <div class="room-code-box" id="share-btn">
+                    <span id="lobby-room-id">CODE</span>
+                    <span class="share-icon">📤</span>
+                </div>
+                <p class="hint">Нажми на код, чтобы пригласить</p>
+            </div>
+            
+            <div class="card">
+                <h3>Игроки</h3>
+                <div id="lobby-players" class="list"></div>
+            </div>
+
+            <div class="bottom-controls">
+                <button id="btn-ready" class="btn btn-secondary">Я ГОТОВ</button>
+                <button id="btn-start-game" class="btn btn-success" style="display:none;">ПОГНАЛИ!</button>
+            </div>
         </div>
 
-        <!-- Экран 4: Игра -->
-        <div id="screen-game" class="screen">
-            <div class="game-info">
-                <span id="game-room-name">Комната</span>
-                <span>Игра идет</span>
+        <!-- SCREEN: GAME -->
+        <div id="screen-game" class="screen game-mode">
+            <!-- Верх: Соперники -->
+            <div class="top-bar">
+                <div id="players-bar" class="avatars-row"></div>
             </div>
 
-            <!-- Статус игроков -->
-            <div class="player-bar" id="players-bar"></div>
-
-            <!-- Текущая ставка (центр стола) -->
-            <div class="current-bid" id="current-bid-display">
-                Ожидание хода...
+            <!-- Центр: Ставка и Стол -->
+            <div class="table-area">
+                <div id="timer-bar" class="timer-bar"><div class="timer-fill"></div></div>
+                
+                <div class="current-bid-card" id="current-bid-display">
+                    Ждем начала...
+                </div>
+                
+                <div id="game-log" class="mini-log"></div>
             </div>
 
-            <!-- Мои кости -->
-            <h3 style="font-size:1rem; margin:0; text-align: center;">Ваши кости:</h3>
-            <div class="dice-container" id="my-dice"></div>
+            <!-- Низ: Мои кости и управление -->
+            <div class="my-area">
+                <div class="my-dice-box">
+                    <span>Мои кости:</span>
+                    <div id="my-dice" class="dice-row"></div>
+                </div>
 
-            <!-- Лог действий -->
-            <div class="game-log" id="game-log"></div>
-
-            <!-- Панель управления -->
-            <div class="control-panel" id="game-controls" style="display:none;">
-                <h3>Ваш ход</h3>
-                <div class="bid-inputs">
-                    <div style="flex:1;">
-                        <label>Кол-во:</label>
-                        <input type="number" id="input-bid-qty" min="1" value="1">
+                <!-- Панель хода -->
+                <div id="game-controls" class="controls-panel hidden">
+                    <div class="bid-inputs">
+                        <div class="counter-box">
+                            <label>Кол-во</label>
+                            <div class="stepper">
+                                <button onclick="adjBid('qty', -1)">-</button>
+                                <span id="display-qty">1</span>
+                                <button onclick="adjBid('qty', 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="counter-box">
+                            <label>Номинал</label>
+                            <div class="stepper">
+                                <button onclick="adjBid('val', -1)">-</button>
+                                <span id="display-val" class="dice-icon">2</span>
+                                <button onclick="adjBid('val', 1)">+</button>
+                            </div>
+                        </div>
                     </div>
-                    <div style="flex:1;">
-                        <label>Число (1-6):</label>
-                        <input type="number" id="input-bid-val" min="1" max="6" value="2">
+                    <div class="action-buttons">
+                        <button id="btn-make-bid" class="btn btn-primary">СДЕЛАТЬ СТАВКУ</button>
+                        <button id="btn-call-bluff" class="btn btn-danger">НЕ ВЕРЮ!</button>
                     </div>
                 </div>
-                <button id="btn-make-bid" class="btn">Сделать ставку</button>
-                <button id="btn-call-bluff" class="btn danger">НЕ ВЕРЮ! (Вскрыть)</button>
             </div>
         </div>
 
-        <!-- Экран 5: Результат -->
-        <div id="screen-result" class="screen">
-            <h1>Игра окончена!</h1>
-            <div style="text-align:center; margin:2rem 0;">
-                <p style="color:#94a3b8;">Победитель:</p>
-                <h2 id="winner-name" style="font-size:2rem; color:var(--accent-color)">...</h2>
+        <!-- SCREEN: RESULT -->
+        <div id="screen-result" class="screen center-content">
+            <h1 class="title">🎉 ПОБЕДА! 🎉</h1>
+            <div class="card winner-card">
+                <div style="font-size: 4rem;">👑</div>
+                <h2 id="winner-name">Имя</h2>
             </div>
-            <button id="btn-restart" class="btn">Сыграть еще раз</button>
-            <button id="btn-home" class="btn secondary">В меню</button>
+            <button id="btn-restart" class="btn btn-primary">ЕЩЕ РАЗ</button>
+            <button id="btn-home" class="btn btn-secondary">В МЕНЮ</button>
         </div>
     </div>
 
