@@ -18,38 +18,22 @@ const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     console.log('Bot started...');
 
+    // Listen for ANY message
     bot.on('message', (msg) => {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
         
         console.log(`[MSG] From: ${chatId}, Text: "${text}"`);
 
+        // Check for /start in any format
         if (text.toLowerCase().includes('/start')) {
             
-            const message = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nЖми кнопку ниже, чтобы начать игру!`;
+            const message = `☠️ Добро пожаловать в «Кости Лжеца»! ☠️\n\nЧтобы начать игру, нажмите синюю кнопку «Меню» (слева от поля ввода) или кнопку «Играть», которую вы настроили в BotFather.`;
             
-            // ПРЯМОЕ ВСТАИВАНИЕ ССЫЛКИ (Без переменных)
-            // Добавлен слеш в конце '/' для надежности
-            const opts = {
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ 
-                            text: "🎲 ИГРАТЬ", 
-                            web_app: { url: 'https://liarsdicezmss.onrender.com/' } 
-                        }]
-                    ]
-                }
-            };
-            
-            console.log('[DEBUG] Отправляю кнопку с опциями:', JSON.stringify(opts));
-
-            bot.sendMessage(chatId, message, opts)
-                .then(() => console.log(`[SUCCESS] Ответ с кнопкой отправлен в ${chatId}`))
-                .catch((err) => {
-                    console.error(`[ERROR] Ошибка отправки:`, err.message);
-                    // Если снова ошибка - бот отправит просто текст со ссылкой, чтобы игра хотя бы работала
-                    bot.sendMessage(chatId, `⚠️ Не удалось показать кнопку. Откройте игру по ссылке:\nhttps://liarsdicezmss.onrender.com/`);
-                });
+            // Send TEXT ONLY (No inline buttons to avoid errors)
+            bot.sendMessage(chatId, message)
+                .then(() => console.log(`[SUCCESS] Ответ отправлен в ${chatId}`))
+                .catch((err) => console.error(`[ERROR] Ошибка отправки:`, err.message));
         }
     });
 } else {
@@ -87,6 +71,7 @@ function getRoomBySocketId(socketId) {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
+    // 1. Join or Create Room
     socket.on('joinOrCreateRoom', ({ roomId, username }) => {
         const oldRoom = getRoomBySocketId(socket.id);
         if (oldRoom) leaveRoom(socket, oldRoom);
@@ -141,6 +126,7 @@ io.on('connection', (socket) => {
         });
     });
 
+    // 2. Toggle Ready
     socket.on('setReady', (isReady) => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'LOBBY') return;
@@ -156,6 +142,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 3. Start Game
     socket.on('startGame', () => {
         const room = getRoomBySocketId(socket.id);
         if (!room) return;
@@ -175,6 +162,7 @@ io.on('connection', (socket) => {
         startNewRound(room, true);
     });
 
+    // 4. Make Bid
     socket.on('makeBid', ({ quantity, faceValue }) => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'PLAYING') return;
@@ -208,6 +196,7 @@ io.on('connection', (socket) => {
         broadcastGameState(room);
     });
 
+    // 5. Call Bluff
     socket.on('callBluff', () => {
         const room = getRoomBySocketId(socket.id);
         if (!room || room.status !== 'PLAYING' || !room.currentBid) return;
