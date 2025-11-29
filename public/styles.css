@@ -170,4 +170,138 @@ input[type="text"]:focus { border-color: var(--accent); }
     border-radius: 20px; padding: 15px; text-align: center;
     margin-bottom: 10px; cursor: pointer;
     box-shadow: 0 6px 0 #c48e00;
-    transition: transform
+    transition: transform 0.1s;
+}
+.room-code-card:active { transform: translateY(4px); box-shadow: none; }
+.code-label { font-size: 0.8rem; font-weight: 700; opacity: 0.7; }
+.code-val { font-size: 2.5rem; font-weight: 800; line-height: 1; margin: 5px 0; }
+.code-hint { font-size: 0.7rem; opacity: 0.8; }
+.rules-tag { text-align: center; color: var(--secondary); font-size: 0.8rem; margin-bottom: 10px; }
+
+.player-list-scroll { max-height: 300px; overflow-y: auto; padding-right: 5px; }
+.player-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,0.2); padding: 10px 15px;
+    border-radius: 12px; margin-bottom: 8px;
+    border-left: 4px solid var(--secondary);
+}
+.player-item b { font-size: 1rem; }
+.rank-sub { font-size: 0.7rem; color: var(--accent); margin-left: 5px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; }
+
+/* --- GAME LAYOUT --- */
+.game-layout { padding: 10px; }
+
+/* RIVALS (Compact) */
+.rivals-bar-container { 
+    background: rgba(0,0,0,0.2); border-radius: 16px; 
+    padding: 8px; margin-bottom: 10px;
+}
+.rivals-row {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding-bottom: 5px; scrollbar-width: none;
+}
+.player-chip {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 75px; max-width: 75px; /* Фикс ширина */
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.2s; flex-shrink: 0;
+    position: relative;
+}
+.player-chip b { 
+    display: block; font-size: 0.7rem; color: white;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.player-chip .rank-game { font-size: 0.6rem; color: var(--secondary); display: block; line-height: 1; margin-top: 2px; }
+.player-chip .dice-count { font-size: 0.9rem; font-weight: bold; color: white; margin-top: 2px; }
+
+.player-chip.turn { 
+    background: var(--text); border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 0 var(--accent);
+}
+.player-chip.turn b { color: var(--bg-color); }
+.player-chip.turn .rank-game { color: var(--bg-color); opacity: 0.7; }
+.player-chip.turn .dice-count { color: var(--bg-color); }
+
+.player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
+
+/* TABLE AREA */
+.table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+
+.timer-capsule {
+    background: rgba(0,0,0,0.3); padding: 5px 10px;
+    border-radius: 20px; display: flex; align-items: center; gap: 8px;
+    width: 80%; margin-bottom: 15px;
+}
+.timer-track { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
+.timer-progress { height: 100%; background: var(--success); width: 100%; border-radius: 5px; }
+
+.bid-bubble {
+    background: var(--text); color: var(--bg-color);
+    padding: 20px; border-radius: 24px;
+    text-align: center; min-width: 200px;
+    box-shadow: 0 8px 0 #999;
+    border: 4px solid var(--bg-color);
+    position: relative;
+}
+.bid-bubble::after {
+    content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+    border-width: 10px 10px 0; border-style: solid;
+    border-color: var(--bg-color) transparent transparent transparent;
+}
+.bid-qty { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
+.bid-x { font-size: 1.2rem; color: #999; margin: 0 5px; }
+.bid-face { font-size: 2rem; background: var(--bg-color); color: white; padding: 2px 8px; border-radius: 8px; }
+
+.game-log-box {
+    margin-top: 20px; font-size: 0.9rem; color: var(--secondary);
+    text-align: center; height: 20px; overflow: visible;
+    font-weight: 600; white-space: nowrap;
+}
+
+/* CONTROLS */
+.my-controls-area { width: 100%; }
+.my-dice-panel { text-align: center; margin-bottom: 10px; }
+.panel-label { font-size: 0.7rem; color: var(--secondary); font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; }
+.my-dice-row { display: flex; justify-content: center; gap: 8px; }
+.die {
+    width: 45px; height: 45px;
+    background: white; color: black;
+    border-radius: 10px;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 1.8rem; font-weight: 800;
+    box-shadow: 0 4px 0 #bbb;
+    border: 2px solid #eee;
+}
+
+.action-panel {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 20px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+}
+.hidden { display: none; }
+
+.bid-controls { display: flex; gap: 15px; margin-bottom: 15px; }
+.bid-stepper { flex: 1; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 16px; text-align: center; }
+.bid-stepper label { font-size: 0.65rem; color: var(--secondary); font-weight: 700; display: block; margin-bottom: 4px; }
+.bid-val { font-size: 1.5rem; font-weight: bold; color: white; min-width: 30px; }
+.dice-face { font-size: 1.5rem; background: white; color: black; border-radius: 6px; padding: 0 6px; font-weight: 800; }
+
+.main-actions { display: flex; gap: 10px; }
+.main-actions button { margin: 0; padding: 14px; font-size: 1.1rem; }
+
+/* --- ANIMATIONS --- */
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+.slide-up { animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.slide-down { animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.pop-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.pulse-btn { animation: pulse 2s infinite; }
+.slide-up-delay { animation: slideUp 0.4s 0.2s backwards cubic-bezier(0.175, 0.885, 0.32, 1.275); }
