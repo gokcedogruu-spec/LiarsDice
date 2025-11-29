@@ -7,7 +7,6 @@ let state = {
     bidQty: 1,
     bidVal: 2,
     timerInterval: null,
-    // Настройки создания
     createDice: 5,
     createPlayers: 10
 };
@@ -15,6 +14,7 @@ let state = {
 if (tg) {
     tg.ready();
     tg.expand();
+    // Фикс цветов для темной темы
     tg.setHeaderColor('#2D3250');
     tg.setBackgroundColor('#2D3250');
 }
@@ -56,7 +56,6 @@ document.getElementById('btn-back-home').addEventListener('click', () => {
     showScreen('home');
 });
 
-// Логика кнопок +/- в настройках
 window.adjSetting = (type, delta) => {
     if (type === 'dice') {
         state.createDice = Math.max(1, Math.min(10, state.createDice + delta));
@@ -84,13 +83,32 @@ document.getElementById('btn-join-room').addEventListener('click', () => {
     if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase(), username: state.username });
 });
 
+// --- ИСПРАВЛЕННАЯ КНОПКА ПОДЕЛИТЬСЯ ---
 document.getElementById('share-btn').addEventListener('click', () => {
     const code = state.roomId;
-    if (tg && tg.switchInlineQuery) tg.switchInlineQuery(code);
-    else {
-        navigator.clipboard.writeText(code);
-        alert('Код скопирован!');
-    }
+    const textToShare = `Залетай в Кости Лжеца! Код комнаты: ${code}`;
+    
+    // Используем Clipboard API для копирования
+    navigator.clipboard.writeText(textToShare)
+        .then(() => {
+            if (tg) tg.showAlert(`Код "${code}" скопирован!\nОтправь его другу.`);
+            else alert(`Код "${code}" скопирован!`);
+        })
+        .catch(err => {
+            // Резервный вариант (иногда нужен для старых браузеров/устройств)
+            const textArea = document.createElement("textarea");
+            textArea.value = textToShare;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                if (tg) tg.showAlert(`Код "${code}" скопирован!`);
+                else alert(`Код "${code}" скопирован!`);
+            } catch (err) {
+                prompt("Не удалось скопировать автоматически. Скопируйте код:", code);
+            }
+            document.body.removeChild(textArea);
+        });
 });
 
 document.getElementById('btn-ready').addEventListener('click', function() {
@@ -133,7 +151,6 @@ socket.on('roomUpdate', (room) => {
         showScreen('lobby');
         document.getElementById('lobby-room-id').textContent = room.roomId;
         
-        // Отображаем настройки в лобби
         if (room.config) {
             document.getElementById('lobby-rules').textContent = `Кубиков: ${room.config.dice} | Игроков макс: ${room.config.players}`;
         }
