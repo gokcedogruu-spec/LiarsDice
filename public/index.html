@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Кости Лжеца</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Подключаем жирные начертания для мультяшности -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,19 +13,19 @@
 <body>
     <div id="app">
         
-        <!-- LOGIN SCREEN -->
-        <div id="screen-login" class="screen active center-content">
+        <!-- LOGIN (Скрыт по умолчанию) -->
+        <div id="screen-login" class="screen center-content">
             <div class="logo-container pop-in">
                 <div class="logo-icon">🎲</div>
                 <h1 class="title">КОСТИ<br>ЛЖЕЦА</h1>
             </div>
             <div class="card slide-up">
-                <input type="text" id="input-username" placeholder="Твое имя, пират?" maxlength="12">
+                <input type="text" id="input-username" placeholder="Твое имя?" maxlength="12">
                 <button id="btn-login" class="btn btn-primary">В БОЙ!</button>
             </div>
         </div>
 
-        <!-- HOME SCREEN -->
+        <!-- HOME -->
         <div id="screen-home" class="screen center-content">
             <h1 class="title">МЕНЮ</h1>
             
@@ -34,28 +33,26 @@
                 <div class="rank-icon-box">
                     <div id="rank-badge" class="rank-emoji">⚓</div>
                 </div>
-                <h2 id="user-display">Имя</h2>
-                <div class="rank-label" id="rank-display">Юнга</div>
+                <h2 id="user-display">...</h2>
+                <div class="rank-label" id="rank-display">...</div>
                 <div id="win-streak" class="streak-label">Серия: 0 🔥</div>
                 
                 <div class="xp-track">
                     <div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div>
-                    <span id="xp-text" class="xp-text">0 / 500 XP</span>
+                    <span id="xp-text" class="xp-text">...</span>
                 </div>
             </div>
 
             <div class="menu-buttons slide-up-delay">
-                <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ КОМНАТУ</button>
+                <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
                 <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
             </div>
         </div>
 
-        <!-- SETTINGS SCREEN -->
+        <!-- SETTINGS -->
         <div id="screen-create-settings" class="screen center-content">
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
-                
-                <!-- Кубики -->
                 <div class="setting-group">
                     <label>Кубиков (1-10)</label>
                     <div class="stepper-row">
@@ -64,8 +61,6 @@
                         <button class="btn-mini" onclick="adjSetting('dice', 1)">+</button>
                     </div>
                 </div>
-
-                <!-- Игроки -->
                 <div class="setting-group">
                     <label>Игроков (2-10)</label>
                     <div class="stepper-row">
@@ -74,8 +69,6 @@
                         <button class="btn-mini" onclick="adjSetting('players', 1)">+</button>
                     </div>
                 </div>
-
-                <!-- Время -->
                 <div class="setting-group">
                     <label>Время на ход</label>
                     <div class="time-selector">
@@ -84,66 +77,51 @@
                         <button class="btn-time" onclick="setTime(60)">60с</button>
                     </div>
                 </div>
-
                 <button id="btn-confirm-create" class="btn btn-green" style="margin-top: 20px;">СОЗДАТЬ</button>
                 <button id="btn-back-home" class="btn btn-gray">НАЗАД</button>
             </div>
         </div>
 
-        <!-- LOBBY SCREEN -->
+        <!-- LOBBY -->
         <div id="screen-lobby" class="screen">
             <div class="header slide-down">
                 <div class="room-code-card" id="share-btn">
                     <div class="code-label">КОД КОМНАТЫ</div>
                     <div class="code-val" id="lobby-room-id">...</div>
-                    <div class="code-hint">Нажми, чтобы скопировать</div>
+                    <div class="code-hint">Нажми для копирования</div>
                 </div>
-                <div class="rules-tag" id="lobby-rules">Загрузка...</div>
+                <div class="rules-tag" id="lobby-rules">...</div>
             </div>
-            
             <div class="card flex-grow slide-up">
                 <h3 class="card-header">КОМАНДА</h3>
                 <div id="lobby-players" class="player-list-scroll"></div>
             </div>
-
             <div class="bottom-controls pop-in">
                 <button id="btn-ready" class="btn btn-blue">Я ГОТОВ</button>
                 <button id="btn-start-game" class="btn btn-green" style="display:none;">ПОГНАЛИ!</button>
             </div>
         </div>
 
-        <!-- GAME SCREEN -->
+        <!-- GAME -->
         <div id="screen-game" class="screen game-layout">
-            <!-- Top: Rivals -->
             <div class="rivals-bar-container">
                 <div id="players-bar" class="rivals-row"></div>
             </div>
-
-            <!-- Center: Table info -->
             <div class="table-center">
                 <div class="timer-capsule">
                     <span class="timer-icon">⏳</span>
                     <div class="timer-track"><div class="timer-progress"></div></div>
                 </div>
-
-                <div class="bid-bubble pop-in" id="current-bid-display">
-                    Раунд начинается...
-                </div>
-                
+                <div class="bid-bubble pop-in" id="current-bid-display">...</div>
                 <div id="game-log" class="game-log-box"></div>
             </div>
-
-            <!-- Bottom: My Controls -->
             <div class="my-controls-area slide-up">
                 <div class="my-dice-panel">
                     <div class="panel-label">МОИ КОСТИ</div>
                     <div id="my-dice" class="my-dice-row"></div>
                 </div>
-
-                <!-- Action Panel -->
                 <div id="game-controls" class="action-panel hidden">
                     <div class="bid-controls">
-                        <!-- Quantity -->
                         <div class="bid-stepper">
                             <label>КОЛ-ВО</label>
                             <div class="stepper-row">
@@ -152,7 +130,6 @@
                                 <button class="btn-mini" onclick="adjBid('qty', 1)">+</button>
                             </div>
                         </div>
-                        <!-- Value -->
                         <div class="bid-stepper">
                             <label>ЧИСЛО</label>
                             <div class="stepper-row">
@@ -170,10 +147,23 @@
             </div>
         </div>
 
-        <!-- RESULT SCREEN -->
+        <!-- RESULT -->
         <div id="screen-result" class="screen center-content">
             <div class="pop-in">
                 <h1 class="title">ФИНАЛ</h1>
                 <div class="card winner-box">
                     <div class="trophy-icon">🏆</div>
-                    <h2 id="winner-name"
+                    <h2 id="winner-name" class="winner-name">...</h2>
+                    <p class="winner-sub">Рейтинг обновлен!</p>
+                </div>
+            </div>
+            <div class="slide-up-delay">
+                <button id="btn-restart" class="btn btn-green">ЕЩЕ РАЗ</button>
+                <button id="btn-home" class="btn btn-blue">В МЕНЮ</button>
+            </div>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
