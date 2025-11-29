@@ -14,7 +14,6 @@ let state = {
 if (tg) {
     tg.ready();
     tg.expand();
-    // Фикс цветов для темной темы
     tg.setHeaderColor('#2D3250');
     tg.setBackgroundColor('#2D3250');
 }
@@ -25,7 +24,6 @@ function showScreen(name) {
     document.getElementById(`screen-${name}`).classList.add('active');
 }
 
-// --- LOGIN & AUTO ---
 window.addEventListener('load', () => {
     if (tg?.initDataUnsafe?.user) {
         state.username = tg.initDataUnsafe.user.first_name;
@@ -35,26 +33,37 @@ window.addEventListener('load', () => {
 
 document.getElementById('btn-login').addEventListener('click', () => {
     const val = document.getElementById('input-username').value.trim();
-    if (val) {
-        state.username = val;
-        loginSuccess();
-    }
+    if (val) { state.username = val; loginSuccess(); }
 });
 
 function loginSuccess() {
+    socket.emit('login', state.username);
     showScreen('home');
-    document.getElementById('user-display').textContent = `Привет, ${state.username}!`;
+    document.getElementById('user-display').textContent = state.username;
 }
 
-// --- CREATION SETTINGS ---
+// --- PROFILE UPDATE ---
+socket.on('profileUpdate', (data) => {
+    document.getElementById('rank-display').textContent = data.rankName;
+    document.getElementById('win-streak').textContent = `Серия побед: ${data.streak} 🔥`;
+    
+    let rankIcon = '🦠';
+    if (data.rankName === 'Юнга') rankIcon = '⚓';
+    if (data.rankName === 'Матрос') rankIcon = '🌊';
+    if (data.rankName === 'Старший матрос') rankIcon = '🎖️';
+    if (data.rankName === 'Боцман') rankIcon = '💪';
+    if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
+    if (data.rankName === 'Капитан') rankIcon = '☠️';
+    document.getElementById('rank-badge').textContent = rankIcon;
 
-document.getElementById('btn-to-create').addEventListener('click', () => {
-    showScreen('create-settings');
+    const next = data.nextRankXP === 'MAX' ? data.xp : data.nextRankXP;
+    const percent = Math.min(100, (data.xp / next) * 100);
+    document.getElementById('xp-fill').style.width = `${percent}%`;
+    document.getElementById('xp-text').textContent = `${data.xp} / ${next} XP`;
 });
 
-document.getElementById('btn-back-home').addEventListener('click', () => {
-    showScreen('home');
-});
+document.getElementById('btn-to-create').addEventListener('click', () => showScreen('create-settings'));
+document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
 
 window.adjSetting = (type, delta) => {
     if (type === 'dice') {
@@ -67,47 +76,26 @@ window.adjSetting = (type, delta) => {
 };
 
 document.getElementById('btn-confirm-create').addEventListener('click', () => {
-    socket.emit('joinOrCreateRoom', { 
-        roomId: null, 
-        username: state.username,
-        options: { 
-            dice: state.createDice, 
-            players: state.createPlayers 
-        }
-    });
+    socket.emit('joinOrCreateRoom', { roomId: null, username: state.username, options: { dice: state.createDice, players: state.createPlayers } });
 });
 
-// --- JOIN ---
 document.getElementById('btn-join-room').addEventListener('click', () => {
     const code = prompt("Введи код комнаты:");
-    if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase(), username: state.username });
+    if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), username: state.username });
 });
 
-// --- ИСПРАВЛЕННАЯ КНОПКА ПОДЕЛИТЬСЯ ---
+// --- ИСПРАВЛЕННАЯ КНОПКА (ТОЛЬКО КОД) ---
 document.getElementById('share-btn').addEventListener('click', () => {
     const code = state.roomId;
-    const textToShare = `Залетай в Кости Лжеца! Код комнаты: ${code}`;
-    
-    // Используем Clipboard API для копирования
-    navigator.clipboard.writeText(textToShare)
+    // Копируем ТОЛЬКО код
+    navigator.clipboard.writeText(code)
         .then(() => {
-            if (tg) tg.showAlert(`Код "${code}" скопирован!\nОтправь его другу.`);
+            if (tg) tg.showAlert(`Код "${code}" скопирован!`);
             else alert(`Код "${code}" скопирован!`);
         })
-        .catch(err => {
-            // Резервный вариант (иногда нужен для старых браузеров/устройств)
-            const textArea = document.createElement("textarea");
-            textArea.value = textToShare;
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                if (tg) tg.showAlert(`Код "${code}" скопирован!`);
-                else alert(`Код "${code}" скопирован!`);
-            } catch (err) {
-                prompt("Не удалось скопировать автоматически. Скопируйте код:", code);
-            }
-            document.body.removeChild(textArea);
+        .catch(() => {
+            // Резерв для старых устройств
+            prompt("Скопируй код:", code);
         });
 });
 
@@ -117,132 +105,83 @@ document.getElementById('btn-ready').addEventListener('click', function() {
     this.textContent = isReady ? "НЕ ГОТОВ" : "Я ГОТОВ";
     this.className = isReady ? "btn btn-success" : "btn btn-secondary";
 });
-
 document.getElementById('btn-start-game').addEventListener('click', () => socket.emit('startGame'));
 
-// --- GAME CONTROLS ---
 window.adjBid = (type, delta) => {
-    if (type === 'qty') {
-        state.bidQty = Math.max(1, state.bidQty + delta);
-        document.getElementById('display-qty').textContent = state.bidQty;
-    } else {
-        state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta));
-        document.getElementById('display-val').textContent = state.bidVal;
-    }
+    if (type === 'qty') { state.bidQty = Math.max(1, state.bidQty + delta); document.getElementById('display-qty').textContent = state.bidQty; } 
+    else { state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta)); document.getElementById('display-val').textContent = state.bidVal; }
 };
-
-document.getElementById('btn-make-bid').addEventListener('click', () => {
-    socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal });
-});
-
-document.getElementById('btn-call-bluff').addEventListener('click', () => {
-    socket.emit('callBluff');
-});
-
+document.getElementById('btn-make-bid').addEventListener('click', () => socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal }));
+document.getElementById('btn-call-bluff').addEventListener('click', () => socket.emit('callBluff'));
 document.getElementById('btn-restart').addEventListener('click', () => socket.emit('requestRestart'));
 document.getElementById('btn-home').addEventListener('click', () => location.reload());
 
-// --- SOCKETS ---
 socket.on('errorMsg', (msg) => tg ? tg.showAlert(msg) : alert(msg));
-
 socket.on('roomUpdate', (room) => {
     state.roomId = room.roomId;
     if (room.status === 'LOBBY') {
         showScreen('lobby');
         document.getElementById('lobby-room-id').textContent = room.roomId;
-        
-        if (room.config) {
-            document.getElementById('lobby-rules').textContent = `Кубиков: ${room.config.dice} | Игроков макс: ${room.config.players}`;
-        }
-
+        if (room.config) document.getElementById('lobby-rules').textContent = `🎲: ${room.config.dice} | 👤: ${room.config.players}`;
         const list = document.getElementById('lobby-players');
         list.innerHTML = '';
         room.players.forEach(p => {
-            list.innerHTML += `<div class="player-item"><span>${p.name}</span><span>${p.ready?'✅':'⏳'}</span></div>`;
+            list.innerHTML += `<div class="player-item">
+                <div class="player-info"><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div>
+                <span>${p.ready?'✅':'⏳'}</span>
+            </div>`;
         });
-        
         const me = room.players.find(p => p.name === state.username);
-        const canStart = me?.isCreator && room.players.length > 1;
-        document.getElementById('btn-start-game').style.display = canStart ? 'block' : 'none';
+        document.getElementById('btn-start-game').style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
     }
 });
-
 socket.on('gameEvent', (evt) => {
-    const log = document.getElementById('game-log');
-    log.innerHTML = `<div>${evt.text}</div>`;
+    document.getElementById('game-log').innerHTML = `<div>${evt.text}</div>`;
     if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning');
 });
-
-socket.on('yourDice', (dice) => {
-    const div = document.getElementById('my-dice');
-    div.innerHTML = dice.map(d => `<div class="die">${d}</div>`).join('');
-});
-
+socket.on('yourDice', (dice) => document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die">${d}</div>`).join(''));
 socket.on('gameState', (gs) => {
     showScreen('game');
-    
     const bar = document.getElementById('players-bar');
     bar.innerHTML = gs.players.map(p => `
         <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''}">
-            ${p.name}<br>🎲 ${p.diceCount}
+            <b>${p.name}</b>
+            <span class="rank-game">${p.rank}</span>
+            🎲 ${p.diceCount}
         </div>
     `).join('');
-
-    const bidDisplay = document.getElementById('current-bid-display');
+    const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
-        bidDisplay.innerHTML = `<div>Текущая ставка:</div><div style="font-size:1.5rem; font-weight:bold; margin-top:5px;">${gs.currentBid.quantity} x <span style="background:white; color:black; padding:2px 6px; border-radius:4px;">${gs.currentBid.faceValue}</span></div>`;
-        state.bidQty = gs.currentBid.quantity; 
-        state.bidVal = gs.currentBid.faceValue; 
-        updateInputs();
+        bid.innerHTML = `<div>Ставка:</div><div style="font-size:1.5rem; font-weight:bold; margin-top:5px;">${gs.currentBid.quantity} x <span style="background:white; color:black; padding:2px 6px; border-radius:4px;">${gs.currentBid.faceValue}</span></div>`;
+        state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
-        bidDisplay.innerHTML = `Новый раунд!<br>Делайте ставку`;
-        state.bidQty = 1; state.bidVal = 2;
-        updateInputs();
+        bid.innerHTML = `Новый раунд!<br>Делайте ставку`;
+        state.bidQty = 1; state.bidVal = 2; updateInputs();
     }
-
     const myTurn = gs.players.find(p => p.isTurn)?.name === state.username;
-    const controls = document.getElementById('game-controls');
-    
-    if (myTurn) {
-        controls.classList.remove('hidden');
-        document.getElementById('btn-call-bluff').disabled = !gs.currentBid;
-        if(tg) tg.HapticFeedback.impactOccurred('medium');
-    } else {
-        controls.classList.add('hidden');
+    document.getElementById('game-controls').classList.toggle('hidden', !myTurn);
+    if(myTurn) { 
+        document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
+        if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     }
-
     startVisualTimer(gs.turnDeadline);
 });
-
-socket.on('roundResult', (data) => {
-    tg ? tg.showAlert(data.message) : alert(data.message);
-});
-
+socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
 socket.on('gameOver', (data) => {
     showScreen('result');
     document.getElementById('winner-name').textContent = data.winner;
     if(tg) tg.HapticFeedback.notificationOccurred('success');
 });
-
-function updateInputs() {
-    document.getElementById('display-qty').textContent = state.bidQty;
-    document.getElementById('display-val').textContent = state.bidVal;
-}
-
+function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 function startVisualTimer(deadline) {
     clearInterval(state.timerInterval);
-    const bar = document.querySelector('.timer-fill');
-    if (!bar) return;
-
+    const bar = document.querySelector('.timer-fill'); if(!bar) return;
     state.timerInterval = setInterval(() => {
         const left = deadline - Date.now();
-        if (left <= 0) {
-            bar.style.width = '0%';
-            clearInterval(state.timerInterval);
-        } else {
-            const percent = (left / 30000) * 100;
-            bar.style.width = `${percent}%`;
-            bar.style.background = percent < 30 ? '#FF6B6B' : '#F6B17A'; 
+        if (left <= 0) { bar.style.width = '0%'; clearInterval(state.timerInterval); }
+        else {
+            const pct = (left / 30000) * 100; bar.style.width = `${pct}%`;
+            bar.style.background = pct < 30 ? '#FF6B6B' : '#F6B17A';
         }
     }, 100);
 }
