@@ -2,43 +2,34 @@ const socket = io();
 const tg = window.Telegram?.WebApp;
 
 let state = {
-    username: null, roomId: null,
+    username: "Гость", roomId: null,
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30
 };
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#2b2d42'); tg.setBackgroundColor('#2b2d42'); }
 
-const screens = ['login', 'home', 'create-settings', 'lobby', 'game', 'result'];
+const screens = ['home', 'create-settings', 'lobby', 'game', 'result'];
 function showScreen(name) {
-    screens.forEach(s => document.getElementById(`screen-${s}`).classList.remove('active'));
+    screens.forEach(s => document.getElementById(`screen-${s}`)?.classList.remove('active'));
     document.getElementById(`screen-${name}`).classList.add('active');
 }
 
 window.addEventListener('load', () => {
-    // Если мы в Телеграме - сразу берем имя и логинимся
     if (tg?.initDataUnsafe?.user) {
         state.username = tg.initDataUnsafe.user.first_name;
-        // Убираем активный класс у логина, чтобы не мелькал
-        document.getElementById('screen-login').classList.remove('active');
+        // Если открыто в Телеграм - сразу логинимся
         loginSuccess();
     } else {
-        // Иначе показываем логин
-        document.getElementById('screen-login').classList.add('active');
+        // Если нет телеграма (браузер) - даем имя "Гость" и логинимся
+        loginSuccess();
     }
 });
 
-document.getElementById('btn-login').addEventListener('click', () => {
-    const val = document.getElementById('input-username').value.trim();
-    if (val) { state.username = val; loginSuccess(); }
-});
-
 function loginSuccess() {
-    // Загрузка сохранения
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
-            let savedData = null;
-            try { if (val) savedData = JSON.parse(val); } catch (e) {}
+            let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
             socket.emit('login', { username: state.username, savedData });
         });
     } else {
@@ -47,7 +38,7 @@ function loginSuccess() {
 }
 
 socket.on('profileUpdate', (data) => {
-    showScreen('home'); // Переход в меню
+    showScreen('home'); 
     document.getElementById('user-display').textContent = state.username;
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
@@ -156,7 +147,8 @@ socket.on('gameState', (gs) => {
     const myTurn = gs.players.find(p => p.isTurn)?.name === state.username;
     const controls = document.getElementById('game-controls');
     if(myTurn) { 
-        controls.classList.remove('hidden'); controls.classList.add('slide-up');
+        controls.classList.remove('hidden'); 
+        controls.classList.add('slide-up');
         document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
         if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     } else {
