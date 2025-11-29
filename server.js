@@ -12,9 +12,8 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const TURN_DURATION_MS = 30000; 
 
-// --- RATING SYSTEM (HARDCORE) ---
+// --- RATING SYSTEM ---
 const RANKS = [
     { name: "Пороховая обезьяна", min: 0 },
     { name: "Юнга", min: 500 },
@@ -95,7 +94,7 @@ if (bot) {
         if (text.toLowerCase().includes('/start')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
-            bot.sendMessage(chatId, "☠️ Кости Лжеца: Мультяшная битва!", opts).catch(e=>{});
+            bot.sendMessage(chatId, "☠️ Кости Вруна: Заходи, если смелый!", opts).catch(e=>{});
         }
     });
 }
@@ -118,8 +117,12 @@ function resetTurnTimer(room) {
 function handleTimeout(room) {
     if (room.status !== 'PLAYING') return;
     const loser = room.players[room.currentTurn];
-    io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул!`, type: 'error' });
-    loser.diceCount--;
+    
+    io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул и выбывает!`, type: 'error' });
+    
+    // !!! СМЕРТЕЛЬНЫЙ ТАЙМ-АУТ !!!
+    loser.diceCount = 0; // Сразу убиваем игрока
+    
     checkEliminationAndContinue(room, loser, null);
 }
 
@@ -247,7 +250,7 @@ function checkEliminationAndContinue(room, loser, killer) {
         const rInfo = getRankInfo(d.xp, d.streak);
         io.to(loser.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
 
-        if (loser.rank === 'Капитан' && killer) {
+        if (killer && loser.rank === 'Капитан') {
             io.to(room.id).emit('gameEvent', { text: `💰 ${killer.name} убил Капитана (+100 XP)!`, type: 'info' });
             const kData = updateUserXP(killer.name, 'kill_captain');
             const kRank = getRankInfo(kData.xp, kData.streak);
