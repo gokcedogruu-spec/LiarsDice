@@ -3,48 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Кости Лжеца</title>
+    <title>Кости Вруна</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="app">
-        
-        <!-- LOGIN (Скрыт по умолчанию) -->
-        <div id="screen-login" class="screen center-content">
-            <div class="logo-container pop-in">
-                <div class="logo-icon">🎲</div>
-                <h1 class="title">КОСТИ<br>ЛЖЕЦА</h1>
-            </div>
-            <div class="card slide-up">
-                <input type="text" id="input-username" placeholder="Твое имя?" maxlength="12">
-                <button id="btn-login" class="btn btn-primary">В БОЙ!</button>
-            </div>
-        </div>
-
         <!-- HOME -->
         <div id="screen-home" class="screen center-content">
-            <h1 class="title">МЕНЮ</h1>
+            <div class="logo-box pop-in">
+                <h1 class="game-title">КОСТИ<br>ВРУНА</h1>
+            </div>
             
-            <div class="profile-card pop-in">
-                <div class="rank-icon-box">
-                    <div id="rank-badge" class="rank-emoji">⚓</div>
-                </div>
-                <h2 id="user-display">...</h2>
+            <div class="profile-card slide-up">
+                <div class="rank-badge-box"><div id="rank-badge" class="rank-emoji">⚓</div></div>
+                <h2 id="user-display">Загрузка...</h2>
                 <div class="rank-label" id="rank-display">...</div>
-                <div id="win-streak" class="streak-label">Серия: 0 🔥</div>
+                <div id="win-streak" class="streak-text">Серия: 0 🔥</div>
                 
-                <div class="xp-track">
+                <div class="xp-container">
                     <div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div>
-                    <span id="xp-text" class="xp-text">...</span>
+                    <span id="xp-text" class="xp-label">...</span>
                 </div>
             </div>
 
             <div class="menu-buttons slide-up-delay">
-                <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
+                <button id="btn-to-create" class="btn btn-orange">СОЗДАТЬ КОМНАТУ</button>
                 <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
             </div>
         </div>
@@ -54,18 +41,18 @@
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
                 <div class="setting-group">
-                    <label>Кубиков (1-10)</label>
+                    <label>Кубиков</label>
                     <div class="stepper-row">
                         <button class="btn-mini" onclick="adjSetting('dice', -1)">-</button>
-                        <span id="set-dice" class="stepper-val">5</span>
+                        <span id="set-dice" class="val-text">5</span>
                         <button class="btn-mini" onclick="adjSetting('dice', 1)">+</button>
                     </div>
                 </div>
                 <div class="setting-group">
-                    <label>Игроков (2-10)</label>
+                    <label>Игроков</label>
                     <div class="stepper-row">
                         <button class="btn-mini" onclick="adjSetting('players', -1)">-</button>
-                        <span id="set-players" class="stepper-val">10</span>
+                        <span id="set-players" class="val-text">10</span>
                         <button class="btn-mini" onclick="adjSetting('players', 1)">+</button>
                     </div>
                 </div>
@@ -85,16 +72,16 @@
         <!-- LOBBY -->
         <div id="screen-lobby" class="screen">
             <div class="header slide-down">
-                <div class="room-code-card" id="share-btn">
-                    <div class="code-label">КОД КОМНАТЫ</div>
+                <div class="code-card" id="share-btn">
+                    <div class="code-title">КОД КОМНАТЫ</div>
                     <div class="code-val" id="lobby-room-id">...</div>
-                    <div class="code-hint">Нажми для копирования</div>
+                    <div class="code-hint">Нажми, чтобы скопировать</div>
                 </div>
                 <div class="rules-tag" id="lobby-rules">...</div>
             </div>
             <div class="card flex-grow slide-up">
-                <h3 class="card-header">КОМАНДА</h3>
-                <div id="lobby-players" class="player-list-scroll"></div>
+                <h3 class="card-header">ПИРАТЫ</h3>
+                <div id="lobby-players" class="list-scroll"></div>
             </div>
             <div class="bottom-controls pop-in">
                 <button id="btn-ready" class="btn btn-blue">Я ГОТОВ</button>
@@ -104,7 +91,7 @@
 
         <!-- GAME -->
         <div id="screen-game" class="screen game-layout">
-            <div class="rivals-bar-container">
+            <div class="rivals-area">
                 <div id="players-bar" class="rivals-row"></div>
             </div>
             <div class="table-center">
@@ -112,13 +99,13 @@
                     <span class="timer-icon">⏳</span>
                     <div class="timer-track"><div class="timer-progress"></div></div>
                 </div>
-                <div class="bid-bubble pop-in" id="current-bid-display">...</div>
-                <div id="game-log" class="game-log-box"></div>
+                <div class="bid-card pop-in" id="current-bid-display">...</div>
+                <div id="game-log" class="log-box"></div>
             </div>
-            <div class="my-controls-area slide-up">
+            <div class="my-area slide-up">
                 <div class="my-dice-panel">
                     <div class="panel-label">МОИ КОСТИ</div>
-                    <div id="my-dice" class="my-dice-row"></div>
+                    <div id="my-dice" class="dice-row"></div>
                 </div>
                 <div id="game-controls" class="action-panel hidden">
                     <div class="bid-controls">
@@ -152,9 +139,9 @@
             <div class="pop-in">
                 <h1 class="title">ФИНАЛ</h1>
                 <div class="card winner-box">
-                    <div class="trophy-icon">🏆</div>
+                    <div class="trophy">🏆</div>
                     <h2 id="winner-name" class="winner-name">...</h2>
-                    <p class="winner-sub">Рейтинг обновлен!</p>
+                    <p class="winner-sub">Гроза морей!</p>
                 </div>
             </div>
             <div class="slide-up-delay">
