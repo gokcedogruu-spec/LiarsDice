@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Кости Лжеца</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Google Fonts: Fredoka для мультяшности -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
@@ -13,26 +12,56 @@
 </head>
 <body>
     <div id="app">
-        <!-- SCREEN: LOGIN -->
+        <!-- SCREEN 1: LOGIN -->
         <div id="screen-login" class="screen active center-content">
             <h1 class="title">🎲 Кости<br>Лжеца</h1>
             <div class="card bounce-in">
-                <input type="text" id="input-username" placeholder="Как тебя зовут, пират?">
+                <input type="text" id="input-username" placeholder="Твое имя">
                 <button id="btn-login" class="btn btn-primary">ВОЙТИ</button>
             </div>
         </div>
 
-        <!-- SCREEN: HOME -->
+        <!-- SCREEN 2: HOME -->
         <div id="screen-home" class="screen center-content">
             <h1 class="title">МЕНЮ</h1>
-            <p id="user-display" class="subtitle">Привет!</p>
+            <p id="user-display" class="subtitle">...</p>
             <div class="menu-buttons">
-                <button id="btn-create-room" class="btn btn-primary pulse">СОЗДАТЬ КОМНАТУ</button>
+                <button id="btn-to-create" class="btn btn-primary pulse">СОЗДАТЬ КОМНАТУ</button>
                 <button id="btn-join-room" class="btn btn-secondary">ПРИСОЕДИНИТЬСЯ</button>
             </div>
         </div>
 
-        <!-- SCREEN: LOBBY -->
+        <!-- SCREEN 3: CREATE SETTINGS (NEW) -->
+        <div id="screen-create-settings" class="screen center-content">
+            <h2 class="title">НАСТРОЙКИ</h2>
+            <div class="card">
+                
+                <!-- Выбор кубиков -->
+                <div class="setting-row">
+                    <label>Кубиков у каждого:</label>
+                    <div class="stepper">
+                        <button onclick="adjSetting('dice', -1)">-</button>
+                        <span id="set-dice">5</span>
+                        <button onclick="adjSetting('dice', 1)">+</button>
+                    </div>
+                </div>
+
+                <!-- Выбор игроков -->
+                <div class="setting-row" style="margin-top: 20px;">
+                    <label>Максимум игроков:</label>
+                    <div class="stepper">
+                        <button onclick="adjSetting('players', -1)">-</button>
+                        <span id="set-players">10</span>
+                        <button onclick="adjSetting('players', 1)">+</button>
+                    </div>
+                </div>
+
+                <button id="btn-confirm-create" class="btn btn-success" style="margin-top: 30px;">СОЗДАТЬ</button>
+                <button id="btn-back-home" class="btn btn-secondary">НАЗАД</button>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: LOBBY -->
         <div id="screen-lobby" class="screen">
             <div class="header">
                 <h2>Комната</h2>
@@ -40,11 +69,11 @@
                     <span id="lobby-room-id">CODE</span>
                     <span class="share-icon">📤</span>
                 </div>
-                <p class="hint">Нажми на код, чтобы пригласить</p>
+                <p class="hint" id="lobby-rules">Правила: 5 кубов</p>
             </div>
             
             <div class="card">
-                <h3>Игроки</h3>
+                <h3>Пираты</h3>
                 <div id="lobby-players" class="list"></div>
             </div>
 
@@ -54,32 +83,24 @@
             </div>
         </div>
 
-        <!-- SCREEN: GAME -->
+        <!-- SCREEN 5: GAME -->
         <div id="screen-game" class="screen game-mode">
-            <!-- Верх: Соперники -->
             <div class="top-bar">
                 <div id="players-bar" class="avatars-row"></div>
             </div>
 
-            <!-- Центр: Ставка и Стол -->
             <div class="table-area">
                 <div id="timer-bar" class="timer-bar"><div class="timer-fill"></div></div>
-                
-                <div class="current-bid-card" id="current-bid-display">
-                    Ждем начала...
-                </div>
-                
+                <div class="current-bid-card" id="current-bid-display">...</div>
                 <div id="game-log" class="mini-log"></div>
             </div>
 
-            <!-- Низ: Мои кости и управление -->
             <div class="my-area">
                 <div class="my-dice-box">
                     <span>Мои кости:</span>
                     <div id="my-dice" class="dice-row"></div>
                 </div>
 
-                <!-- Панель хода -->
                 <div id="game-controls" class="controls-panel hidden">
                     <div class="bid-inputs">
                         <div class="counter-box">
@@ -100,16 +121,16 @@
                         </div>
                     </div>
                     <div class="action-buttons">
-                        <button id="btn-make-bid" class="btn btn-primary">СДЕЛАТЬ СТАВКУ</button>
-                        <button id="btn-call-bluff" class="btn btn-danger">НЕ ВЕРЮ!</button>
+                        <button id="btn-make-bid" class="btn btn-primary">СТАВКА</button>
+                        <button id="btn-call-bluff" class="btn btn-danger">НЕ ВЕРЮ</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- SCREEN: RESULT -->
+        <!-- SCREEN 6: RESULT -->
         <div id="screen-result" class="screen center-content">
-            <h1 class="title">🎉 ПОБЕДА! 🎉</h1>
+            <h1 class="title">ПОБЕДА!</h1>
             <div class="card winner-card">
                 <div style="font-size: 4rem;">👑</div>
                 <h2 id="winner-name">Имя</h2>
