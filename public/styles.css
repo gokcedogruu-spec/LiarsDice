@@ -1,66 +1,173 @@
 :root {
-  --bg-color: #2D3250; --card-bg: #424769; --primary: #F6B17A;
-  --secondary: #7077A1; --accent: #F5E8C7; --success: #4E9F3D; --danger: #FF6B6B;
-  --font-main: 'Fredoka', sans-serif;
+  /* Палитра "Мультфильм" */
+  --bg-color: #2b2d42;       /* Темно-синий фон */
+  --surface: #3d405b;        /* Цвет карточек */
+  --primary: #ef233c;        /* Яркий красный */
+  --secondary: #8d99ae;      /* Серый */
+  --accent: #ffb703;         /* Желтый */
+  --success: #06d6a0;        /* Зеленый */
+  --blue: #118ab2;           /* Голубой */
+  --text: #edf2f4;           /* Белый */
+  
+  --font: 'Fredoka', sans-serif;
+  --radius: 20px;
+  --shadow-btn: 0px 6px 0px rgba(0,0,0,0.3);
+  --shadow-card: 0px 8px 20px rgba(0,0,0,0.4);
 }
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: var(--bg-color); color: white; font-family: var(--font-main); height: 100vh; overflow: hidden; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text);
+  font-family: var(--font);
+  height: 100vh;
+  overflow: hidden;
+}
+
 #app { height: 100%; display: flex; flex-direction: column; }
-.screen { display: none; height: 100%; padding: 20px; animation: slideUp 0.4s ease; }
-.screen.active { display: flex; flex-direction: column; }
+
+.screen { 
+    display: none; height: 100%; padding: 15px; 
+    flex-direction: column; /* По умолчанию колонка */
+}
+.screen.active { display: flex; }
 .center-content { justify-content: center; align-items: center; }
-h1.title { font-size: 3rem; color: var(--primary); text-shadow: 3px 3px 0 #000; text-align: center; margin-bottom: 20px; }
 
-/* Cards & Buttons */
-.card { background: var(--card-bg); border-radius: 24px; padding: 20px; width: 100%; max-width: 350px; box-shadow: 0 8px 0 rgba(0,0,0,0.2); margin-bottom: 15px; }
-.btn { border: none; width: 100%; padding: 16px; font-family: var(--font-main); font-weight: 700; font-size: 1.2rem; border-radius: 16px; cursor: pointer; margin-top: 10px; transition: transform 0.1s; text-transform: uppercase; }
-.btn:active { transform: translateY(4px); }
-.btn-primary { background: var(--primary); color: #2D3250; }
-.btn-secondary { background: var(--secondary); color: white; }
-.btn-success { background: var(--success); color: white; }
-.btn-danger { background: var(--danger); color: white; }
-input[type="text"] { width: 100%; padding: 15px; border-radius: 12px; border: 3px solid var(--secondary); background: #2D3250; color: white; text-align: center; font-size: 1.1rem; }
-
-/* Profile */
-.profile-card { background: var(--card-bg); border-radius: 24px; padding: 20px; width: 100%; max-width: 350px; text-align: center; margin-bottom: 20px; border: 2px solid var(--secondary); }
-.rank-badge { font-size: 3rem; }
-.rank-title { color: var(--primary); font-weight: bold; text-transform: uppercase; }
-.win-streak { font-size: 0.8rem; color: var(--danger); }
-.xp-container { background: #2D3250; height: 20px; border-radius: 10px; position: relative; overflow: hidden; }
-.xp-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #FF6B6B); width: 0%; transition: width 0.5s ease; }
-#xp-text { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; }
-
-/* Time Selector */
-.time-selector { display: flex; gap: 10px; justify-content: center; }
-.btn-time { flex: 1; padding: 10px; border: 2px solid var(--secondary); background: transparent; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; }
-.btn-time.active { background: var(--primary); color: #2D3250; border-color: var(--primary); }
-
-/* Game UI Compact */
-.avatars-row { display: flex; gap: 6px; overflow-x: auto; padding: 5px 0; scrollbar-width: none; }
-.player-chip { 
-    background: var(--card-bg); padding: 6px 4px; border-radius: 8px; 
-    min-width: 70px; max-width: 80px; /* Ограничение ширины */
-    text-align: center; border: 2px solid transparent; transition: all 0.2s; 
-    flex-shrink: 0; /* Не сжиматься */
+/* --- ТИПОГРАФИКА --- */
+.title {
+    font-size: 3.5rem;
+    color: var(--accent);
+    line-height: 0.9;
+    text-align: center;
+    text-shadow: 4px 4px 0px #d90429;
+    margin-bottom: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
 }
-.player-chip b { 
-    color: white; display: block; font-size: 0.75rem; 
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* Обрезка имени */
+.subtitle { font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 600; }
+
+/* --- КНОПКИ (3D Style) --- */
+.btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 1.3rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: transform 0.1s, filter 0.1s;
+    text-transform: uppercase;
+    position: relative;
+    letter-spacing: 1px;
 }
-.player-chip .rank-game { font-size: 0.6rem; color: var(--primary); display: block; }
-.player-chip.turn { background: var(--primary); transform: scale(1.05); box-shadow: 0 0 8px var(--primary); }
-.player-chip.turn b, .player-chip.turn .rank-game { color: #2D3250; }
-.player-chip.dead { opacity: 0.3; filter: grayscale(1); }
+.btn:active { transform: translateY(6px); box-shadow: none !important; }
 
-.timer-container { display: flex; align-items: center; gap: 5px; margin: 5px 0; }
-.timer-bar { flex: 1; height: 8px; background: #222; border-radius: 4px; overflow: hidden; }
-.timer-fill { height: 100%; background: var(--danger); width: 100%; } /* Убрали transition для JS анимации */
-.current-bid-card { background: rgba(0,0,0,0.2); border: 2px solid var(--accent); border-radius: 16px; padding: 15px; text-align: center; color: var(--accent); margin-bottom: 5px; }
-.mini-log { height: 50px; font-size: 0.75rem; color: #aaa; text-align: center; overflow: hidden; }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 6px 0 #d90429; }
+.btn-orange  { background: #fb8500; color: #2b2d42; box-shadow: 0 6px 0 #c46900; }
+.btn-blue    { background: var(--blue); color: white; box-shadow: 0 6px 0 #075f7a; }
+.btn-green   { background: var(--success); color: #2b2d42; box-shadow: 0 6px 0 #04916c; }
+.btn-red     { background: var(--primary); color: white; box-shadow: 0 6px 0 #d90429; }
+.btn-gray    { background: var(--surface); color: var(--secondary); box-shadow: 0 6px 0 #2b2d42; }
 
-.controls-panel { background: var(--card-bg); border-radius: 20px 20px 0 0; padding: 15px; }
-.hidden { display: none; }
-.stepper button { width: 30px; height: 30px; background: var(--secondary); border: none; color: white; border-radius: 8px; font-weight: bold; }
-.action-buttons { display: flex; gap: 10px; margin-top: 10px; }
-.action-buttons button { padding: 12px; margin: 0; font-size: 1rem; }
-@keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* Маленькие кнопки +/- */
+.btn-mini {
+    width: 40px; height: 40px;
+    border-radius: 12px; border: none;
+    background: var(--surface); color: white;
+    font-size: 1.5rem; font-weight: bold;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    cursor: pointer;
+}
+.btn-mini:active { transform: translateY(4px); box-shadow: none; }
+
+/* --- КАРТОЧКИ --- */
+.card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 20px;
+    width: 100%; max-width: 360px;
+    box-shadow: var(--shadow-card);
+    border: 2px solid rgba(255,255,255,0.05);
+}
+
+/* --- ИНПУТЫ --- */
+input[type="text"] {
+    width: 100%; padding: 15px;
+    border-radius: 15px; border: none;
+    background: rgba(0,0,0,0.3);
+    color: white; font-family: var(--font);
+    font-size: 1.2rem; text-align: center;
+    outline: none;
+    border: 2px solid transparent;
+}
+input[type="text"]:focus { border-color: var(--accent); }
+
+/* --- ПРОФИЛЬ --- */
+.profile-card {
+    background: var(--surface);
+    border-radius: 30px; padding: 20px;
+    width: 100%; max-width: 320px;
+    text-align: center; margin-bottom: 20px;
+    border: 4px solid var(--blue);
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: visible;
+}
+.rank-icon-box {
+    width: 80px; height: 80px;
+    background: var(--bg-color);
+    border-radius: 50%;
+    margin: -60px auto 10px; /* Вылезает сверху */
+    display: flex; justify-content: center; align-items: center;
+    border: 4px solid var(--blue);
+}
+.rank-emoji { font-size: 3rem; }
+.rank-label { 
+    background: var(--blue); color: white;
+    display: inline-block; padding: 4px 12px;
+    border-radius: 20px; font-size: 0.9rem;
+    font-weight: 700; margin-bottom: 10px;
+    text-transform: uppercase;
+}
+.streak-label { color: var(--primary); font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; }
+.xp-track {
+    background: rgba(0,0,0,0.4); height: 24px;
+    border-radius: 12px; position: relative; overflow: hidden;
+}
+.xp-bar { width: 100%; height: 100%; }
+.xp-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), #ff9f1c);
+    transition: width 0.5s ease;
+    border-radius: 12px;
+}
+.xp-text {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+}
+
+/* --- SETTINGS --- */
+.setting-group { margin-bottom: 15px; }
+.setting-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: var(--secondary); font-weight: 600; }
+.stepper-row { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 16px; }
+.stepper-val { font-size: 1.5rem; font-weight: bold; color: var(--accent); min-width: 40px; text-align: center; }
+
+.time-selector { display: flex; gap: 8px; }
+.btn-time {
+    flex: 1; padding: 10px; border: none; border-radius: 12px;
+    background: rgba(0,0,0,0.3); color: var(--secondary);
+    font-weight: 700; font-family: var(--font); cursor: pointer;
+}
+.btn-time.active { background: var(--accent); color: var(--bg-color); box-shadow: 0 4px 0 #c48e00; transform: translateY(-2px); }
+
+/* --- LOBBY --- */
+.room-code-card {
+    background: var(--accent); color: var(--bg-color);
+    border-radius: 20px; padding: 15px; text-align: center;
+    margin-bottom: 10px; cursor: pointer;
+    box-shadow: 0 6px 0 #c48e00;
+    transition: transform
