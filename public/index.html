@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Кости Лжеца</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="app">
-        <!-- SCREEN 1: LOGIN -->
+        <!-- LOGIN -->
         <div id="screen-login" class="screen active center-content">
             <h1 class="title">🎲 Кости<br>Лжеца</h1>
             <div class="card bounce-in">
@@ -21,38 +19,52 @@
             </div>
         </div>
 
-        <!-- SCREEN 2: HOME -->
+        <!-- HOME -->
         <div id="screen-home" class="screen center-content">
             <h1 class="title">МЕНЮ</h1>
-            <p id="user-display" class="subtitle">...</p>
+            <div class="profile-card pulse">
+                <div id="rank-badge" class="rank-badge">⚓</div>
+                <h2 id="user-display">Имя</h2>
+                <div class="rank-title" id="rank-display">Юнга</div>
+                <div id="win-streak" class="win-streak">Серия: 0</div>
+                <div class="xp-container">
+                    <div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div>
+                    <span id="xp-text">...</span>
+                </div>
+            </div>
             <div class="menu-buttons">
-                <button id="btn-to-create" class="btn btn-primary pulse">СОЗДАТЬ КОМНАТУ</button>
+                <button id="btn-to-create" class="btn btn-primary">СОЗДАТЬ КОМНАТУ</button>
                 <button id="btn-join-room" class="btn btn-secondary">ПРИСОЕДИНИТЬСЯ</button>
             </div>
         </div>
 
-        <!-- SCREEN 3: CREATE SETTINGS (NEW) -->
+        <!-- CREATE SETTINGS -->
         <div id="screen-create-settings" class="screen center-content">
             <h2 class="title">НАСТРОЙКИ</h2>
             <div class="card">
-                
-                <!-- Выбор кубиков -->
                 <div class="setting-row">
-                    <label>Кубиков у каждого:</label>
+                    <label>Кубиков:</label>
                     <div class="stepper">
                         <button onclick="adjSetting('dice', -1)">-</button>
                         <span id="set-dice">5</span>
                         <button onclick="adjSetting('dice', 1)">+</button>
                     </div>
                 </div>
-
-                <!-- Выбор игроков -->
-                <div class="setting-row" style="margin-top: 20px;">
-                    <label>Максимум игроков:</label>
+                <div class="setting-row" style="margin-top: 15px;">
+                    <label>Игроков:</label>
                     <div class="stepper">
                         <button onclick="adjSetting('players', -1)">-</button>
                         <span id="set-players">10</span>
                         <button onclick="adjSetting('players', 1)">+</button>
+                    </div>
+                </div>
+                <!-- Выбор времени -->
+                <div class="setting-row" style="margin-top: 15px;">
+                    <label>Время на ход:</label>
+                    <div class="time-selector">
+                        <button class="btn-time active" onclick="setTime(30)">30c</button>
+                        <button class="btn-time" onclick="setTime(45)">45c</button>
+                        <button class="btn-time" onclick="setTime(60)">60c</button>
                     </div>
                 </div>
 
@@ -61,46 +73,44 @@
             </div>
         </div>
 
-        <!-- SCREEN 4: LOBBY -->
+        <!-- LOBBY -->
         <div id="screen-lobby" class="screen">
             <div class="header">
                 <h2>Комната</h2>
                 <div class="room-code-box" id="share-btn">
-                    <span id="lobby-room-id">CODE</span>
+                    <span id="lobby-room-id">...</span>
                     <span class="share-icon">📤</span>
                 </div>
-                <p class="hint" id="lobby-rules">Правила: 5 кубов</p>
+                <p class="hint" id="lobby-rules">...</p>
             </div>
-            
             <div class="card">
-                <h3>Пираты</h3>
+                <h3>Команда</h3>
                 <div id="lobby-players" class="list"></div>
             </div>
-
             <div class="bottom-controls">
                 <button id="btn-ready" class="btn btn-secondary">Я ГОТОВ</button>
                 <button id="btn-start-game" class="btn btn-success" style="display:none;">ПОГНАЛИ!</button>
             </div>
         </div>
 
-        <!-- SCREEN 5: GAME -->
+        <!-- GAME -->
         <div id="screen-game" class="screen game-mode">
             <div class="top-bar">
                 <div id="players-bar" class="avatars-row"></div>
             </div>
-
             <div class="table-area">
-                <div id="timer-bar" class="timer-bar"><div class="timer-fill"></div></div>
+                <div class="timer-container">
+                    <span class="timer-icon">⏳</span>
+                    <div id="timer-bar" class="timer-bar"><div class="timer-fill"></div></div>
+                </div>
                 <div class="current-bid-card" id="current-bid-display">...</div>
                 <div id="game-log" class="mini-log"></div>
             </div>
-
             <div class="my-area">
                 <div class="my-dice-box">
                     <span>Мои кости:</span>
                     <div id="my-dice" class="dice-row"></div>
                 </div>
-
                 <div id="game-controls" class="controls-panel hidden">
                     <div class="bid-inputs">
                         <div class="counter-box">
@@ -128,18 +138,18 @@
             </div>
         </div>
 
-        <!-- SCREEN 6: RESULT -->
+        <!-- RESULT -->
         <div id="screen-result" class="screen center-content">
-            <h1 class="title">ПОБЕДА!</h1>
+            <h1 class="title">ФИНАЛ</h1>
             <div class="card winner-card">
-                <div style="font-size: 4rem;">👑</div>
-                <h2 id="winner-name">Имя</h2>
+                <div style="font-size: 4rem;">🏆</div>
+                <h2 id="winner-name">...</h2>
+                <p>XP начислен!</p>
             </div>
             <button id="btn-restart" class="btn btn-primary">ЕЩЕ РАЗ</button>
             <button id="btn-home" class="btn btn-secondary">В МЕНЮ</button>
         </div>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
 </body>
