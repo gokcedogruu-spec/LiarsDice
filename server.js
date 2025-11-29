@@ -25,7 +25,7 @@ if (bot) {
 
         // --- ВАЖНО: ВПИШИ СЮДА СВОЮ ССЫЛКУ С RENDER ---
         // Например: const MY_URL = 'https://game-name.onrender.com';
-        const MY_URL = 'https://liarsdicezmss.onrender.com/'; 
+        const MY_URL = 'https://google.com'; 
         // ----------------------------------------------
 
         console.log(`[MSG] From: ${chatId}, Text: "${text}"`);
@@ -372,3 +372,4 @@ function broadcastGameState(room) {
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
