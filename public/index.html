@@ -17,7 +17,6 @@
         <div id="screen-login" class="screen center-content">
             <div class="logo-container pop-in">
                 <div class="logo-icon">🎲</div>
-                <!-- Анимированный заголовок -->
                 <h1 class="title wavy-text">
                     <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
                 </h1>
@@ -40,6 +39,7 @@
                 </div>
                 <h2 id="user-display">...</h2>
                 <div class="rank-label" id="rank-display">...</div>
+                <div class="coins-row">💰 <span id="user-coins">0</span></div>
                 <div id="win-streak" class="streak-label">Серия: 0 🔥</div>
                 
                 <div class="xp-track">
@@ -51,7 +51,18 @@
             <div class="menu-buttons slide-up-delay">
                 <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
                 <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
+                <button id="btn-shop" class="btn btn-green" style="margin-top: 10px;">МАГАЗИН</button>
             </div>
+        </div>
+
+        <!-- SHOP (NEW) -->
+        <div id="screen-shop" class="screen center-content">
+            <h2 class="title">ЛАВКА</h2>
+            <div class="shop-balance">💰 <span id="shop-coins">0</span></div>
+            <div class="shop-grid" id="shop-items">
+                <!-- Items injected by JS -->
+            </div>
+            <button onclick="showScreen('home')" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
         </div>
 
         <!-- SETTINGS -->
@@ -59,7 +70,7 @@
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
                 <div class="setting-group">
-                    <label>Кубиков</label>
+                    <label>Кубиков (1-10)</label>
                     <div class="stepper-row">
                         <button class="btn-mini" onclick="adjSetting('dice', -1)">-</button>
                         <span id="set-dice" class="stepper-val">5</span>
@@ -67,10 +78,10 @@
                     </div>
                 </div>
                 <div class="setting-group">
-                    <label>Игроков</label>
+                    <label>Игроков (2-10)</label>
                     <div class="stepper-row">
                         <button class="btn-mini" onclick="adjSetting('players', -1)">-</button>
-                        <span id="set-players" class="val-text">10</span>
+                        <span id="set-players" class="stepper-val">10</span>
                         <button class="btn-mini" onclick="adjSetting('players', 1)">+</button>
                     </div>
                 </div>
@@ -82,6 +93,13 @@
                         <button class="btn-time" onclick="setTime(60)">60с</button>
                     </div>
                 </div>
+                
+                <!-- НОВЫЕ ПРАВИЛА -->
+                <div class="setting-group" style="display: flex; gap: 10px;">
+                    <button id="btn-rule-joker" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
+                    <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
+                </div>
+
                 <button id="btn-confirm-create" class="btn btn-green" style="margin-top: 20px;">СОЗДАТЬ</button>
                 <button id="btn-back-home" class="btn btn-gray">НАЗАД</button>
             </div>
@@ -117,10 +135,25 @@
                     <span class="timer-icon">⏳</span>
                     <div class="timer-track"><div class="timer-progress"></div></div>
                 </div>
-                <div class="bid-bubble pop-in" id="current-bid-display">...</div>
+                <!-- Rule Indicators -->
+                <div id="active-rules-display" style="margin-bottom: 5px; font-size: 0.8rem; opacity: 0.7;"></div>
+
+                <div class="bid-bubble pop-in" id="current-bid-display">
+                    ...
+                </div>
+                
                 <div id="game-log" class="game-log-box"></div>
             </div>
             <div class="my-controls-area slide-up">
+                <!-- Emotes -->
+                <div class="emotes-bar">
+                    <button onclick="sendEmote('😂')">😂</button>
+                    <button onclick="sendEmote('😡')">😡</button>
+                    <button onclick="sendEmote('🤔')">🤔</button>
+                    <button onclick="sendEmote('🏴‍☠️')">🏴‍☠️</button>
+                    <button onclick="sendEmote('🤡')">🤡</button>
+                </div>
+
                 <div class="my-dice-panel">
                     <div class="panel-label">МОИ КОСТИ</div>
                     <div id="my-dice" class="my-dice-row"></div>
@@ -147,6 +180,7 @@
                     <div class="main-actions">
                         <button id="btn-make-bid" class="btn btn-orange">СТАВКА</button>
                         <button id="btn-call-bluff" class="btn btn-red">НЕ ВЕРЮ!</button>
+                        <button id="btn-call-spot" class="btn btn-blue">В ТОЧКУ</button>
                     </div>
                 </div>
             </div>
