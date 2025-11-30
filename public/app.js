@@ -12,53 +12,46 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-// Перечисляем ВСЕ экраны, которые есть в index.html
 const screens = ['login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
-    // Скрываем все
     screens.forEach(s => {
         const el = document.getElementById(`screen-${s}`);
         if(el) el.classList.remove('active');
     });
-    // Показываем нужный
     const target = document.getElementById(`screen-${name}`);
     if(target) target.classList.add('active');
-    else console.error(`Screen not found: ${name}`);
 }
 
 // --- LOGIN ---
 window.addEventListener('load', () => {
-    try {
-        if (tg?.initDataUnsafe?.user) {
-            state.username = tg.initDataUnsafe.user.first_name;
-            const loginScreen = document.getElementById('screen-login');
-            if(loginScreen) loginScreen.classList.remove('active');
-            loginSuccess();
-        } else {
-            // Если нет телеграма, показываем логин (он по умолчанию активен в HTML, но на всякий случай)
-            const loginScreen = document.getElementById('screen-login');
-            if(loginScreen) loginScreen.classList.add('active');
-        }
-    } catch (e) {
-        alert("Error loading: " + e.message);
+    if (tg?.initDataUnsafe?.user) {
+        state.username = tg.initDataUnsafe.user.first_name;
+        const loginEl = document.getElementById('screen-login');
+        if(loginEl) loginEl.classList.remove('active');
+        loginSuccess();
+    } else {
+        const loginEl = document.getElementById('screen-login');
+        if(loginEl) loginEl.classList.add('active');
     }
 });
 
-document.getElementById('btn-login').addEventListener('click', () => {
+function safeBind(id, event, handler) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+}
+
+safeBind('btn-login', 'click', () => {
     const val = document.getElementById('input-username').value.trim();
     if (val) { 
         state.username = val; 
-        // Для браузера генерим фейковый ID
         socket.tgUserId = 123; 
         loginSuccess(); 
     }
 });
 
 function loginSuccess() {
-    // Если мы в браузере, эмулируем юзера
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
-
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
@@ -70,11 +63,9 @@ function loginSuccess() {
 }
 
 socket.on('profileUpdate', (data) => {
-    // Если мы еще на логине, переходим в меню
     if(document.getElementById('screen-login')?.classList.contains('active')) {
         showScreen('home');
     }
-    
     document.getElementById('user-display').textContent = data.name;
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
@@ -123,7 +114,8 @@ let currentShopTab = 'all';
 window.filterShop = (type) => {
     currentShopTab = type;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    // Add active class logic if needed
+    const btn = document.getElementById(`tab-${type}`);
+    if(btn) btn.classList.add('active');
     renderShop();
 };
 
@@ -134,30 +126,23 @@ function renderShop() {
     
     for (const [id, meta] of Object.entries(ITEMS_META)) {
         if (currentShopTab !== 'all' && meta.type !== currentShopTab) continue;
-
         const owned = state.inventory.includes(id);
         const equipped = state.equipped.skin === id || state.equipped.bg === id || state.equipped.frame === id;
-        
         let btnHTML = '';
         if (equipped) btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
         else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
         else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
-
-        grid.innerHTML += `
-            <div class="shop-item ${owned ? 'owned' : ''}">
-                <h4>${meta.name}</h4>
-                ${btnHTML}
-            </div>
-        `;
+        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><h4>${meta.name}</h4>${btnHTML}</div>`;
     }
 }
 
-document.getElementById('btn-shop').addEventListener('click', () => {
+safeBind('btn-shop', 'click', () => {
     showScreen('shop');
     const coinEl = document.getElementById('shop-coins');
     if(coinEl) coinEl.textContent = state.coins;
     renderShop();
 });
+safeBind('btn-shop-back', 'click', () => showScreen('home'));
 
 window.buyItem = (id, price) => {
     if (state.coins >= price) socket.emit('shopBuy', id);
@@ -165,34 +150,34 @@ window.buyItem = (id, price) => {
 };
 window.equipItem = (id) => socket.emit('shopEquip', id);
 
-// --- PVE SETUP ---
-document.getElementById('btn-to-pve').addEventListener('click', () => showScreen('pve-settings'));
+// --- PVE ---
+safeBind('btn-to-pve', 'click', () => showScreen('pve-settings'));
+safeBind('btn-pve-back', 'click', () => showScreen('home'));
 
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
+    // Временное решение для подсветки кнопок
     const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
-    const descEl = document.getElementById('diff-desc');
-    if(descEl) descEl.textContent = desc[diff];
+    document.getElementById('diff-desc').textContent = desc[diff];
 };
 
-document.getElementById('btn-start-pve').addEventListener('click', () => {
+safeBind('btn-start-pve', 'click', () => {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     socket.emit('joinOrCreateRoom', { 
         roomId: null, tgUser: userPayload, 
         mode: 'pve',
         options: { 
-            dice: state.pve.dice, 
-            players: state.pve.bots + 1,
+            dice: state.pve.dice, players: state.pve.bots + 1,
             jokers: state.pve.jokers, spot: state.pve.spot,
             difficulty: state.pve.difficulty
         } 
     });
 });
 
-// --- COMMON SETTINGS ---
-document.getElementById('btn-to-create').addEventListener('click', () => showScreen('create-settings'));
-document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
+// --- NAVIGATION ---
+safeBind('btn-to-create', 'click', () => showScreen('create-settings'));
+safeBind('btn-back-home', 'click', () => showScreen('home'));
 
 window.setTime = (sec) => {
     state.createTime = sec;
@@ -207,17 +192,15 @@ window.adjSetting = (type, delta) => {
     } 
     else if (type === 'players') {
         state.createPlayers = Math.max(2, Math.min(10, state.createPlayers + delta));
-        const el = document.getElementById('set-players');
-        if(el) el.textContent = state.createPlayers;
+        document.getElementById('set-players').textContent = state.createPlayers;
     }
     else if (type === 'bots') {
         state.pve.bots = Math.max(1, Math.min(9, state.pve.bots + delta));
-        const el = document.getElementById('pve-bots');
-        if(el) el.textContent = state.pve.bots;
+        document.getElementById('pve-bots').textContent = state.pve.bots;
     }
 };
 
-document.getElementById('btn-confirm-create').addEventListener('click', () => {
+safeBind('btn-confirm-create', 'click', () => {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     socket.emit('joinOrCreateRoom', { 
         roomId: null, tgUser: userPayload, 
@@ -236,33 +219,33 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- JOIN & GAME ---
-document.getElementById('btn-join-room').addEventListener('click', () => {
+// --- GAME ---
+safeBind('btn-join-room', 'click', () => {
     const code = prompt("Код:"); 
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: userPayload });
 });
-document.getElementById('share-btn').addEventListener('click', () => {
+safeBind('share-btn', 'click', () => {
     const code = state.roomId;
     navigator.clipboard.writeText(code).then(() => tg ? tg.showAlert('Скопировано!') : alert('Скопировано!')).catch(()=>prompt("Код:", code));
 });
-document.getElementById('btn-ready').addEventListener('click', function() {
+safeBind('btn-ready', 'click', function() {
     const isReady = this.textContent === "Я ГОТОВ";
     socket.emit('setReady', isReady);
     this.textContent = isReady ? "НЕ ГОТОВ" : "Я ГОТОВ";
     this.className = isReady ? "btn btn-green" : "btn btn-blue";
 });
-document.getElementById('btn-start-game').addEventListener('click', () => socket.emit('startGame'));
+safeBind('btn-start-game', 'click', () => socket.emit('startGame'));
 
 window.adjBid = (type, delta) => {
     if (type === 'qty') { state.bidQty = Math.max(1, state.bidQty + delta); document.getElementById('display-qty').textContent = state.bidQty; }
     else { state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta)); document.getElementById('display-val').textContent = state.bidVal; }
 };
-document.getElementById('btn-make-bid').addEventListener('click', () => socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal }));
-document.getElementById('btn-call-bluff').addEventListener('click', () => socket.emit('callBluff'));
-document.getElementById('btn-call-spot').addEventListener('click', () => socket.emit('callSpot'));
-document.getElementById('btn-restart').addEventListener('click', () => socket.emit('requestRestart'));
-document.getElementById('btn-home').addEventListener('click', () => location.reload());
+safeBind('btn-make-bid', 'click', () => socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal }));
+safeBind('btn-call-bluff', 'click', () => socket.emit('callBluff'));
+safeBind('btn-call-spot', 'click', () => socket.emit('callSpot'));
+safeBind('btn-restart', 'click', () => socket.emit('requestRestart'));
+safeBind('btn-home', 'click', () => location.reload());
 
 // --- SOCKETS ---
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
@@ -290,11 +273,13 @@ socket.on('roomUpdate', (room) => {
             </div>`;
         });
         const me = room.players.find(p => p.id === socket.id);
-        document.getElementById('btn-start-game').style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
+        const startBtn = document.getElementById('btn-start-game');
+        if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
     }
 });
 socket.on('gameEvent', (evt) => {
-    document.getElementById('game-log').innerHTML = `<div>${evt.text}</div>`;
+    const log = document.getElementById('game-log');
+    if (log) log.innerHTML = `<div>${evt.text}</div>`;
     if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning');
 });
 socket.on('yourDice', (dice) => {
@@ -304,7 +289,6 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
-    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
