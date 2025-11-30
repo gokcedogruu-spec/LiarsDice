@@ -50,22 +50,69 @@
 
             <div class="menu-buttons slide-up-delay">
                 <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
+                <button id="btn-to-pve" class="btn btn-red">ИГРАТЬ С БОТОМ</button>
                 <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
-                <button id="btn-shop" class="btn btn-green" style="margin-top: 10px;">МАГАЗИН</button>
+                <button id="btn-shop" class="btn btn-green" style="margin-top: 10px;">ЛАВКА</button>
             </div>
         </div>
 
-        <!-- SHOP (NEW) -->
+        <!-- SHOP -->
         <div id="screen-shop" class="screen center-content">
             <h2 class="title">ЛАВКА</h2>
             <div class="shop-balance">💰 <span id="shop-coins">0</span></div>
-            <div class="shop-grid" id="shop-items">
-                <!-- Items injected by JS -->
+            <div class="shop-tabs">
+                <button onclick="filterShop('all')" class="tab-btn active">ВСЁ</button>
+                <button onclick="filterShop('skins')" class="tab-btn">КОСТИ</button>
+                <button onclick="filterShop('frames')" class="tab-btn">РАМКИ</button>
             </div>
+            <div class="shop-grid" id="shop-items"></div>
             <button onclick="showScreen('home')" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
         </div>
 
-        <!-- SETTINGS -->
+        <!-- PVE SETTINGS -->
+        <div id="screen-pve-settings" class="screen center-content">
+            <h2 class="subtitle">БИТВА С БОТОМ</h2>
+            <div class="card slide-up">
+                <div class="setting-group">
+                    <label>Сложность:</label>
+                    <div class="time-selector">
+                        <button class="btn-time active" onclick="setDiff('easy')">ЛЕГКО</button>
+                        <button class="btn-time" onclick="setDiff('medium')">СРЕДНЕ</button>
+                        <button class="btn-time" onclick="setDiff('pirate')">ПИРАТ</button>
+                    </div>
+                    <div id="diff-desc" style="text-align:center; font-size:0.8rem; margin-top:5px; color: #aaa;">Без наград</div>
+                </div>
+                
+                <!-- Повторяем настройки кубиков/игроков -->
+                <div class="setting-group">
+                    <label>Кубиков</label>
+                    <div class="stepper-row">
+                        <button class="btn-mini" onclick="adjSetting('dice', -1)">-</button>
+                        <span id="pve-dice" class="stepper-val">5</span>
+                        <button class="btn-mini" onclick="adjSetting('dice', 1)">+</button>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>Соперников (Ботов)</label>
+                    <div class="stepper-row">
+                        <button class="btn-mini" onclick="adjSetting('bots', -1)">-</button>
+                        <span id="pve-bots" class="stepper-val">3</span>
+                        <button class="btn-mini" onclick="adjSetting('bots', 1)">+</button>
+                    </div>
+                </div>
+
+                <!-- Правила -->
+                <div class="setting-group" style="display: flex; gap: 10px;">
+                    <button id="btn-rule-joker-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
+                    <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
+                </div>
+
+                <button id="btn-start-pve" class="btn btn-red" style="margin-top: 20px;">В БОЙ!</button>
+                <button onclick="showScreen('home')" class="btn btn-gray">НАЗАД</button>
+            </div>
+        </div>
+
+        <!-- CREATE MULTIPLAYER SETTINGS -->
         <div id="screen-create-settings" class="screen center-content">
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
@@ -94,7 +141,6 @@
                     </div>
                 </div>
                 
-                <!-- НОВЫЕ ПРАВИЛА -->
                 <div class="setting-group" style="display: flex; gap: 10px;">
                     <button id="btn-rule-joker" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
                     <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
@@ -135,17 +181,12 @@
                     <span class="timer-icon">⏳</span>
                     <div class="timer-track"><div class="timer-progress"></div></div>
                 </div>
-                <!-- Rule Indicators -->
                 <div id="active-rules-display" style="margin-bottom: 5px; font-size: 0.8rem; opacity: 0.7;"></div>
 
-                <div class="bid-bubble pop-in" id="current-bid-display">
-                    ...
-                </div>
-                
+                <div class="bid-bubble pop-in" id="current-bid-display">...</div>
                 <div id="game-log" class="game-log-box"></div>
             </div>
             <div class="my-controls-area slide-up">
-                <!-- Emotes -->
                 <div class="emotes-bar">
                     <button onclick="sendEmote('😂')">😂</button>
                     <button onclick="sendEmote('😡')">😡</button>
@@ -195,7 +236,7 @@
                 <div class="card winner-box">
                     <div class="trophy-icon">🏆</div>
                     <h2 id="winner-name" class="winner-name">...</h2>
-                    <p class="winner-sub">Легенда морей!</p>
+                    <p class="winner-sub">Игра окончена</p>
                 </div>
             </div>
             <div class="slide-up-delay">
