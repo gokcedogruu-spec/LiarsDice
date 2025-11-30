@@ -1,11 +1,17 @@
 :root {
-  --bg-color: #5D4037; /* Дерево */
-  --surface: #3d405b; 
-  --primary: #ef233c; --secondary: #8d99ae; --accent: #ffb703; 
-  --success: #06d6a0; --blue: #118ab2; --text: #edf2f4;
+  /* Палитра "Мультфильм" */
+  --bg-color: #5D4037;       /* Основной цвет дерева */
+  --surface: #3d405b;        /* Цвет карточек */
+  --primary: #ef233c;        /* Яркий красный */
+  --secondary: #8d99ae;      /* Серый */
+  --accent: #ffb703;         /* Желтый */
+  --success: #06d6a0;        /* Зеленый */
+  --blue: #118ab2;           /* Голубой */
+  --text: #edf2f4;           /* Белый */
   
   --font: 'Shantell Sans', sans-serif;
   --radius: 20px;
+  --shadow-btn: 0px 6px 0px rgba(0,0,0,0.3);
   --shadow-card: 0px 8px 20px rgba(0,0,0,0.5);
 }
 
@@ -126,11 +132,6 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .player-chip.turn .rank-game, .player-chip.turn .dice-count { color: var(--bg-color); opacity: 0.7; }
 .player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
-/* FRAMES */
-.player-chip.frame_default { border: 2px solid transparent; }
-.player-chip.frame_gold { border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; }
-.player-chip.frame_fire { border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; }
-
 .emote-bubble { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 2rem; animation: floatUp 2s ease-out forwards; pointer-events: none; z-index: 10; }
 
 .table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
@@ -158,21 +159,4 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 
 .action-panel { background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
 .hidden { display: none; }
-.bid-controls { display: flex; gap: 15px; margin-bottom: 15px; }
-.bid-stepper { flex: 1; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 16px; text-align: center; }
-.bid-stepper label { font-size: 0.65rem; color: var(--secondary); font-weight: 700; display: block; margin-bottom: 4px; }
-.bid-val { font-size: 1.5rem; font-weight: 800; color: white; min-width: 30px; }
-.dice-face { font-size: 1.5rem; background: white; color: black; border-radius: 6px; padding: 0 6px; font-weight: 800; }
-.main-actions { display: flex; gap: 10px; }
-.main-actions button { margin: 0; padding: 14px; font-size: 1rem; }
-
-@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-@keyframes floatUp { 0% { transform: translateX(-50%) translateY(0) scale(0.5); opacity: 0; } 20% { transform: translateX(-50%) translateY(-10px) scale(1.2); opacity: 1; } 100% { transform: translateX(-50%) translateY(-40px) scale(1); opacity: 0; } }
-.slide-up { animation: slideUp 0.4s; }
-.slide-down { animation: slideDown 0.4s; }
-.pop-in { animation: popIn 0.4s; }
-.pulse-btn { animation: pulse 2s infinite; }
-.slide-up-delay { animation: slideUp 0.4s 0.2s backwards; }
+.bid-controls { display: flex; gap: 15px; margin-bottom: 15px
