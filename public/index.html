@@ -13,8 +13,13 @@
 <body>
     <div id="app">
         
-        <!-- 1. LOGIN (Добавлен класс active, чтобы виден сразу) -->
-        <div id="screen-login" class="screen active center-content">
+        <!-- 0. ЗАГРУЗКА -->
+        <div id="screen-loading" class="screen active center-content">
+            <div class="loader"></div>
+        </div>
+
+        <!-- 1. LOGIN -->
+        <div id="screen-login" class="screen center-content">
             <div class="logo-container pop-in">
                 <div class="logo-icon">🎲</div>
                 <h1 class="title wavy-text">
@@ -66,7 +71,7 @@
                 <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">РАМКИ</button>
             </div>
             <div class="shop-grid" id="shop-items"></div>
-            <button onclick="showScreen('home')" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
+            <button id="btn-shop-back" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
         </div>
 
         <!-- 4. PVE SETTINGS -->
@@ -80,7 +85,7 @@
                         <button class="btn-time" onclick="setDiff('medium')">СРЕДНЕ</button>
                         <button class="btn-time" onclick="setDiff('pirate')">ПИРАТ</button>
                     </div>
-                    <div id="diff-desc" style="text-align:center; font-size:0.8rem; margin-top:5px; opacity:0.7;">Без наград</div>
+                    <div id="diff-desc" style="text-align:center; font-size:0.8rem; margin-top:5px; opacity:0.7; font-weight:bold;">Без наград</div>
                 </div>
                 
                 <div class="setting-group">
@@ -106,7 +111,7 @@
                 </div>
 
                 <button id="btn-start-pve" class="btn btn-red" style="margin-top: 20px;">В БОЙ!</button>
-                <button onclick="showScreen('home')" class="btn btn-gray">НАЗАД</button>
+                <button id="btn-pve-back" class="btn btn-gray">НАЗАД</button>
             </div>
         </div>
 
@@ -217,7 +222,7 @@
                     <div class="main-actions">
                         <button id="btn-make-bid" class="btn btn-orange">СТАВКА</button>
                         <button id="btn-call-bluff" class="btn btn-red">НЕ ВЕРЮ!</button>
-                        <button id="btn-call-spot" class="btn btn-blue">В ТОЧКУ</button>
+                        <button id="btn-call-spot" class="btn btn-blue hidden-rule">В ТОЧКУ</button>
                     </div>
                 </div>
             </div>
