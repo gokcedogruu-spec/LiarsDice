@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
-// --- RATING & ECONOMY ---
+// --- RATING SYSTEM ---
 const RANKS = [
     { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
@@ -146,7 +146,7 @@ if (bot) {
         const text = (msg.text || '').trim();
         const fromId = msg.from.id;
 
-        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/')) {
+        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/s') && !text.startsWith('/r') && !text.startsWith('/k') && !text.startsWith('/w')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(()=>{});
@@ -211,6 +211,7 @@ if (bot) {
             if (!socketId) return bot.sendMessage(chatId, "❌ Ты не в игре.");
             const room = getRoomBySocketId(socketId);
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "❌ Игра не идет.");
+            
             room.players.forEach(p => { if (p.id !== socketId) p.diceCount = 0; });
             checkEliminationAndContinue(room, { diceCount: 0, isBot: true }, null); 
             bot.sendMessage(chatId, "🏆 Победа присуждена!");
@@ -293,6 +294,12 @@ function makeBidInternal(room, player, quantity, faceValue) {
         }
     }
     if (faceValue > 6) { faceValue = 2; quantity++; }
+    
+    if (room.config.strict && room.currentBid && quantity < room.currentBid.quantity) {
+        // Auto-fix for bot or reject for player
+        if(player.isBot) quantity = room.currentBid.quantity; 
+    }
+
     room.currentBid = { quantity, faceValue, playerId: player.id };
     io.to(room.id).emit('gameEvent', { text: `${player.name} ставит: ${quantity}x[${faceValue}]`, type: 'info' });
     nextTurn(room);
@@ -352,7 +359,11 @@ io.on('connection', (socket) => {
     socket.on('shopBuy', (itemId) => {
         if (!socket.tgUserId) return;
         const user = getUserData(socket.tgUserId);
-        const PRICES = { 'skin_red': 200, 'skin_gold': 1000, 'bg_blue': 300, 'frame_gold': 500, 'frame_fire': 1500 };
+        const PRICES = { 
+            'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 'skin_green': 400, 'skin_purple': 800, 'skin_cyber': 1500, 'skin_bone': 2500,
+            'bg_blue': 300, 
+            'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 'frame_kraken': 4000, 'frame_captain': 10000
+        };
         const price = PRICES[itemId];
         if (price && user.coins >= price && !user.inventory.includes(itemId)) {
             user.coins -= price; user.inventory.push(itemId); userDB.set(socket.tgUserId, user);
@@ -397,7 +408,7 @@ io.on('connection', (socket) => {
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
                 history: [], timerId: null, turnDeadline: 0, 
-                config: { dice: options.dice, players: options.players, time: 30, jokers: options.jokers, spot: options.spot, difficulty: diff },
+                config: { dice: options.dice, players: options.players, time: 30, jokers: options.jokers, spot: options.spot, difficulty: diff, strict: options.strict },
                 isPvE: true
             };
             rooms.set(newId, room);
@@ -422,11 +433,11 @@ io.on('connection', (socket) => {
             }
         } else {
             const newId = generateRoomId();
-            const st = options || { dice: 5, players: 10, time: 30, jokers: false, spot: false };
+            const st = options || { dice: 5, players: 10, time: 30, jokers: false, spot: false, strict: false };
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
                 history: [], timerId: null, turnDeadline: 0, 
-                config: { dice: st.dice, players: st.players, time: st.time, jokers: st.jokers, spot: st.spot },
+                config: { dice: st.dice, players: st.players, time: st.time, jokers: st.jokers, spot: st.spot, strict: st.strict },
                 isPvE: false
             };
             rooms.set(newId, room);
@@ -460,7 +471,18 @@ io.on('connection', (socket) => {
     socket.on('makeBid', ({ quantity, faceValue }) => {
         const r = getRoomBySocketId(socket.id);
         if (!r || r.status !== 'PLAYING' || r.players[r.currentTurn].id !== socket.id) return;
-        makeBidInternal(r, r.players[r.currentTurn], parseInt(quantity), parseInt(faceValue));
+        
+        quantity = parseInt(quantity); faceValue = parseInt(faceValue);
+        let valid = false;
+        if (!r.currentBid) { valid = quantity > 0 && faceValue >= 1 && faceValue <= 6; }
+        else {
+            if (quantity > r.currentBid.quantity) valid = true;
+            else if (quantity === r.currentBid.quantity && faceValue > r.currentBid.faceValue) valid = true;
+            if (r.config.strict && quantity < r.currentBid.quantity) valid = false;
+        }
+
+        if (!valid) { socket.emit('errorMsg', r.config.strict ? 'Нельзя понижать ставку!' : 'Повысь ставку!'); return; }
+        makeBidInternal(r, r.players[r.currentTurn], quantity, faceValue);
     });
 
     socket.on('callBluff', () => handleCall(socket, 'bluff'));
@@ -516,7 +538,6 @@ function checkEliminationAndContinue(room, loser, killer) {
                 io.to(winner.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
             }
         }
-        
         io.to(room.id).emit('gameOver', { winner: winner.name });
     } else {
         let idx = room.players.indexOf(loser);
@@ -571,7 +592,6 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
     io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
     
-    // ВАЖНО: Сначала запускаем таймер, потом шлем состояние
     resetTurnTimer(room);
     broadcastGameState(room);
 }
