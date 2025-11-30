@@ -12,8 +12,7 @@
 </head>
 <body>
     <div id="app">
-        
-        <!-- 0. ЗАГРУЗКА -->
+        <!-- 0. LOADING -->
         <div id="screen-loading" class="screen active center-content">
             <div class="loader"></div>
         </div>
@@ -115,7 +114,7 @@
             </div>
         </div>
 
-        <!-- 5. SETTINGS -->
+        <!-- 5. MULTIPLAYER SETTINGS -->
         <div id="screen-create-settings" class="screen center-content">
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
@@ -143,10 +142,12 @@
                         <button class="btn-time" onclick="setTime(60)">60с</button>
                     </div>
                 </div>
+                
                 <div class="setting-group" style="display: flex; gap: 10px;">
                     <button id="btn-rule-joker" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
                     <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
                 </div>
+
                 <button id="btn-confirm-create" class="btn btn-green" style="margin-top: 20px;">СОЗДАТЬ</button>
                 <button id="btn-back-home" class="btn btn-gray">НАЗАД</button>
             </div>
