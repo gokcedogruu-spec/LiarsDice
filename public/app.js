@@ -1,7 +1,6 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
-    // Раскомментируй для отладки на телефоне
-    // alert("Error: " + message); 
+    // alert("Error: " + message); // Раскомментируй для отладки
 };
 
 const socket = io();
@@ -18,6 +17,7 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
+// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -27,12 +27,16 @@ function showScreen(name) {
     });
     const target = document.getElementById(`screen-${name}`);
     if(target) target.classList.add('active');
+    else console.error(`Screen not found: ${name}`);
 }
 
+// --- INIT ---
 window.addEventListener('load', () => {
-    // Таймер безопасности: если через 3 сек ничего не произошло, убираем загрузку
+    // Защита от вечной загрузки
     setTimeout(() => {
-        if (document.getElementById('screen-loading').classList.contains('active')) {
+        const loading = document.getElementById('screen-loading');
+        if (loading && loading.classList.contains('active')) {
+            // Если все еще грузимся, но телеграма нет - показываем логин
             if (!tg?.initDataUnsafe?.user) showScreen('login');
         }
     }, 3000);
@@ -71,16 +75,16 @@ function loginSuccess() {
 }
 
 socket.on('profileUpdate', (data) => {
-    // Убираем загрузку/логин
-    if(document.getElementById('screen-loading').classList.contains('active') || 
-       document.getElementById('screen-login').classList.contains('active')) {
+    // Убираем загрузку и переходим в меню
+    if(document.getElementById('screen-loading')?.classList.contains('active') || 
+       document.getElementById('screen-login')?.classList.contains('active')) {
         showScreen('home');
     }
     
-    document.getElementById('user-display').textContent = data.name;
-    document.getElementById('rank-display').textContent = data.rankName;
-    document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
-    document.getElementById('user-coins').textContent = data.coins;
+    const disp = document.getElementById('user-display'); if(disp) disp.textContent = data.name;
+    const rankD = document.getElementById('rank-display'); if(rankD) rankD.textContent = data.rankName;
+    const streak = document.getElementById('win-streak'); if(streak) streak.textContent = `Серия: ${data.streak} 🔥`;
+    const coins = document.getElementById('user-coins'); if(coins) coins.textContent = data.coins;
     
     state.coins = data.coins;
     state.inventory = data.inventory || [];
@@ -94,12 +98,12 @@ socket.on('profileUpdate', (data) => {
     if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
     if (data.rankName === 'Капитан') rankIcon = '☠️';
     if (data.rankName === 'Легенда морей') rankIcon = '🔱';
-    document.getElementById('rank-badge').textContent = rankIcon;
+    const badge = document.getElementById('rank-badge'); if(badge) badge.textContent = rankIcon;
 
     const next = data.nextRankXP === 'MAX' ? data.xp : data.nextRankXP;
     const pct = Math.min(100, (data.xp / next) * 100);
-    document.getElementById('xp-fill').style.width = `${pct}%`;
-    document.getElementById('xp-text').textContent = `${data.xp} / ${next} XP`;
+    const fill = document.getElementById('xp-fill'); if(fill) fill.style.width = `${pct}%`;
+    const txt = document.getElementById('xp-text'); if(txt) txt.textContent = `${data.xp} / ${next} XP`;
 
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ 
@@ -169,7 +173,8 @@ window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
     const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
-    document.getElementById('diff-desc').textContent = desc[diff];
+    const descEl = document.getElementById('diff-desc');
+    if(descEl) descEl.textContent = desc[diff];
 };
 
 bindClick('btn-start-pve', () => {
@@ -178,14 +183,15 @@ bindClick('btn-start-pve', () => {
         roomId: null, tgUser: userPayload, 
         mode: 'pve',
         options: { 
-            dice: state.pve.dice, players: state.pve.bots + 1,
+            dice: state.pve.dice, 
+            players: state.pve.bots + 1,
             jokers: state.pve.jokers, spot: state.pve.spot,
             difficulty: state.pve.difficulty
         } 
     });
 });
 
-// --- COMMON SETTINGS ---
+// --- SETTINGS ---
 bindClick('btn-to-create', () => showScreen('create-settings'));
 bindClick('btn-back-home', () => showScreen('home'));
 
@@ -202,11 +208,11 @@ window.adjSetting = (type, delta) => {
     } 
     else if (type === 'players') {
         state.createPlayers = Math.max(2, Math.min(10, state.createPlayers + delta));
-        document.getElementById('set-players').textContent = state.createPlayers;
+        const el = document.getElementById('set-players'); if(el) el.textContent = state.createPlayers;
     }
     else if (type === 'bots') {
         state.pve.bots = Math.max(1, Math.min(9, state.pve.bots + delta));
-        document.getElementById('pve-bots').textContent = state.pve.bots;
+        const el = document.getElementById('pve-bots'); if(el) el.textContent = state.pve.bots;
     }
 };
 
@@ -259,11 +265,24 @@ bindClick('btn-home', () => location.reload());
 
 // --- SOCKETS ---
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
+
+// ИСПРАВЛЕННЫЕ ЭМОДЗИ (ЛЕТАЮТ ПОВЕРХ ВСЕГО)
 socket.on('emoteReceived', (data) => {
     const el = document.querySelector(`.player-chip[data-id="${data.id}"]`);
     if (el) {
-        const b = document.createElement('div'); b.className = 'emote-bubble'; b.textContent = data.emoji;
-        el.appendChild(b); setTimeout(()=>b.remove(), 2000);
+        const b = document.createElement('div');
+        b.className = 'emote-bubble';
+        b.textContent = data.emoji;
+        
+        // Вычисляем позицию
+        const rect = el.getBoundingClientRect();
+        b.style.left = (rect.left + rect.width / 2) + 'px';
+        b.style.top = (rect.top - 10) + 'px';
+        
+        // Добавляем в body, чтобы не обрезалось
+        document.body.appendChild(b);
+        
+        setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
     }
 });
@@ -299,6 +318,7 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
+    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
@@ -335,7 +355,7 @@ socket.on('gameState', (gs) => {
     if(myTurn) { 
         controls.classList.remove('hidden'); controls.classList.add('slide-up');
         document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
-        document.getElementById('btn-call-spot').disabled = !gs.currentBid;
+        spotBtn.disabled = !gs.currentBid;
         if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     } else {
         controls.classList.add('hidden');
