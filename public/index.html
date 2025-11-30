@@ -12,7 +12,6 @@
 </head>
 <body>
     <div id="app">
-        
         <!-- 0. LOADING -->
         <div id="screen-loading" class="screen active center-content">
             <div class="loader"></div>
@@ -105,9 +104,10 @@
                     </div>
                 </div>
 
-                <div class="setting-group" style="display: flex; gap: 10px;">
-                    <button id="btn-rule-joker-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
+                <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="btn-rule-jokers-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
                     <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
+                    <button id="btn-rule-strict-pve" class="btn-time" onclick="toggleRule('strict', true)">🔒 Строго</button>
                 </div>
 
                 <button id="btn-start-pve" class="btn btn-red" style="margin-top: 20px;">В БОЙ!</button>
@@ -115,7 +115,7 @@
             </div>
         </div>
 
-        <!-- 5. MULTIPLAYER SETTINGS -->
+        <!-- 5. SETTINGS -->
         <div id="screen-create-settings" class="screen center-content">
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
@@ -143,8 +143,8 @@
                         <button class="btn-time" onclick="setTime(60)">60с</button>
                     </div>
                 </div>
-                <div class="setting-group" style="display: flex; gap: 10px;">
-                    <button id="btn-rule-joker" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
+                <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="btn-rule-jokers" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
                     <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
                     <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
                 </div>
@@ -193,7 +193,6 @@
                     <button onclick="sendEmote('😂')">😂</button>
                     <button onclick="sendEmote('😡')">😡</button>
                     <button onclick="sendEmote('🤔')">🤔</button>
-                    <!-- ЗАМЕНЕНО -->
                     <button onclick="sendEmote('😮')">😮</button>
                     <button onclick="sendEmote('🤡')">🤡</button>
                 </div>
@@ -239,7 +238,6 @@
                 <div class="card winner-box">
                     <div class="trophy-icon">🏆</div>
                     <h2 id="winner-name" class="winner-name">...</h2>
-                    <!-- НОВЫЙ ТЕКСТ -->
                     <p class="winner-sub">Крейсер мне в бухту!</p>
                 </div>
             </div>
