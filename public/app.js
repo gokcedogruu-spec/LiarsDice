@@ -17,6 +17,7 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
+// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -29,6 +30,7 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
+// --- INIT ---
 window.addEventListener('load', () => {
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
@@ -112,9 +114,25 @@ const ITEMS_META = {
     'skin_white': { name: 'Классика', price: 0, type: 'skins' },
     'skin_red':   { name: 'Рубин', price: 200, type: 'skins' },
     'skin_gold':  { name: 'Золото', price: 1000, type: 'skins' },
+    'skin_black': { name: 'Черная метка', price: 500, type: 'skins' },
+    'skin_blue':  { name: 'Морской', price: 300, type: 'skins' },
+    'skin_green': { name: 'Яд', price: 400, type: 'skins' },
+    'skin_purple':{ name: 'Магия вуду', price: 800, type: 'skins' },
+    'skin_cyber': { name: 'Кибер', price: 1500, type: 'skins' },
+    'skin_bone':  { name: 'Костяной', price: 2500, type: 'skins' },
+
     'frame_default': { name: 'Нет рамки', price: 0, type: 'frames' },
-    'frame_gold': { name: 'Золотая рамка', price: 500, type: 'frames' },
-    'frame_fire': { name: 'Огненная рамка', price: 1500, type: 'frames' },
+    'frame_wood':    { name: 'Дерево', price: 100, type: 'frames' },
+    'frame_silver':  { name: 'Серебро', price: 300, type: 'frames' },
+    'frame_gold':    { name: 'Золото', price: 500, type: 'frames' },
+    'frame_fire':    { name: 'Огонь', price: 1500, type: 'frames' },
+    'frame_ice':     { name: 'Лед', price: 1200, type: 'frames' },
+    'frame_neon':    { name: 'Неон', price: 2000, type: 'frames' },
+    'frame_royal':   { name: 'Король', price: 5000, type: 'frames' },
+    'frame_ghost':   { name: 'Призрак', price: 3000, type: 'frames' },
+    'frame_kraken':  { name: 'Кракен', price: 4000, type: 'frames' },
+    'frame_captain': { name: 'Капитанская', price: 10000, type: 'frames' },
+
     'bg_wood':    { name: 'Таверна', price: 0, type: 'bg' },
     'bg_blue':    { name: 'Океан', price: 300, type: 'bg' }
 };
@@ -166,6 +184,12 @@ bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
+    const container = document.querySelector('#screen-pve-settings .time-selector');
+    if(container) {
+        Array.from(container.children).forEach(btn => {
+            if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active');
+        });
+    }
     const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
     const descEl = document.getElementById('diff-desc');
     if(descEl) descEl.textContent = desc[diff];
@@ -332,27 +356,19 @@ socket.on('gameState', (gs) => {
     const myTurn = me?.isTurn;
     const controls = document.getElementById('game-controls');
     
-    // --- ЛОГИКА ТЕКСТА СТАВКИ ---
     const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
         bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
-        // Синхронизируем инпуты со ставкой
-        state.bidQty = gs.currentBid.quantity; 
-        state.bidVal = gs.currentBid.faceValue; 
-        updateInputs();
+        state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
-        // Если ставки нет - проверяем, чей ход
         if (myTurn) {
             bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`;
         } else {
-            // Ищем имя того, кто ходит
             const turnPlayer = gs.players.find(p => p.isTurn);
             const name = turnPlayer ? turnPlayer.name : "Ожидание";
             bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`;
         }
-        // Сброс инпутов
-        state.bidQty = 1; state.bidVal = 2; 
-        updateInputs();
+        state.bidQty = 1; state.bidVal = 2; updateInputs();
     }
 
     const spotBtn = document.getElementById('btn-call-spot');
