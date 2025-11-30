@@ -12,6 +12,7 @@
 </head>
 <body>
     <div id="app">
+        
         <!-- 0. LOADING -->
         <div id="screen-loading" class="screen active center-content">
             <div class="loader"></div>
@@ -105,6 +106,7 @@
                 </div>
 
                 <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <!-- ИСПРАВЛЕНО ЗДЕСЬ: btn-rule-jokers-pve (было joker) -->
                     <button id="btn-rule-jokers-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
                     <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
                     <button id="btn-rule-strict-pve" class="btn-time" onclick="toggleRule('strict', true)">🔒 Строго</button>
@@ -115,7 +117,7 @@
             </div>
         </div>
 
-        <!-- 5. SETTINGS -->
+        <!-- 5. MULTIPLAYER SETTINGS -->
         <div id="screen-create-settings" class="screen center-content">
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
@@ -144,6 +146,7 @@
                     </div>
                 </div>
                 <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <!-- ИСПРАВЛЕНО ЗДЕСЬ: btn-rule-jokers (было joker) -->
                     <button id="btn-rule-jokers" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
                     <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
                     <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
