@@ -1,6 +1,6 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
-    // Uncomment to debug on mobile
+    // Раскомментируй для отладки на телефоне
     // alert("Error: " + message); 
 };
 
@@ -18,7 +18,7 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-const screens = ['login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
+const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
     screens.forEach(s => {
@@ -27,19 +27,19 @@ function showScreen(name) {
     });
     const target = document.getElementById(`screen-${name}`);
     if(target) target.classList.add('active');
-    else console.error(`Screen not found: ${name}`);
 }
 
-// --- LOGIN ---
 window.addEventListener('load', () => {
+    // Таймер безопасности: если через 3 сек ничего не произошло, убираем загрузку
+    setTimeout(() => {
+        if (document.getElementById('screen-loading').classList.contains('active')) {
+            if (!tg?.initDataUnsafe?.user) showScreen('login');
+        }
+    }, 3000);
+
     if (tg?.initDataUnsafe?.user) {
         state.username = tg.initDataUnsafe.user.first_name;
-        const loginEl = document.getElementById('screen-login');
-        if(loginEl) loginEl.classList.remove('active');
         loginSuccess();
-    } else {
-        const loginEl = document.getElementById('screen-login');
-        if(loginEl) loginEl.classList.add('active');
     }
 });
 
@@ -59,6 +59,7 @@ bindClick('btn-login', () => {
 
 function loginSuccess() {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
+    
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
@@ -70,9 +71,12 @@ function loginSuccess() {
 }
 
 socket.on('profileUpdate', (data) => {
-    if(document.getElementById('screen-login')?.classList.contains('active')) {
+    // Убираем загрузку/логин
+    if(document.getElementById('screen-loading').classList.contains('active') || 
+       document.getElementById('screen-login').classList.contains('active')) {
         showScreen('home');
     }
+    
     document.getElementById('user-display').textContent = data.name;
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
@@ -174,8 +178,7 @@ bindClick('btn-start-pve', () => {
         roomId: null, tgUser: userPayload, 
         mode: 'pve',
         options: { 
-            dice: state.pve.dice, 
-            players: state.pve.bots + 1,
+            dice: state.pve.dice, players: state.pve.bots + 1,
             jokers: state.pve.jokers, spot: state.pve.spot,
             difficulty: state.pve.difficulty
         } 
@@ -279,15 +282,9 @@ socket.on('roomUpdate', (room) => {
                 <span>${p.ready?'✅':'⏳'}</span>
             </div>`;
         });
-        
-        // ИСПРАВЛЕНИЕ: Кнопка видна всегда, если ты создатель
         const me = room.players.find(p => p.id === socket.id);
         const startBtn = document.getElementById('btn-start-game');
-        if (startBtn) {
-            // Показываем кнопку, если я создатель. 
-            // Сервер сам проверит, достаточно ли игроков, при нажатии.
-            startBtn.style.display = (me?.isCreator) ? 'block' : 'none';
-        }
+        if(startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
     }
 });
 socket.on('gameEvent', (evt) => {
@@ -331,10 +328,14 @@ socket.on('gameState', (gs) => {
     const myTurn = me?.isTurn;
     const controls = document.getElementById('game-controls');
     
+    const spotBtn = document.getElementById('btn-call-spot');
+    if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule');
+    else spotBtn.classList.add('hidden-rule');
+
     if(myTurn) { 
         controls.classList.remove('hidden'); controls.classList.add('slide-up');
         document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
-        document.getElementById('btn-call-spot').disabled = !gs.currentBid || !gs.activeRules.spot;
+        document.getElementById('btn-call-spot').disabled = !gs.currentBid;
         if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     } else {
         controls.classList.add('hidden');
