@@ -2,28 +2,32 @@ const socket = io();
 const tg = window.Telegram?.WebApp;
 
 let state = {
-    username: "Гость", roomId: null,
+    username: null, roomId: null,
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30
 };
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#2b2d42'); tg.setBackgroundColor('#2b2d42'); }
 
-const screens = ['home', 'create-settings', 'lobby', 'game', 'result'];
+const screens = ['login', 'home', 'create-settings', 'lobby', 'game', 'result'];
 function showScreen(name) {
-    screens.forEach(s => document.getElementById(`screen-${s}`)?.classList.remove('active'));
+    screens.forEach(s => document.getElementById(`screen-${s}`).classList.remove('active'));
     document.getElementById(`screen-${name}`).classList.add('active');
 }
 
 window.addEventListener('load', () => {
     if (tg?.initDataUnsafe?.user) {
         state.username = tg.initDataUnsafe.user.first_name;
-        // Если открыто в Телеграм - сразу логинимся
+        document.getElementById('screen-login').classList.remove('active');
         loginSuccess();
     } else {
-        // Если нет телеграма (браузер) - даем имя "Гость" и логинимся
-        loginSuccess();
+        document.getElementById('screen-login').classList.add('active');
     }
+});
+
+document.getElementById('btn-login').addEventListener('click', () => {
+    const val = document.getElementById('input-username').value.trim();
+    if (val) { state.username = val; loginSuccess(); }
 });
 
 function loginSuccess() {
@@ -43,13 +47,14 @@ socket.on('profileUpdate', (data) => {
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
     
-    let rankIcon = '🦠';
+    let rankIcon = '🧹';
     if (data.rankName === 'Юнга') rankIcon = '⚓';
     if (data.rankName === 'Матрос') rankIcon = '🌊';
     if (data.rankName === 'Старший матрос') rankIcon = '🎖️';
     if (data.rankName === 'Боцман') rankIcon = '💪';
     if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
     if (data.rankName === 'Капитан') rankIcon = '☠️';
+    if (data.rankName === 'Легенда морей') rankIcon = '🔱';
     document.getElementById('rank-badge').textContent = rankIcon;
 
     const next = data.nextRankXP === 'MAX' ? data.xp : data.nextRankXP;
@@ -60,6 +65,7 @@ socket.on('profileUpdate', (data) => {
     if (tg && tg.CloudStorage) tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ xp: data.xp, streak: data.streak }));
 });
 
+// Buttons & Navigation
 document.getElementById('btn-to-create').addEventListener('click', () => showScreen('create-settings'));
 document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
 
@@ -147,8 +153,7 @@ socket.on('gameState', (gs) => {
     const myTurn = gs.players.find(p => p.isTurn)?.name === state.username;
     const controls = document.getElementById('game-controls');
     if(myTurn) { 
-        controls.classList.remove('hidden'); 
-        controls.classList.add('slide-up');
+        controls.classList.remove('hidden'); controls.classList.add('slide-up');
         document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
         if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     } else {
