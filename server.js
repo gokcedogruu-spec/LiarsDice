@@ -12,9 +12,10 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_ID = parseInt(process.env.ADMIN_ID);
+const ADMIN_ID = parseInt(process.env.ADMIN_ID); // ID Админа
 const TURN_DURATION_MS = 30000; 
 
+// --- RATING SYSTEM ---
 const RANKS = [
     { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
@@ -23,7 +24,7 @@ const RANKS = [
     { name: "Боцман", min: 10000 },
     { name: "Первый помощник", min: 25000, penalty: 30 },
     { name: "Капитан", min: 50000, penalty: 60 },
-    { name: "Легенда морей", min: 50000, reqStreak: 100, penalty: 100 } 
+    { name: "Легенда морей", min: 75000, reqStreak: 100, penalty: 100 } // 75k XP + 100 Wins
 ];
 
 // Ключ = UserID (число), Значение = Объект игрока
@@ -95,7 +96,7 @@ function updateUserXP(userId, type) {
     return user;
 }
 
-// --- Bot ---
+// --- Bot & Admin Panel ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     bot.on('message', (msg) => {
@@ -106,57 +107,53 @@ if (bot) {
         if (text.toLowerCase().startsWith('/start') && !text.includes('setxp')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
-            bot.sendMessage(chatId, "☠️ Костяшки: Вперед за сокровищами!", opts).catch(e=>{});
+            bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(e=>{});
+            return;
         }
 
-        // АДМИНКА: /setxp @username 50000  ИЛИ  /setxp 123456 50000
+        // АДМИНКА: /setxp @username 75000
         if (userId === ADMIN_ID && text.startsWith('/setxp')) {
             const parts = text.split(' ');
             if (parts.length < 3) {
-                bot.sendMessage(chatId, "⚠️ Формат: `/setxp @username 5000` или `/setxp ID 5000`", { parse_mode: "Markdown" });
+                bot.sendMessage(chatId, "⚠️ Формат: `/setxp @username 5000`", { parse_mode: "Markdown" });
                 return;
             }
             
-            const target = parts[1].toLowerCase().replace('@', ''); // Убираем собачку
+            const target = parts[1].toLowerCase().replace('@', '');
             const amount = parseInt(parts[2]);
             
             let foundUserId = null;
-
-            // 1. Пробуем найти по ID (если ввели число)
             if (/^\d+$/.test(target)) {
                 const idNum = parseInt(target);
                 if (userDB.has(idNum)) foundUserId = idNum;
             }
-
-            // 2. Если не нашли, ищем по username
             if (!foundUserId) {
                 for (const [uid, uData] of userDB.entries()) {
-                    if (uData.username === target) {
-                        foundUserId = uid;
-                        break;
-                    }
+                    if (uData.username === target) { foundUserId = uid; break; }
                 }
             }
 
             if (!foundUserId) {
-                bot.sendMessage(chatId, `❌ Игрок "${target}" не найден в базе. Он должен зайти в игру хотя бы раз.`);
+                bot.sendMessage(chatId, `❌ Игрок "${target}" не найден.`);
                 return;
             }
 
-            // Обновляем
             const user = userDB.get(foundUserId);
             user.xp = amount;
-            if (amount >= 50000) user.streak = 100; // Бонус для легенды
+            
+            // Авто-стрик для Легенды, если выдаем сразу много
+            if (amount >= 75000) user.streak = 100; 
+
             userDB.set(foundUserId, user);
 
-            // Пушим обновление сокету, если онлайн
+            // Мгновенное обновление
             const socketId = findSocketIdByUserId(foundUserId);
             if (socketId) {
                 const rInfo = getRankInfo(user.xp, user.streak);
                 io.to(socketId).emit('profileUpdate', { ...user, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
             }
 
-            bot.sendMessage(chatId, `✅ Игроку <b>${user.name}</b> (@${user.username}) установлено <b>${amount} XP</b>.`, { parse_mode: "HTML" });
+            bot.sendMessage(chatId, `✅ <b>${user.name}</b>: ${amount} XP (Ранг обновлен).`, { parse_mode: "HTML" });
         }
     });
 }
@@ -169,7 +166,6 @@ function generateRoomId() { return Math.random().toString(36).substring(2, 8).to
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
-// Поиск сокета по UserID (для админки)
 function findSocketIdByUserId(uid) {
     for (const [roomId, room] of rooms) {
         const p = room.players.find(pl => pl.tgId === uid);
@@ -194,12 +190,10 @@ function handleTimeout(room) {
 }
 
 io.on('connection', (socket) => {
-    // ЛОГИН: Принимаем весь объект User из телеграма
     socket.on('login', ({ tgUser, savedData }) => {
         if (!tgUser) return;
         const data = syncUserData(tgUser, savedData);
         const rank = getRankInfo(data.xp, data.streak);
-        // Привязываем userId к сокету для удобства
         socket.tgUserId = tgUser.id;
         socket.emit('profileUpdate', { ...data, rankName: rank.current.name, nextRankXP: rank.next?.min || 'MAX' });
     });
@@ -232,10 +226,7 @@ io.on('connection', (socket) => {
             isCreator = true;
         }
         room.players.push({
-            id: socket.id, 
-            tgId: userId, // Важно: сохраняем ID телеграма в комнате
-            name: uData.name, 
-            rank: rInfo.current.name,
+            id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name,
             dice: [], diceCount: room.initialDice, ready: false, isCreator: isCreator
         });
         socket.join(roomId);
@@ -322,8 +313,6 @@ io.on('connection', (socket) => {
 function checkEliminationAndContinue(room, loser, killer) {
     if (loser.diceCount === 0) {
         io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
-        
-        // !!! Используем tgId для обновления базы !!!
         const d = updateUserXP(loser.tgId, 'lose_game');
         const rInfo = getRankInfo(d.xp, d.streak);
         io.to(loser.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
