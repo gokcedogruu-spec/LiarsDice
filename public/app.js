@@ -29,7 +29,6 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
-// --- INIT ---
 window.addEventListener('load', () => {
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
@@ -60,6 +59,7 @@ bindClick('btn-login', () => {
 
 function loginSuccess() {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
+    
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
@@ -159,20 +159,13 @@ window.buyItem = (id, price) => {
 };
 window.equipItem = (id) => socket.emit('shopEquip', id);
 
-// --- PVE SETUP ---
+// --- PVE ---
 bindClick('btn-to-pve', () => showScreen('pve-settings'));
 bindClick('btn-pve-back', () => showScreen('home'));
 
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
-    // Ищем кнопки только внутри блока сложности в PvE
-    const container = document.querySelector('#screen-pve-settings .time-selector');
-    if(container) {
-        Array.from(container.children).forEach(btn => {
-            btn.classList.remove('active');
-            if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active');
-        });
-    }
+    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
     const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
     const descEl = document.getElementById('diff-desc');
     if(descEl) descEl.textContent = desc[diff];
@@ -192,18 +185,16 @@ bindClick('btn-start-pve', () => {
     });
 });
 
-// --- COMMON SETTINGS ---
+// --- SETTINGS ---
 bindClick('btn-to-create', () => showScreen('create-settings'));
 bindClick('btn-back-home', () => showScreen('home'));
 
 window.setTime = (sec) => {
     state.createTime = sec;
-    // Ищем кнопки только в блоке настроек мультиплеера
     const container = document.querySelector('#screen-create-settings .time-selector');
     if (container) {
         Array.from(container.children).forEach(btn => {
             btn.classList.remove('active');
-            // Проверка на текст
             if (parseInt(btn.textContent) === sec) btn.classList.add('active');
         });
     }
@@ -239,12 +230,12 @@ bindClick('btn-confirm-create', () => {
 window.toggleRule = (rule, isPve = false) => {
     const target = isPve ? state.pve : state.rules;
     target[rule] = !target[rule];
-    const id = isPve ? `btn-rule-${rule}-pve` : `btn-rule-${rule}`;
+    const id = isPve ? (rule==='jokers'?'btn-rule-jokers-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-jokers':`btn-rule-${rule}`);
     const btn = document.getElementById(id);
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- JOIN & GAME ---
+// --- GAME ---
 bindClick('btn-join-room', () => {
     const code = prompt("Код:"); 
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
@@ -280,11 +271,9 @@ socket.on('emoteReceived', (data) => {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
-        
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
         b.style.top = (rect.top - 20) + 'px';
-        
         document.body.appendChild(b);
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
@@ -322,7 +311,6 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
-    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
@@ -340,19 +328,33 @@ socket.on('gameState', (gs) => {
         </div>
     `}).join('');
 
-    const bid = document.getElementById('current-bid-display');
-    if (gs.currentBid) {
-        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
-        state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
-    } else {
-        bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ваш ход!</div>`;
-        state.bidQty = 1; state.bidVal = 2; updateInputs();
-    }
-
     const me = gs.players.find(p => p.id === socket.id);
     const myTurn = me?.isTurn;
     const controls = document.getElementById('game-controls');
     
+    // --- ЛОГИКА ТЕКСТА СТАВКИ ---
+    const bid = document.getElementById('current-bid-display');
+    if (gs.currentBid) {
+        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
+        // Синхронизируем инпуты со ставкой
+        state.bidQty = gs.currentBid.quantity; 
+        state.bidVal = gs.currentBid.faceValue; 
+        updateInputs();
+    } else {
+        // Если ставки нет - проверяем, чей ход
+        if (myTurn) {
+            bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`;
+        } else {
+            // Ищем имя того, кто ходит
+            const turnPlayer = gs.players.find(p => p.isTurn);
+            const name = turnPlayer ? turnPlayer.name : "Ожидание";
+            bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`;
+        }
+        // Сброс инпутов
+        state.bidQty = 1; state.bidVal = 2; 
+        updateInputs();
+    }
+
     const spotBtn = document.getElementById('btn-call-spot');
     if (spotBtn) {
         if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule');
