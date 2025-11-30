@@ -116,20 +116,14 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .game-layout { padding: 10px; }
 .rivals-bar-container { 
     background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; 
-    margin-bottom: 10px; overflow: visible; /* Эмодзи могут вылетать */
+    margin-bottom: 10px; 
+    /* Убрали overflow hacks, они не нужны при фиксированном позиционировании эмодзи */
 }
 .rivals-row { 
     display: flex; gap: 8px; overflow-x: auto; 
-    padding-bottom: 5px; scrollbar-width: none; 
-    padding-top: 40px; margin-top: -40px; /* Место для полета эмодзи */
+    padding-bottom: 5px; scrollbar-width: none;
 }
-.player-chip { 
-    background: var(--surface); border-radius: 12px; padding: 6px; 
-    min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; 
-    transition: all 0.2s; flex-shrink: 0; position: relative; 
-    box-shadow: 0 4px 0 rgba(0,0,0,0.2); 
-    z-index: 1; /* Базовый слой */
-}
+.player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; box-shadow: 0 4px 0 rgba(0,0,0,0.2); z-index: 1; }
 .player-chip b { display: block; font-size: 0.7rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .player-chip .rank-game { font-size: 0.6rem; color: var(--secondary); display: block; line-height: 1; margin-top: 2px; font-weight: 700; }
 .player-chip .dice-count { font-size: 0.9rem; font-weight: 800; color: white; margin-top: 2px; }
@@ -143,12 +137,15 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .player-chip.frame_gold { border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; }
 .player-chip.frame_fire { border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; }
 
-/* EMOTES */
-.emote-bubble { 
-    position: absolute; top: -40px; left: 50%; transform: translateX(-50%); 
-    font-size: 2.5rem; animation: floatUp 2s ease-out forwards; 
-    pointer-events: none; z-index: 1000; /* Поверх всего */
+/* EMOTES FIXED */
+.emote-bubble {
+    position: fixed; /* ФИКСИРОВАННОЕ ПОЗИЦИОНИРОВАНИЕ (ОТНОСИТЕЛЬНО ЭКРАНА) */
+    font-size: 2.5rem;
+    animation: floatUp 2s ease-out forwards;
+    pointer-events: none;
+    z-index: 9999; /* ПОВЕРХ ВСЕГО */
     text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    transform: translateX(-50%); /* Центровка по X */
 }
 
 .table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
