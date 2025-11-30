@@ -139,7 +139,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 
 /* EMOTES */
 .emote-bubble {
-    position: fixed; /* Фиксируем относительно окна */
+    position: fixed;
     font-size: 2.5rem;
     animation: floatUp 2s ease-out forwards;
     pointer-events: none;
@@ -169,6 +169,23 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .die { width: 45px; height: 45px; background: white; color: black; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 1.8rem; font-weight: 800; box-shadow: 0 4px 0 #bbb; border: 2px solid #eee; }
 .die.skin_red { background: #ef233c; color: white; border-color: #d90429; }
 .die.skin_gold { background: #ffb703; color: #5D4037; border-color: #fb8500; box-shadow: 0 4px 0 #c48e00; }
+/* NEW SKINS */
+.die.skin_black { background: #222; color: #eee; border-color: #444; }
+.die.skin_blue { background: #118ab2; color: white; border-color: #075f7a; }
+.die.skin_green { background: #06d6a0; color: #2b2d42; border-color: #04916c; }
+.die.skin_purple { background: #7209b7; color: white; border-color: #480ca8; }
+.die.skin_cyber { background: #000; color: #0f0; border: 2px solid #0f0; box-shadow: 0 0 10px #0f0; font-family: monospace; }
+.die.skin_bone { background: #e3d5ca; color: #5D4037; border-color: #d5bdaf; }
+
+/* NEW FRAMES */
+.player-chip.frame_wood { border: 3px solid #8d6e63; }
+.player-chip.frame_silver { border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; }
+.player-chip.frame_ice { border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; }
+.player-chip.frame_neon { border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; }
+.player-chip.frame_royal { border: 4px solid #ffd700; background: #240046; }
+.player-chip.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.8; }
+.player-chip.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; }
+.player-chip.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background: #2b2d42; }
 
 .action-panel { background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
 .hidden { display: none; }
