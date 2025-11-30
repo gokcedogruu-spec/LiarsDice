@@ -29,6 +29,7 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
+// --- INIT ---
 window.addEventListener('load', () => {
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
@@ -59,7 +60,6 @@ bindClick('btn-login', () => {
 
 function loginSuccess() {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
-    
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
@@ -75,7 +75,6 @@ socket.on('profileUpdate', (data) => {
        document.getElementById('screen-login')?.classList.contains('active')) {
         showScreen('home');
     }
-    
     const disp = document.getElementById('user-display'); if(disp) disp.textContent = data.name;
     const rankD = document.getElementById('rank-display'); if(rankD) rankD.textContent = data.rankName;
     const streak = document.getElementById('win-streak'); if(streak) streak.textContent = `Серия: ${data.streak} 🔥`;
@@ -160,13 +159,20 @@ window.buyItem = (id, price) => {
 };
 window.equipItem = (id) => socket.emit('shopEquip', id);
 
-// --- PVE ---
+// --- PVE SETUP ---
 bindClick('btn-to-pve', () => showScreen('pve-settings'));
 bindClick('btn-pve-back', () => showScreen('home'));
 
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
-    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
+    // Ищем кнопки только внутри блока сложности в PvE
+    const container = document.querySelector('#screen-pve-settings .time-selector');
+    if(container) {
+        Array.from(container.children).forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active');
+        });
+    }
     const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
     const descEl = document.getElementById('diff-desc');
     if(descEl) descEl.textContent = desc[diff];
@@ -186,13 +192,21 @@ bindClick('btn-start-pve', () => {
     });
 });
 
-// --- SETTINGS ---
+// --- COMMON SETTINGS ---
 bindClick('btn-to-create', () => showScreen('create-settings'));
 bindClick('btn-back-home', () => showScreen('home'));
 
 window.setTime = (sec) => {
     state.createTime = sec;
-    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
+    // Ищем кнопки только в блоке настроек мультиплеера
+    const container = document.querySelector('#screen-create-settings .time-selector');
+    if (container) {
+        Array.from(container.children).forEach(btn => {
+            btn.classList.remove('active');
+            // Проверка на текст
+            if (parseInt(btn.textContent) === sec) btn.classList.add('active');
+        });
+    }
 };
 
 window.adjSetting = (type, delta) => {
@@ -230,7 +244,7 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- GAME ---
+// --- JOIN & GAME ---
 bindClick('btn-join-room', () => {
     const code = prompt("Код:"); 
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
@@ -308,9 +322,11 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
+    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
+    if (gs.activeRules.strict) rulesText += '🔒 Строго';
     document.getElementById('active-rules-display').textContent = rulesText;
 
     const bar = document.getElementById('players-bar');
