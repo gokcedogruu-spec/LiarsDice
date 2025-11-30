@@ -17,7 +17,6 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -30,9 +29,7 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
-// --- INIT ---
 window.addEventListener('load', () => {
-    // Защита от вечной загрузки
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
         if (loading && loading.classList.contains('active')) {
@@ -196,7 +193,6 @@ bindClick('btn-back-home', () => showScreen('home'));
 window.setTime = (sec) => {
     state.createTime = sec;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
-    // Simple active class toggle logic can be added here if buttons have IDs
 };
 
 window.adjSetting = (type, delta) => {
@@ -265,14 +261,12 @@ bindClick('btn-home', () => location.reload());
 // --- SOCKETS ---
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
 socket.on('emoteReceived', (data) => {
-    // Исправленный селектор с кавычками
     const el = document.querySelector(`.player-chip[data-id='${data.id}']`);
     if (el) {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
         
-        // Позиционирование через JS (надежнее)
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
         b.style.top = (rect.top - 20) + 'px';
@@ -314,11 +308,9 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
-    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
-    if (gs.activeRules.strict) rulesText += '🔒 Строго';
     document.getElementById('active-rules-display').textContent = rulesText;
 
     const bar = document.getElementById('players-bar');
