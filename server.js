@@ -12,16 +12,19 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
+const TURN_DURATION_MS = 30000; 
 
 // --- RATING SYSTEM ---
 const RANKS = [
-    { name: "Пороховая обезьяна", min: 0 },
+    { name: "Салага", min: 0 }, // Заменили название
     { name: "Юнга", min: 500 },
     { name: "Матрос", min: 1500 },
     { name: "Старший матрос", min: 5000 },
     { name: "Боцман", min: 10000 },
     { name: "Первый помощник", min: 25000, penalty: 30 },
-    { name: "Капитан", min: 50000, reqStreak: 100, penalty: 60 }
+    { name: "Капитан", min: 50000, penalty: 60 },
+    // Новый высший ранг:
+    { name: "Легенда морей", min: 50000, reqStreak: 100, penalty: 100 } 
 ];
 
 const userDB = new Map();
@@ -47,14 +50,18 @@ function syncUserData(username, savedData) {
 function getRankInfo(xp, streak) {
     let current = RANKS[0];
     let next = null;
+    
     for (let i = 0; i < RANKS.length; i++) {
         const r = RANKS[i];
         let match = false;
-        if (r.name === "Капитан") {
+        
+        // Уникальное условие для Легенды
+        if (r.name === "Легенда морей") {
             if (xp >= r.min && streak >= r.reqStreak) match = true;
         } else {
             if (xp >= r.min) match = true;
         }
+        
         if (match) {
             current = r;
             next = RANKS[i+1] || null;
@@ -70,14 +77,14 @@ function updateUserXP(username, type) {
 
     if (type === 'win_game') {
         user.matches++; user.wins++; user.streak++;
-        user.xp += 15;
+        user.xp += 65; // БЫЛО 15, СТАЛО 65 (+50 бонуса)
     } 
     else if (type === 'lose_game') {
         user.matches++; user.streak = 0;
         if (currentRank.penalty) user.xp -= currentRank.penalty;
     }
     else if (type === 'kill_captain') {
-        user.xp += 100;
+        user.xp += 150; // Бонус за убийство капитана тоже поднял
     }
 
     if (user.xp < 0) user.xp = 0;
@@ -92,9 +99,10 @@ if (bot) {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
         if (text.toLowerCase().includes('/start')) {
+            // !!! ССЫЛКА !!!
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
-            bot.sendMessage(chatId, "☠️ Кости Вруна: Заходи, если смелый!", opts).catch(e=>{});
+            bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(e=>{});
         }
     });
 }
@@ -117,12 +125,8 @@ function resetTurnTimer(room) {
 function handleTimeout(room) {
     if (room.status !== 'PLAYING') return;
     const loser = room.players[room.currentTurn];
-    
     io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул и выбывает!`, type: 'error' });
-    
-    // !!! СМЕРТЕЛЬНЫЙ ТАЙМ-АУТ !!!
-    loser.diceCount = 0; // Сразу убиваем игрока
-    
+    loser.diceCount = 0; // Смерть
     checkEliminationAndContinue(room, loser, null);
 }
 
@@ -215,15 +219,16 @@ io.on('connection', (socket) => {
 
         let loser, winnerOfRound, msg;
         if (total < r.currentBid.quantity) {
-            msg = `На столе ${total}x[${r.currentBid.faceValue}]. Блеф! ${bidder.name} -1 куб.`; 
+            msg = `На столе ${total}x[${r.currentBid.faceValue}]. Блеф! ${bidder.name} выбывает.`; 
             loser = bidder; winnerOfRound = challenger;
         } else {
-            msg = `На столе ${total}x[${r.currentBid.faceValue}]. Правда! ${challenger.name} -1 куб.`; 
+            msg = `На столе ${total}x[${r.currentBid.faceValue}]. Правда! ${challenger.name} выбывает.`; 
             loser = challenger; winnerOfRound = bidder;
         }
 
         io.to(r.id).emit('roundResult', { message: msg });
-        loser.diceCount--;
+        loser.diceCount--; // Или = 0, если хотим убивать за ошибку сразу (пока оставим -1)
+        
         setTimeout(() => checkEliminationAndContinue(r, loser, winnerOfRound), 4000);
     });
 
@@ -251,7 +256,7 @@ function checkEliminationAndContinue(room, loser, killer) {
         io.to(loser.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
 
         if (killer && loser.rank === 'Капитан') {
-            io.to(room.id).emit('gameEvent', { text: `💰 ${killer.name} убил Капитана (+100 XP)!`, type: 'info' });
+            io.to(room.id).emit('gameEvent', { text: `💰 ${killer.name} убил Капитана (+150 XP)!`, type: 'info' });
             const kData = updateUserXP(killer.name, 'kill_captain');
             const kRank = getRankInfo(kData.xp, kData.streak);
             io.to(killer.id).emit('profileUpdate', { ...kData, rankName: kRank.current.name, nextRankXP: kRank.next?.min });
@@ -267,6 +272,7 @@ function checkEliminationAndContinue(room, loser, killer) {
         const d = updateUserXP(winner.name, 'win_game');
         const rInfo = getRankInfo(d.xp, d.streak);
         io.to(winner.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
+        
         io.to(room.id).emit('gameOver', { winner: winner.name });
     } else {
         let idx = room.players.indexOf(loser);
