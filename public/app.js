@@ -17,7 +17,6 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -77,6 +76,7 @@ socket.on('profileUpdate', (data) => {
        document.getElementById('screen-login')?.classList.contains('active')) {
         showScreen('home');
     }
+    
     const disp = document.getElementById('user-display'); if(disp) disp.textContent = data.name;
     const rankD = document.getElementById('rank-display'); if(rankD) rankD.textContent = data.rankName;
     const streak = document.getElementById('win-streak'); if(streak) streak.textContent = `Серия: ${data.streak} 🔥`;
@@ -184,8 +184,9 @@ bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
+    // Подсветка для PvE (ищем только в pve контейнере)
     const container = document.querySelector('#screen-pve-settings .time-selector');
-    if(container) {
+    if (container) {
         Array.from(container.children).forEach(btn => {
             if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active');
         });
@@ -215,6 +216,7 @@ bindClick('btn-back-home', () => showScreen('home'));
 
 window.setTime = (sec) => {
     state.createTime = sec;
+    // Подсветка для мультиплеера
     const container = document.querySelector('#screen-create-settings .time-selector');
     if (container) {
         Array.from(container.children).forEach(btn => {
@@ -254,12 +256,12 @@ bindClick('btn-confirm-create', () => {
 window.toggleRule = (rule, isPve = false) => {
     const target = isPve ? state.pve : state.rules;
     target[rule] = !target[rule];
-    const id = isPve ? (rule==='jokers'?'btn-rule-jokers-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-jokers':`btn-rule-${rule}`);
+    const id = isPve ? (rule==='jokers'?'btn-rule-joker-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-joker':`btn-rule-${rule}`);
     const btn = document.getElementById(id);
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- GAME ---
+// --- JOIN & GAME ---
 bindClick('btn-join-room', () => {
     const code = prompt("Код:"); 
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
@@ -385,7 +387,9 @@ socket.on('gameState', (gs) => {
     } else {
         controls.classList.add('hidden');
     }
-    startVisualTimer(gs.turnDeadline);
+    
+    // ЗАПУСК ТАЙМЕРА (СИНХРОНИЗИРОВАННОГО)
+    startVisualTimer(gs.remainingTime, gs.totalDuration);
 });
 
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
@@ -396,16 +400,24 @@ socket.on('gameOver', (data) => {
 
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 
-function startVisualTimer(deadline) {
+function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
     const bar = document.querySelector('.timer-progress'); if (!bar) return;
-    const totalDuration = state.createTime * 1000; 
+    
+    // Используем серверное оставшееся время + локальный старт
+    const endTime = Date.now() + remaining; 
+
     function tick() {
-        const now = Date.now(); const left = deadline - now;
+        const now = Date.now(); 
+        const left = endTime - now;
+        
         if (left <= 0) { bar.style.width = '0%'; return; }
-        const pct = (left / totalDuration) * 100; 
+        
+        // Процент от общей длительности
+        const pct = (left / total) * 100; 
         bar.style.width = `${Math.min(100, pct)}%`;
         bar.style.backgroundColor = pct < 30 ? '#ef233c' : '#06d6a0';
+        
         state.timerFrame = requestAnimationFrame(tick);
     }
     tick();
