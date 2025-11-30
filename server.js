@@ -12,7 +12,7 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_ID = parseInt(process.env.ADMIN_ID); 
+const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
 // --- RATING & ECONOMY ---
 const RANKS = [
@@ -104,7 +104,7 @@ function updateUserXP(userId, type, difficulty = null) {
     return user;
 }
 
-// --- HELPER: Найти ID по username ---
+// --- HELPER: Find User ---
 function findUserIdByUsername(input) {
     const target = input.toLowerCase().replace('@', '');
     if (/^\d+$/.test(target)) {
@@ -146,7 +146,7 @@ if (bot) {
         const text = (msg.text || '').trim();
         const fromId = msg.from.id;
 
-        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/s') && !text.startsWith('/r') && !text.startsWith('/k') && !text.startsWith('/w')) {
+        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(()=>{});
@@ -176,7 +176,7 @@ if (bot) {
             const user = userDB.get(uid);
             user.coins = parseInt(args[2]);
             userDB.set(uid, user);
-            pushProfileUpdate(uid); // ОБНОВЛЯЕМ КЛИЕНТ
+            pushProfileUpdate(uid);
             bot.sendMessage(chatId, `✅ Монеты игрока ${user.name}: ${user.coins}`);
         }
         else if (cmd === '/reset') {
@@ -211,7 +211,6 @@ if (bot) {
             if (!socketId) return bot.sendMessage(chatId, "❌ Ты не в игре.");
             const room = getRoomBySocketId(socketId);
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "❌ Игра не идет.");
-            
             room.players.forEach(p => { if (p.id !== socketId) p.diceCount = 0; });
             checkEliminationAndContinue(room, { diceCount: 0, isBot: true }, null); 
             bot.sendMessage(chatId, "🏆 Победа присуждена!");
@@ -571,8 +570,10 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     while (room.players[room.currentTurn].diceCount === 0) room.currentTurn = (room.currentTurn + 1) % room.players.length;
     room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
     io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
-    broadcastGameState(room);
+    
+    // ВАЖНО: Сначала запускаем таймер, потом шлем состояние
     resetTurnTimer(room);
+    broadcastGameState(room);
 }
 
 function nextTurn(room) {
@@ -595,7 +596,7 @@ function broadcastGameState(room) {
         })),
         currentBid: room.currentBid, 
         turnDeadline: room.turnDeadline,
-        activeRules: { jokers: room.config.jokers, spot: room.config.spot }
+        activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict }
     });
 }
 
