@@ -10,13 +10,14 @@ let state = {
     username: null, roomId: null,
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30,
-    rules: { jokers: false, spot: false },
-    pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false },
+    rules: { jokers: false, spot: false, strict: false },
+    pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
     coins: 0, inventory: [], equipped: {}
 };
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
+// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -29,7 +30,9 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
+// --- INIT ---
 window.addEventListener('load', () => {
+    // Защита от вечной загрузки
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
         if (loading && loading.classList.contains('active')) {
@@ -180,7 +183,7 @@ bindClick('btn-start-pve', () => {
         options: { 
             dice: state.pve.dice, 
             players: state.pve.bots + 1,
-            jokers: state.pve.jokers, spot: state.pve.spot,
+            jokers: state.pve.jokers, spot: state.pve.spot, strict: state.pve.strict,
             difficulty: state.pve.difficulty
         } 
     });
@@ -193,6 +196,7 @@ bindClick('btn-back-home', () => showScreen('home'));
 window.setTime = (sec) => {
     state.createTime = sec;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
+    // Simple active class toggle logic can be added here if buttons have IDs
 };
 
 window.adjSetting = (type, delta) => {
@@ -217,7 +221,7 @@ bindClick('btn-confirm-create', () => {
         roomId: null, tgUser: userPayload, 
         options: { 
             dice: state.createDice, players: state.createPlayers, time: state.createTime,
-            jokers: state.rules.jokers, spot: state.rules.spot
+            jokers: state.rules.jokers, spot: state.rules.spot, strict: state.rules.strict
         } 
     });
 });
@@ -225,7 +229,7 @@ bindClick('btn-confirm-create', () => {
 window.toggleRule = (rule, isPve = false) => {
     const target = isPve ? state.pve : state.rules;
     target[rule] = !target[rule];
-    const id = isPve ? (rule==='jokers'?'btn-rule-joker-pve':'btn-rule-spot-pve') : (rule==='jokers'?'btn-rule-joker':'btn-rule-spot');
+    const id = isPve ? `btn-rule-${rule}-pve` : `btn-rule-${rule}`;
     const btn = document.getElementById(id);
     if(btn) btn.classList.toggle('active', target[rule]);
 };
@@ -261,20 +265,18 @@ bindClick('btn-home', () => location.reload());
 // --- SOCKETS ---
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
 socket.on('emoteReceived', (data) => {
-    // Находим чип по ID
-    // Используем кавычки для селектора, чтобы спецсимволы в ID (например у ботов) не ломали поиск
+    // Исправленный селектор с кавычками
     const el = document.querySelector(`.player-chip[data-id='${data.id}']`);
     if (el) {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
         
-        // Вычисляем позицию относительно экрана
+        // Позиционирование через JS (надежнее)
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
         b.style.top = (rect.top - 20) + 'px';
         
-        // Добавляем в BODY
         document.body.appendChild(b);
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
@@ -316,6 +318,7 @@ socket.on('gameState', (gs) => {
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
+    if (gs.activeRules.strict) rulesText += '🔒 Строго';
     document.getElementById('active-rules-display').textContent = rulesText;
 
     const bar = document.getElementById('players-bar');
@@ -343,13 +346,15 @@ socket.on('gameState', (gs) => {
     const controls = document.getElementById('game-controls');
     
     const spotBtn = document.getElementById('btn-call-spot');
-    if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule');
-    else spotBtn.classList.add('hidden-rule');
+    if (spotBtn) {
+        if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule');
+        else spotBtn.classList.add('hidden-rule');
+    }
 
     if(myTurn) { 
         controls.classList.remove('hidden'); controls.classList.add('slide-up');
         document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
-        spotBtn.disabled = !gs.currentBid;
+        if(spotBtn) spotBtn.disabled = !gs.currentBid;
         if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     } else {
         controls.classList.add('hidden');
