@@ -1,5 +1,5 @@
 :root {
-  --bg-color: #5D4037; /* Основной цвет дерева */
+  --bg-color: #5D4037;
   --surface: #3d405b; 
   --primary: #ef233c; --secondary: #8d99ae; --accent: #ffb703; 
   --success: #06d6a0; --blue: #118ab2; --text: #edf2f4;
@@ -14,15 +14,11 @@
 /* === ФОН ТАВЕРНЫ === */
 body {
   font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
-  
-  /* Текстура дерева на CSS */
   background-color: #5D4037;
   background-image: 
-    /* Щели между досками */
     repeating-linear-gradient(90deg, transparent 0, transparent 80px, rgba(0,0,0,0.3) 80px, rgba(0,0,0,0.3) 82px),
-    /* Волокна дерева (шум) */
     repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03) 0, transparent 10px);
-  box-shadow: inset 0 0 100px rgba(0,0,0,0.7); /* Виньетка по краям */
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
 }
 
 #app { height: 100%; display: flex; flex-direction: column; }
@@ -30,44 +26,44 @@ body {
 .screen.active { display: flex; }
 .center-content { justify-content: center; align-items: center; }
 
-/* === WAVY TEXT ANIMATION === */
-.title { margin-bottom: 20px; text-align: center; }
+/* === ЗАГОЛОВОК (Адаптивный + Анимация) === */
+.title {
+    font-family: var(--font);
+    /* Автоматически масштабируется от 2.5rem до 4rem в зависимости от ширины экрана */
+    font-size: clamp(2.5rem, 11vw, 4rem);
+    color: var(--accent);
+    line-height: 1.2;
+    text-align: center;
+    text-shadow: 3px 3px 0 #d90429, 5px 5px 0 rgba(0,0,0,0.3);
+    margin-bottom: 30px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap; /* Запрет переноса букв */
+}
 
 .wavy-text span {
     display: inline-block;
-    color: var(--accent);
-    font-size: 4rem;
-    font-weight: 800;
-    text-shadow: 4px 4px 0 #d90429, 6px 6px 0 rgba(0,0,0,0.3);
+    position: relative;
     animation: bounce 2s ease-in-out infinite;
-    /* Начальные повороты для арки */
 }
 
-/* Создаем арку вручную */
-.wavy-text span:nth-child(1) { transform: rotate(-15deg) translateY(10px); animation-delay: 0s; }
-.wavy-text span:nth-child(2) { transform: rotate(-10deg) translateY(5px); animation-delay: 0.1s; }
-.wavy-text span:nth-child(3) { transform: rotate(-5deg) translateY(2px); animation-delay: 0.2s; }
-.wavy-text span:nth-child(4) { transform: rotate(0deg) translateY(0px); animation-delay: 0.3s; }
-.wavy-text span:nth-child(5) { transform: rotate(0deg) translateY(0px); animation-delay: 0.4s; }
-.wavy-text span:nth-child(6) { transform: rotate(5deg) translateY(2px); animation-delay: 0.5s; }
-.wavy-text span:nth-child(7) { transform: rotate(10deg) translateY(5px); animation-delay: 0.6s; }
-.wavy-text span:nth-child(8) { transform: rotate(15deg) translateY(10px); animation-delay: 0.7s; }
+/* Настройки для каждой буквы (Арка) */
+.wavy-text span:nth-child(1) { --rot: -10deg; animation-delay: 0s; top: 10px; }
+.wavy-text span:nth-child(2) { --rot: -6deg;  animation-delay: 0.1s; top: 5px; }
+.wavy-text span:nth-child(3) { --rot: -3deg;  animation-delay: 0.2s; top: 2px; }
+.wavy-text span:nth-child(4) { --rot: 0deg;   animation-delay: 0.3s; top: 0px; }
+.wavy-text span:nth-child(5) { --rot: 0deg;   animation-delay: 0.4s; top: 0px; }
+.wavy-text span:nth-child(6) { --rot: 3deg;   animation-delay: 0.5s; top: 2px; }
+.wavy-text span:nth-child(7) { --rot: 6deg;   animation-delay: 0.6s; top: 5px; }
+.wavy-text span:nth-child(8) { --rot: 10deg;  animation-delay: 0.7s; top: 10px; }
 
 @keyframes bounce {
     0%, 100% { transform: translateY(0) rotate(var(--rot)); }
-    50% { transform: translateY(-10px) rotate(var(--rot)); }
+    50% { transform: translateY(-8px) rotate(var(--rot)); }
 }
-/* Хак, чтобы анимация не сбрасывала поворот */
-.wavy-text span:nth-child(1) { --rot: -15deg; }
-.wavy-text span:nth-child(2) { --rot: -10deg; }
-.wavy-text span:nth-child(3) { --rot: -5deg; }
-.wavy-text span:nth-child(4) { --rot: 0deg; }
-.wavy-text span:nth-child(5) { --rot: 0deg; }
-.wavy-text span:nth-child(6) { --rot: 5deg; }
-.wavy-text span:nth-child(7) { --rot: 10deg; }
-.wavy-text span:nth-child(8) { --rot: 15deg; }
 
-.subtitle { font-family: var(--font); font-size: 2.2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
+.subtitle { font-family: var(--font); font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 
 /* Buttons */
 .btn {
@@ -116,7 +112,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .code-val { font-size: 2.5rem; font-weight: 800; line-height: 1; margin: 5px 0; }
 .code-label { font-size: 0.8rem; font-weight: 700; opacity: 0.7; }
 .code-hint { font-size: 0.7rem; opacity: 0.8; font-weight: 600; }
-.rules-tag { text-align: center; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 10px; display: inline-block; margin-left: 50%; transform: translateX(-50%); }
+.rules-tag { text-align: center; color: var(--secondary); font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 10px; display: inline-block; margin-left: 50%; transform: translateX(-50%); }
 .player-list-scroll { max-height: 300px; overflow-y: auto; }
 .player-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid var(--secondary); }
 .rank-sub { font-size: 0.7rem; color: var(--accent); margin-left: 5px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
@@ -142,7 +138,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .bid-bubble::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: var(--bg-color) transparent transparent transparent; }
 .bid-qty { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
 .bid-face { font-size: 2rem; background: var(--bg-color); color: white; padding: 2px 8px; border-radius: 8px; }
-.game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--white); text-shadow: 1px 1px 0 black; text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
+.game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--text); text-shadow: 1px 1px 0 black; text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
 
 .my-controls-area { width: 100%; }
 .my-dice-panel { text-align: center; margin-bottom: 10px; }
@@ -154,7 +150,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .bid-controls { display: flex; gap: 15px; margin-bottom: 15px; }
 .bid-stepper { flex: 1; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 16px; text-align: center; }
 .bid-stepper label { font-size: 0.65rem; color: var(--secondary); font-weight: 700; display: block; margin-bottom: 4px; }
-.bid-val { font-size: 1.5rem; font-weight: bold; color: white; min-width: 30px; }
+.bid-val { font-size: 1.5rem; font-weight: 800; color: white; min-width: 30px; }
 .dice-face { font-size: 1.5rem; background: white; color: black; border-radius: 6px; padding: 0 6px; font-weight: 800; }
 .main-actions { display: flex; gap: 10px; }
 .main-actions button { margin: 0; padding: 14px; font-size: 1.1rem; }
