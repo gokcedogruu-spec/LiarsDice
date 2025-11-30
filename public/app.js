@@ -1,6 +1,7 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
-    alert("Error: " + message);
+    // Uncomment to debug on mobile
+    // alert("Error: " + message); 
 };
 
 const socket = io();
@@ -29,21 +30,22 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
+// --- LOGIN ---
 window.addEventListener('load', () => {
     if (tg?.initDataUnsafe?.user) {
         state.username = tg.initDataUnsafe.user.first_name;
-        // Удаляем класс актив, так как он есть в HTML по умолчанию
-        const loginScreen = document.getElementById('screen-login');
-        if(loginScreen) loginScreen.classList.remove('active');
+        const loginEl = document.getElementById('screen-login');
+        if(loginEl) loginEl.classList.remove('active');
         loginSuccess();
-    } 
-    // Если телеграма нет, login экран останется висеть (он active в HTML)
+    } else {
+        const loginEl = document.getElementById('screen-login');
+        if(loginEl) loginEl.classList.add('active');
+    }
 });
 
-// Safe binding helper
 function bindClick(id, handler) {
     const el = document.getElementById(id);
-    if(el) el.addEventListener('click', handler);
+    if (el) el.addEventListener('click', handler);
 }
 
 bindClick('btn-login', () => {
@@ -68,7 +70,9 @@ function loginSuccess() {
 }
 
 socket.on('profileUpdate', (data) => {
-    showScreen('home');
+    if(document.getElementById('screen-login')?.classList.contains('active')) {
+        showScreen('home');
+    }
     document.getElementById('user-display').textContent = data.name;
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
@@ -145,7 +149,7 @@ bindClick('btn-shop', () => {
     if(coinEl) coinEl.textContent = state.coins;
     renderShop();
 });
-bindClick('btn-shop-back', () => showScreen('home')); // Исправленный ID
+bindClick('btn-shop-back', () => showScreen('home'));
 
 window.buyItem = (id, price) => {
     if (state.coins >= price) socket.emit('shopBuy', id);
@@ -155,7 +159,7 @@ window.equipItem = (id) => socket.emit('shopEquip', id);
 
 // --- PVE ---
 bindClick('btn-to-pve', () => showScreen('pve-settings'));
-bindClick('btn-pve-back', () => showScreen('home')); // Исправленный ID
+bindClick('btn-pve-back', () => showScreen('home'));
 
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
@@ -275,9 +279,15 @@ socket.on('roomUpdate', (room) => {
                 <span>${p.ready?'✅':'⏳'}</span>
             </div>`;
         });
+        
+        // ИСПРАВЛЕНИЕ: Кнопка видна всегда, если ты создатель
         const me = room.players.find(p => p.id === socket.id);
         const startBtn = document.getElementById('btn-start-game');
-        if(startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
+        if (startBtn) {
+            // Показываем кнопку, если я создатель. 
+            // Сервер сам проверит, достаточно ли игроков, при нажатии.
+            startBtn.style.display = (me?.isCreator) ? 'block' : 'none';
+        }
     }
 });
 socket.on('gameEvent', (evt) => {
@@ -292,7 +302,6 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
-    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
