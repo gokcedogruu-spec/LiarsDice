@@ -12,49 +12,66 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-// Убедились, что все эти ID есть в HTML
+// Перечисляем ВСЕ экраны, которые есть в index.html
 const screens = ['login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
+    // Скрываем все
     screens.forEach(s => {
         const el = document.getElementById(`screen-${s}`);
         if(el) el.classList.remove('active');
     });
+    // Показываем нужный
     const target = document.getElementById(`screen-${name}`);
     if(target) target.classList.add('active');
+    else console.error(`Screen not found: ${name}`);
 }
 
 // --- LOGIN ---
 window.addEventListener('load', () => {
-    if (tg?.initDataUnsafe?.user) {
-        state.username = tg.initDataUnsafe.user.first_name;
-        // Прячем логин, если он был активен
-        document.getElementById('screen-login').classList.remove('active');
-        loginSuccess();
-    } else {
-        document.getElementById('screen-login').classList.add('active');
+    try {
+        if (tg?.initDataUnsafe?.user) {
+            state.username = tg.initDataUnsafe.user.first_name;
+            const loginScreen = document.getElementById('screen-login');
+            if(loginScreen) loginScreen.classList.remove('active');
+            loginSuccess();
+        } else {
+            // Если нет телеграма, показываем логин (он по умолчанию активен в HTML, но на всякий случай)
+            const loginScreen = document.getElementById('screen-login');
+            if(loginScreen) loginScreen.classList.add('active');
+        }
+    } catch (e) {
+        alert("Error loading: " + e.message);
     }
 });
 
 document.getElementById('btn-login').addEventListener('click', () => {
     const val = document.getElementById('input-username').value.trim();
-    if (val) { state.username = val; loginSuccess(); }
+    if (val) { 
+        state.username = val; 
+        // Для браузера генерим фейковый ID
+        socket.tgUserId = 123; 
+        loginSuccess(); 
+    }
 });
 
 function loginSuccess() {
+    // Если мы в браузере, эмулируем юзера
+    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
+
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
-            socket.emit('login', { tgUser: tg?.initDataUnsafe?.user || { id: 123, first_name: state.username }, savedData });
+            socket.emit('login', { tgUser: userPayload, savedData });
         });
     } else {
-        socket.emit('login', { tgUser: { id: 123, first_name: state.username }, savedData: null });
+        socket.emit('login', { tgUser: userPayload, savedData: null });
     }
 }
 
 socket.on('profileUpdate', (data) => {
-    // Если мы на логине или в меню - обновляем и показываем меню
-    if(document.getElementById('screen-login').classList.contains('active') || document.getElementById('screen-home').classList.contains('active')) {
+    // Если мы еще на логине, переходим в меню
+    if(document.getElementById('screen-login')?.classList.contains('active')) {
         showScreen('home');
     }
     
@@ -64,8 +81,8 @@ socket.on('profileUpdate', (data) => {
     document.getElementById('user-coins').textContent = data.coins;
     
     state.coins = data.coins;
-    state.inventory = data.inventory;
-    state.equipped = data.equipped;
+    state.inventory = data.inventory || [];
+    state.equipped = data.equipped || {};
 
     let rankIcon = '🧹';
     if (data.rankName === 'Юнга') rankIcon = '⚓';
@@ -106,12 +123,13 @@ let currentShopTab = 'all';
 window.filterShop = (type) => {
     currentShopTab = type;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    // Нужно бы добавить id кнопкам табов, но пока просто ререндерим
+    // Add active class logic if needed
     renderShop();
 };
 
 function renderShop() {
     const grid = document.getElementById('shop-items');
+    if(!grid) return;
     grid.innerHTML = '';
     
     for (const [id, meta] of Object.entries(ITEMS_META)) {
@@ -136,7 +154,8 @@ function renderShop() {
 
 document.getElementById('btn-shop').addEventListener('click', () => {
     showScreen('shop');
-    document.getElementById('shop-coins').textContent = state.coins;
+    const coinEl = document.getElementById('shop-coins');
+    if(coinEl) coinEl.textContent = state.coins;
     renderShop();
 });
 
@@ -152,14 +171,15 @@ document.getElementById('btn-to-pve').addEventListener('click', () => showScreen
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
-    // Визуально обновить кнопки - нужен ID, но пока пропустим
     const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
-    document.getElementById('diff-desc').textContent = desc[diff];
+    const descEl = document.getElementById('diff-desc');
+    if(descEl) descEl.textContent = desc[diff];
 };
 
 document.getElementById('btn-start-pve').addEventListener('click', () => {
+    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     socket.emit('joinOrCreateRoom', { 
-        roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123}, 
+        roomId: null, tgUser: userPayload, 
         mode: 'pve',
         options: { 
             dice: state.pve.dice, 
@@ -176,7 +196,7 @@ document.getElementById('btn-back-home').addEventListener('click', () => showScr
 
 window.setTime = (sec) => {
     state.createTime = sec;
-    // Visual update logic omitted for brevity
+    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
 };
 
 window.adjSetting = (type, delta) => {
@@ -187,17 +207,20 @@ window.adjSetting = (type, delta) => {
     } 
     else if (type === 'players') {
         state.createPlayers = Math.max(2, Math.min(10, state.createPlayers + delta));
-        document.getElementById('set-players').textContent = state.createPlayers;
+        const el = document.getElementById('set-players');
+        if(el) el.textContent = state.createPlayers;
     }
     else if (type === 'bots') {
         state.pve.bots = Math.max(1, Math.min(9, state.pve.bots + delta));
-        document.getElementById('pve-bots').textContent = state.pve.bots;
+        const el = document.getElementById('pve-bots');
+        if(el) el.textContent = state.pve.bots;
     }
 };
 
 document.getElementById('btn-confirm-create').addEventListener('click', () => {
+    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     socket.emit('joinOrCreateRoom', { 
-        roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123}, 
+        roomId: null, tgUser: userPayload, 
         options: { 
             dice: state.createDice, players: state.createPlayers, time: state.createTime,
             jokers: state.rules.jokers, spot: state.rules.spot
@@ -209,12 +232,15 @@ window.toggleRule = (rule, isPve = false) => {
     const target = isPve ? state.pve : state.rules;
     target[rule] = !target[rule];
     const id = isPve ? (rule==='jokers'?'btn-rule-joker-pve':'btn-rule-spot-pve') : (rule==='jokers'?'btn-rule-joker':'btn-rule-spot');
-    document.getElementById(id).classList.toggle('active', target[rule]);
+    const btn = document.getElementById(id);
+    if(btn) btn.classList.toggle('active', target[rule]);
 };
 
 // --- JOIN & GAME ---
 document.getElementById('btn-join-room').addEventListener('click', () => {
-    const code = prompt("Код:"); if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: tg?.initDataUnsafe?.user || {id:123} });
+    const code = prompt("Код:"); 
+    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
+    if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: userPayload });
 });
 document.getElementById('share-btn').addEventListener('click', () => {
     const code = state.roomId;
@@ -238,7 +264,7 @@ document.getElementById('btn-call-spot').addEventListener('click', () => socket.
 document.getElementById('btn-restart').addEventListener('click', () => socket.emit('requestRestart'));
 document.getElementById('btn-home').addEventListener('click', () => location.reload());
 
-// --- SOCKETS & EVENTS ---
+// --- SOCKETS ---
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
 socket.on('emoteReceived', (data) => {
     const el = document.querySelector(`.player-chip[data-id="${data.id}"]`);
