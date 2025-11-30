@@ -12,9 +12,9 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_ID = parseInt(process.env.ADMIN_ID); // Убедись, что в .env есть ADMIN_ID=твои_цифры
+const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
-// --- RATING & ECONOMY ---
+// --- РАНГИ ---
 const RANKS = [
     { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
@@ -107,12 +107,10 @@ function updateUserXP(userId, type, difficulty = null) {
 // --- HELPER: Найти ID по username ---
 function findUserIdByUsername(input) {
     const target = input.toLowerCase().replace('@', '');
-    // Если ввели ID
     if (/^\d+$/.test(target)) {
         const idNum = parseInt(target);
         if (userDB.has(idNum)) return idNum;
     }
-    // Если ввели username
     for (const [uid, uData] of userDB.entries()) {
         if (uData.username === target) return uid;
     }
@@ -120,12 +118,10 @@ function findUserIdByUsername(input) {
 }
 
 function findSocketIdByUserId(uid) {
-    // Ищем сокет в комнатах (если игрок в игре)
     for (const [roomId, room] of rooms) {
         const p = room.players.find(pl => pl.tgId === uid);
         if (p) return p.id;
     }
-    // Или можно было бы хранить маппинг, но так тоже норм
     return null;
 }
 
@@ -150,53 +146,44 @@ if (bot) {
         const text = (msg.text || '').trim();
         const fromId = msg.from.id;
 
-        // Обычная команда
-        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/s')) {
+        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/s') && !text.startsWith('/r') && !text.startsWith('/k') && !text.startsWith('/w')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(()=>{});
             return;
         }
 
-        // --- ADMIN ONLY ---
+        // ADMIN ONLY
         if (fromId !== ADMIN_ID) return;
 
         const args = text.split(' ');
         const cmd = args[0].toLowerCase();
 
-        // 1. /setxp @user 5000
         if (cmd === '/setxp') {
             if (args.length < 3) return bot.sendMessage(chatId, "⚠️ /setxp @user 5000");
             const uid = findUserIdByUsername(args[1]);
-            if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден (пусть зайдет в игру).");
-            
+            if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
             const user = userDB.get(uid);
             user.xp = parseInt(args[2]);
-            if (user.xp >= 75000) user.streak = 100; // Бонус для Легенды
+            if (user.xp >= 75000) user.streak = 100;
             userDB.set(uid, user);
             pushProfileUpdate(uid);
             bot.sendMessage(chatId, `✅ XP игрока ${user.name}: ${user.xp}`);
         }
-
-        // 2. /setcoins @user 1000
         else if (cmd === '/setcoins') {
             if (args.length < 3) return bot.sendMessage(chatId, "⚠️ /setcoins @user 1000");
             const uid = findUserIdByUsername(args[1]);
             if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
-            
             const user = userDB.get(uid);
             user.coins = parseInt(args[2]);
             userDB.set(uid, user);
             pushProfileUpdate(uid);
             bot.sendMessage(chatId, `✅ Монеты игрока ${user.name}: ${user.coins}`);
         }
-
-        // 3. /reset @user
         else if (cmd === '/reset') {
             if (args.length < 2) return bot.sendMessage(chatId, "⚠️ /reset @user");
             const uid = findUserIdByUsername(args[1]);
             if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
-            
             const user = userDB.get(uid);
             user.xp = 0; user.coins = 0; user.wins = 0; user.matches = 0; user.streak = 0;
             user.inventory = ['skin_white', 'bg_wood', 'frame_default'];
@@ -205,49 +192,31 @@ if (bot) {
             pushProfileUpdate(uid);
             bot.sendMessage(chatId, `♻️ Игрок ${user.name} обнулен.`);
         }
-
-        // 4. /kick @user
         else if (cmd === '/kick') {
             if (args.length < 2) return bot.sendMessage(chatId, "⚠️ /kick @user");
             const uid = findUserIdByUsername(args[1]);
             if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
-            
             const socketId = findSocketIdByUserId(uid);
             if (socketId) {
-                // Ищем комнату
                 const room = getRoomBySocketId(socketId);
                 if (room) {
-                    leaveRoom({ id: socketId }, room); // Эмулируем выход
-                    // Отправляем клиенту сообщение, чтобы его выкинуло в меню
+                    leaveRoom({ id: socketId }, room);
                     io.to(socketId).emit('errorMsg', 'Админ выкинул вас со стола!');
-                    io.to(socketId).emit('profileUpdate', userDB.get(uid)); // Триггер перехода в меню (костыль, но сработает)
+                    pushProfileUpdate(uid);
                     bot.sendMessage(chatId, `👢 Игрок ${userDB.get(uid).name} кикнут.`);
-                } else {
-                    bot.sendMessage(chatId, "⚠️ Игрок онлайн, но не в комнате.");
-                }
-            } else {
-                bot.sendMessage(chatId, "⚠️ Игрок оффлайн.");
-            }
+                } else bot.sendMessage(chatId, "⚠️ Игрок не в комнате.");
+            } else bot.sendMessage(chatId, "⚠️ Игрок оффлайн.");
         }
-
-        // 5. /win (Моментальная победа для СЕБЯ)
         else if (cmd === '/win') {
-            const socketId = findSocketIdByUserId(ADMIN_ID); // Ищем админа в игре
+            const socketId = findSocketIdByUserId(ADMIN_ID);
             if (!socketId) return bot.sendMessage(chatId, "❌ Ты не в игре.");
-            
             const room = getRoomBySocketId(socketId);
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "❌ Игра не идет.");
-
-            // Находим админа в комнате
-            const adminPlayer = room.players.find(p => p.id === socketId);
             
-            // Убиваем всех остальных (diceCount = 0)
-            room.players.forEach(p => {
-                if (p.id !== socketId) p.diceCount = 0;
-            });
-
-            // Вызываем проверку, которая увидит, что остался 1 живой (Админ) и присудит победу
-            checkEliminationAndContinue(room, { diceCount: 0, isBot: true }, null); // Фейковый лузер, чтобы триггернуть
+            // Убиваем всех кроме админа
+            room.players.forEach(p => { if (p.id !== socketId) p.diceCount = 0; });
+            // Триггерим логику окончания
+            checkEliminationAndContinue(room, { diceCount: 0, isBot: true }, null); 
             bot.sendMessage(chatId, "🏆 Победа присуждена!");
         }
     });
@@ -255,7 +224,6 @@ if (bot) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Game Logic ---
 const rooms = new Map(); 
 function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
@@ -283,8 +251,7 @@ function handleTimeout(room) {
     checkEliminationAndContinue(room, loser, null);
 }
 
-// ... (Bot AI: handleBotMove, makeBidInternal, handleCall - без изменений, скопируй из прошлого ответа или оставь) ...
-// Чтобы код влез, я сократил AI часть, она такая же, как была.
+// Bot AI
 function handleBotMove(room) {
     if (room.status !== 'PLAYING') return;
     const bot = room.players[room.currentTurn];
