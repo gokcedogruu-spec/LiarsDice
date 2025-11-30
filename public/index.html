@@ -6,10 +6,10 @@
     <title>Костяшки</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Шрифты: Chewy для заголовков, Fredoka для текста -->
+    <!-- Fredoka поддерживает кириллицу и выглядит очень мультяшно в жирном начертании -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Fredoka:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -30,7 +30,8 @@
 
         <!-- HOME -->
         <div id="screen-home" class="screen center-content">
-            <h1 class="title">МЕНЮ</h1>
+            <!-- ИСПРАВЛЕНО ЗДЕСЬ: -->
+            <h1 class="title">КОСТЯШКИ</h1>
             
             <div class="profile-card pop-in">
                 <div class="rank-icon-box">
@@ -68,7 +69,7 @@
                     <label>Игроков</label>
                     <div class="stepper-row">
                         <button class="btn-mini" onclick="adjSetting('players', -1)">-</button>
-                        <span id="set-players" class="stepper-val">10</span>
+                        <span id="set-players" class="val-text">10</span>
                         <button class="btn-mini" onclick="adjSetting('players', 1)">+</button>
                     </div>
                 </div>
