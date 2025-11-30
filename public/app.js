@@ -17,6 +17,7 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
+// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -107,6 +108,12 @@ socket.on('profileUpdate', (data) => {
             inventory: data.inventory, equipped: data.equipped 
         }));
     }
+
+    // ОБНОВЛЯЕМ МАГАЗИН (если он открыт)
+    if (document.getElementById('screen-shop').classList.contains('active')) {
+        document.getElementById('shop-coins').textContent = state.coins;
+        renderShop();
+    }
 });
 
 // --- SHOP ---
@@ -184,7 +191,7 @@ bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
-    // Подсветка для PvE (ищем только в pve контейнере)
+    // Ищем кнопки только внутри блока сложности
     const container = document.querySelector('#screen-pve-settings .time-selector');
     if (container) {
         Array.from(container.children).forEach(btn => {
@@ -216,7 +223,6 @@ bindClick('btn-back-home', () => showScreen('home'));
 
 window.setTime = (sec) => {
     state.createTime = sec;
-    // Подсветка для мультиплеера
     const container = document.querySelector('#screen-create-settings .time-selector');
     if (container) {
         Array.from(container.children).forEach(btn => {
@@ -256,12 +262,12 @@ bindClick('btn-confirm-create', () => {
 window.toggleRule = (rule, isPve = false) => {
     const target = isPve ? state.pve : state.rules;
     target[rule] = !target[rule];
-    const id = isPve ? (rule==='jokers'?'btn-rule-joker-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-joker':`btn-rule-${rule}`);
+    const id = isPve ? (rule==='jokers'?'btn-rule-jokers-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-jokers':`btn-rule-${rule}`);
     const btn = document.getElementById(id);
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- JOIN & GAME ---
+// --- GAME ---
 bindClick('btn-join-room', () => {
     const code = prompt("Код:"); 
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
@@ -354,15 +360,13 @@ socket.on('gameState', (gs) => {
         </div>
     `}).join('');
 
-    const me = gs.players.find(p => p.id === socket.id);
-    const myTurn = me?.isTurn;
-    const controls = document.getElementById('game-controls');
-    
     const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
         bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
+        const me = gs.players.find(p => p.id === socket.id);
+        const myTurn = me?.isTurn;
         if (myTurn) {
             bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`;
         } else {
@@ -373,6 +377,10 @@ socket.on('gameState', (gs) => {
         state.bidQty = 1; state.bidVal = 2; updateInputs();
     }
 
+    const me = gs.players.find(p => p.id === socket.id);
+    const myTurn = me?.isTurn;
+    const controls = document.getElementById('game-controls');
+    
     const spotBtn = document.getElementById('btn-call-spot');
     if (spotBtn) {
         if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule');
@@ -404,7 +412,7 @@ function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
     const bar = document.querySelector('.timer-progress'); if (!bar) return;
     
-    // Используем серверное оставшееся время + локальный старт
+    // Используем серверное оставшееся время
     const endTime = Date.now() + remaining; 
 
     function tick() {
