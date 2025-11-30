@@ -13,10 +13,11 @@
 <body>
     <div id="app">
         
-        <!-- 1. LOGIN -->
+        <!-- LOGIN -->
         <div id="screen-login" class="screen center-content">
             <div class="logo-container pop-in">
                 <div class="logo-icon">🎲</div>
+                <!-- Анимированный заголовок -->
                 <h1 class="title wavy-text">
                     <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
                 </h1>
@@ -27,7 +28,7 @@
             </div>
         </div>
 
-        <!-- 2. HOME -->
+        <!-- HOME -->
         <div id="screen-home" class="screen center-content">
             <h1 class="title wavy-text">
                 <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
@@ -39,7 +40,6 @@
                 </div>
                 <h2 id="user-display">...</h2>
                 <div class="rank-label" id="rank-display">...</div>
-                <div class="coins-row">💰 <span id="user-coins">0</span></div>
                 <div id="win-streak" class="streak-label">Серия: 0 🔥</div>
                 
                 <div class="xp-track">
@@ -50,67 +50,11 @@
 
             <div class="menu-buttons slide-up-delay">
                 <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
-                <button id="btn-to-pve" class="btn btn-red">ИГРАТЬ С БОТОМ</button>
                 <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
-                <button id="btn-shop" class="btn btn-green" style="margin-top: 10px;">ЛАВКА</button>
             </div>
         </div>
 
-        <!-- 3. SHOP -->
-        <div id="screen-shop" class="screen center-content">
-            <h2 class="title">ЛАВКА</h2>
-            <div class="shop-balance">💰 <span id="shop-coins">0</span></div>
-            <div class="shop-tabs">
-                <button id="tab-all" class="tab-btn active" onclick="filterShop('all')">ВСЁ</button>
-                <button id="tab-skins" class="tab-btn" onclick="filterShop('skins')">КОСТИ</button>
-                <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">РАМКИ</button>
-            </div>
-            <div class="shop-grid" id="shop-items"></div>
-            <button id="btn-shop-back" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
-        </div>
-
-        <!-- 4. PVE SETTINGS -->
-        <div id="screen-pve-settings" class="screen center-content">
-            <h2 class="subtitle">БИТВА С БОТОМ</h2>
-            <div class="card slide-up">
-                <div class="setting-group">
-                    <label>Сложность:</label>
-                    <div class="time-selector">
-                        <button class="btn-time active" onclick="setDiff('easy')">ЛЕГКО</button>
-                        <button class="btn-time" onclick="setDiff('medium')">СРЕДНЕ</button>
-                        <button class="btn-time" onclick="setDiff('pirate')">ПИРАТ</button>
-                    </div>
-                    <div id="diff-desc" style="text-align:center; font-size:0.8rem; margin-top:5px; opacity:0.7; font-weight:bold;">Без наград</div>
-                </div>
-                
-                <div class="setting-group">
-                    <label>Кубиков</label>
-                    <div class="stepper-row">
-                        <button class="btn-mini" onclick="adjSetting('dice', -1)">-</button>
-                        <span id="pve-dice" class="stepper-val">5</span>
-                        <button class="btn-mini" onclick="adjSetting('dice', 1)">+</button>
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <label>Ботов</label>
-                    <div class="stepper-row">
-                        <button class="btn-mini" onclick="adjSetting('bots', -1)">-</button>
-                        <span id="pve-bots" class="stepper-val">3</span>
-                        <button class="btn-mini" onclick="adjSetting('bots', 1)">+</button>
-                    </div>
-                </div>
-
-                <div class="setting-group" style="display: flex; gap: 10px;">
-                    <button id="btn-rule-joker-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
-                    <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
-                </div>
-
-                <button id="btn-start-pve" class="btn btn-red" style="margin-top: 20px;">В БОЙ!</button>
-                <button id="btn-pve-back" class="btn btn-gray">НАЗАД</button>
-            </div>
-        </div>
-
-        <!-- 5. MULTIPLAYER SETTINGS -->
+        <!-- SETTINGS -->
         <div id="screen-create-settings" class="screen center-content">
             <h2 class="subtitle">НАСТРОЙКИ</h2>
             <div class="card slide-up">
@@ -126,7 +70,7 @@
                     <label>Игроков</label>
                     <div class="stepper-row">
                         <button class="btn-mini" onclick="adjSetting('players', -1)">-</button>
-                        <span id="set-players" class="stepper-val">10</span>
+                        <span id="set-players" class="val-text">10</span>
                         <button class="btn-mini" onclick="adjSetting('players', 1)">+</button>
                     </div>
                 </div>
@@ -138,18 +82,12 @@
                         <button class="btn-time" onclick="setTime(60)">60с</button>
                     </div>
                 </div>
-                
-                <div class="setting-group" style="display: flex; gap: 10px;">
-                    <button id="btn-rule-joker" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
-                    <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
-                </div>
-
                 <button id="btn-confirm-create" class="btn btn-green" style="margin-top: 20px;">СОЗДАТЬ</button>
                 <button id="btn-back-home" class="btn btn-gray">НАЗАД</button>
             </div>
         </div>
 
-        <!-- 6. LOBBY -->
+        <!-- LOBBY -->
         <div id="screen-lobby" class="screen">
             <div class="header slide-down">
                 <div class="room-code-card" id="share-btn">
@@ -169,7 +107,7 @@
             </div>
         </div>
 
-        <!-- 7. GAME -->
+        <!-- GAME -->
         <div id="screen-game" class="screen game-layout">
             <div class="rivals-bar-container">
                 <div id="players-bar" class="rivals-row"></div>
@@ -179,20 +117,10 @@
                     <span class="timer-icon">⏳</span>
                     <div class="timer-track"><div class="timer-progress"></div></div>
                 </div>
-                <div id="active-rules-display" style="margin-bottom: 5px; font-size: 0.8rem; opacity: 0.7; font-weight: bold; text-shadow: 1px 1px 0 black;"></div>
-
                 <div class="bid-bubble pop-in" id="current-bid-display">...</div>
                 <div id="game-log" class="game-log-box"></div>
             </div>
             <div class="my-controls-area slide-up">
-                <div class="emotes-bar">
-                    <button onclick="sendEmote('😂')">😂</button>
-                    <button onclick="sendEmote('😡')">😡</button>
-                    <button onclick="sendEmote('🤔')">🤔</button>
-                    <button onclick="sendEmote('🏴‍☠️')">🏴‍☠️</button>
-                    <button onclick="sendEmote('🤡')">🤡</button>
-                </div>
-
                 <div class="my-dice-panel">
                     <div class="panel-label">МОИ КОСТИ</div>
                     <div id="my-dice" class="my-dice-row"></div>
@@ -219,13 +147,12 @@
                     <div class="main-actions">
                         <button id="btn-make-bid" class="btn btn-orange">СТАВКА</button>
                         <button id="btn-call-bluff" class="btn btn-red">НЕ ВЕРЮ!</button>
-                        <button id="btn-call-spot" class="btn btn-blue">В ТОЧКУ</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 8. RESULT -->
+        <!-- RESULT -->
         <div id="screen-result" class="screen center-content">
             <div class="pop-in">
                 <h1 class="title wavy-text">
