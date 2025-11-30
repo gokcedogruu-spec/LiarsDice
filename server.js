@@ -12,18 +12,19 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
+// Читаем ID админа из настроек
+const ADMIN_ID = parseInt(process.env.ADMIN_ID); 
 const TURN_DURATION_MS = 30000; 
 
 // --- RATING SYSTEM ---
 const RANKS = [
-    { name: "Салага", min: 0 }, // Заменили название
+    { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
     { name: "Матрос", min: 1500 },
     { name: "Старший матрос", min: 5000 },
     { name: "Боцман", min: 10000 },
     { name: "Первый помощник", min: 25000, penalty: 30 },
     { name: "Капитан", min: 50000, penalty: 60 },
-    // Новый высший ранг:
     { name: "Легенда морей", min: 50000, reqStreak: 100, penalty: 100 } 
 ];
 
@@ -50,18 +51,14 @@ function syncUserData(username, savedData) {
 function getRankInfo(xp, streak) {
     let current = RANKS[0];
     let next = null;
-    
     for (let i = 0; i < RANKS.length; i++) {
         const r = RANKS[i];
         let match = false;
-        
-        // Уникальное условие для Легенды
         if (r.name === "Легенда морей") {
             if (xp >= r.min && streak >= r.reqStreak) match = true;
         } else {
             if (xp >= r.min) match = true;
         }
-        
         if (match) {
             current = r;
             next = RANKS[i+1] || null;
@@ -77,14 +74,14 @@ function updateUserXP(username, type) {
 
     if (type === 'win_game') {
         user.matches++; user.wins++; user.streak++;
-        user.xp += 65; // БЫЛО 15, СТАЛО 65 (+50 бонуса)
+        user.xp += 65;
     } 
     else if (type === 'lose_game') {
         user.matches++; user.streak = 0;
         if (currentRank.penalty) user.xp -= currentRank.penalty;
     }
     else if (type === 'kill_captain') {
-        user.xp += 150; // Бонус за убийство капитана тоже поднял
+        user.xp += 150;
     }
 
     if (user.xp < 0) user.xp = 0;
@@ -92,17 +89,64 @@ function updateUserXP(username, type) {
     return user;
 }
 
-// --- Bot ---
+// --- Bot & Admin Panel ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     bot.on('message', (msg) => {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
-        if (text.toLowerCase().includes('/start')) {
-            // !!! ССЫЛКА !!!
+        const userId = msg.from.id; // Кто пишет
+
+        // 1. Обычная команда старта
+        if (text.toLowerCase().startsWith('/start')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(e=>{});
+            return;
+        }
+
+        // 2. АДМИНСКИЙ ЧИТ-КОД: /setxp Имя Опыт
+        // Пример: /setxp Alex 55000
+        if (userId === ADMIN_ID && text.startsWith('/setxp')) {
+            const parts = text.split(' ');
+            if (parts.length < 3) {
+                bot.sendMessage(chatId, "⚠️ Используй: `/setxp Имя Опыт`", { parse_mode: "Markdown" });
+                return;
+            }
+            
+            const targetName = parts[1]; // Имя игрока (как в Телеграм)
+            const amount = parseInt(parts[2]); // Сколько дать опыта
+
+            // Берем данные или создаем новые
+            let user = userDB.get(targetName);
+            if (!user) user = { xp: 0, matches: 0, wins: 0, streak: 0 };
+            
+            user.xp = amount;
+            
+            // Если дали много опыта (на капитана+), накрутим стрик, чтобы ранг сразу применился
+            if (amount >= 50000) user.streak = 100; 
+
+            userDB.set(targetName, user);
+
+            // --- МГНОВЕННОЕ ОБНОВЛЕНИЕ В ИГРЕ ---
+            // Ищем сокет этого игрока, если он онлайн
+            let socketFound = false;
+            for (const [roomId, room] of rooms) {
+                const p = room.players.find(pl => pl.name === targetName);
+                if (p) {
+                    const rInfo = getRankInfo(user.xp, user.streak);
+                    // Отправляем обновление клиенту
+                    io.to(p.id).emit('profileUpdate', { 
+                        ...user, 
+                        rankName: rInfo.current.name, 
+                        nextRankXP: rInfo.next?.min 
+                    });
+                    socketFound = true;
+                }
+            }
+
+            const status = socketFound ? " (Онлайн, обновлено)" : " (Оффлайн, сохранено)";
+            bot.sendMessage(chatId, `✅ <b>${targetName}</b> теперь имеет <b>${amount} XP</b>${status}.`, { parse_mode: "HTML" });
         }
     });
 }
@@ -227,8 +271,7 @@ io.on('connection', (socket) => {
         }
 
         io.to(r.id).emit('roundResult', { message: msg });
-        loser.diceCount--; // Или = 0, если хотим убивать за ошибку сразу (пока оставим -1)
-        
+        loser.diceCount--; 
         setTimeout(() => checkEliminationAndContinue(r, loser, winnerOfRound), 4000);
     });
 
