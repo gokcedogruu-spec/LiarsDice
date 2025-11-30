@@ -1,42 +1,73 @@
 :root {
-  --bg-color: #2b2d42; --surface: #3d405b; --primary: #ef233c;
-  --secondary: #8d99ae; --accent: #ffb703; --success: #06d6a0;
-  --blue: #118ab2; --text: #edf2f4;
+  --bg-color: #5D4037; /* Основной цвет дерева */
+  --surface: #3d405b; 
+  --primary: #ef233c; --secondary: #8d99ae; --accent: #ffb703; 
+  --success: #06d6a0; --blue: #118ab2; --text: #edf2f4;
   
-  /* НОВЫЙ ШРИФТ */
   --font: 'Shantell Sans', sans-serif;
-  
   --radius: 20px;
-  --shadow-card: 0px 8px 20px rgba(0,0,0,0.4);
+  --shadow-card: 0px 8px 20px rgba(0,0,0,0.5);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
-body { background-color: var(--bg-color); color: var(--text); font-family: var(--font); height: 100vh; overflow: hidden; }
+
+/* === ФОН ТАВЕРНЫ === */
+body {
+  font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
+  
+  /* Текстура дерева на CSS */
+  background-color: #5D4037;
+  background-image: 
+    /* Щели между досками */
+    repeating-linear-gradient(90deg, transparent 0, transparent 80px, rgba(0,0,0,0.3) 80px, rgba(0,0,0,0.3) 82px),
+    /* Волокна дерева (шум) */
+    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03) 0, transparent 10px);
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.7); /* Виньетка по краям */
+}
+
 #app { height: 100%; display: flex; flex-direction: column; }
 .screen { display: none; height: 100%; padding: 15px; flex-direction: column; }
 .screen.active { display: flex; }
 .center-content { justify-content: center; align-items: center; }
 
-/* Typography */
-.title {
-    font-family: var(--font);
-    font-size: 4rem; /* Чуть меньше, Shantell широкий */
+/* === WAVY TEXT ANIMATION === */
+.title { margin-bottom: 20px; text-align: center; }
+
+.wavy-text span {
+    display: inline-block;
     color: var(--accent);
-    line-height: 0.9;
-    text-align: center;
-    text-shadow: 4px 4px 0px #d90429;
-    margin-bottom: 20px;
-    font-weight: 800; /* Extra Bold */
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 4rem;
+    font-weight: 800;
+    text-shadow: 4px 4px 0 #d90429, 6px 6px 0 rgba(0,0,0,0.3);
+    animation: bounce 2s ease-in-out infinite;
+    /* Начальные повороты для арки */
 }
-.subtitle { 
-    font-family: var(--font); 
-    font-size: 2.2rem; 
-    color: var(--text); 
-    margin-bottom: 15px;
-    font-weight: 700; 
+
+/* Создаем арку вручную */
+.wavy-text span:nth-child(1) { transform: rotate(-15deg) translateY(10px); animation-delay: 0s; }
+.wavy-text span:nth-child(2) { transform: rotate(-10deg) translateY(5px); animation-delay: 0.1s; }
+.wavy-text span:nth-child(3) { transform: rotate(-5deg) translateY(2px); animation-delay: 0.2s; }
+.wavy-text span:nth-child(4) { transform: rotate(0deg) translateY(0px); animation-delay: 0.3s; }
+.wavy-text span:nth-child(5) { transform: rotate(0deg) translateY(0px); animation-delay: 0.4s; }
+.wavy-text span:nth-child(6) { transform: rotate(5deg) translateY(2px); animation-delay: 0.5s; }
+.wavy-text span:nth-child(7) { transform: rotate(10deg) translateY(5px); animation-delay: 0.6s; }
+.wavy-text span:nth-child(8) { transform: rotate(15deg) translateY(10px); animation-delay: 0.7s; }
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0) rotate(var(--rot)); }
+    50% { transform: translateY(-10px) rotate(var(--rot)); }
 }
+/* Хак, чтобы анимация не сбрасывала поворот */
+.wavy-text span:nth-child(1) { --rot: -15deg; }
+.wavy-text span:nth-child(2) { --rot: -10deg; }
+.wavy-text span:nth-child(3) { --rot: -5deg; }
+.wavy-text span:nth-child(4) { --rot: 0deg; }
+.wavy-text span:nth-child(5) { --rot: 0deg; }
+.wavy-text span:nth-child(6) { --rot: 5deg; }
+.wavy-text span:nth-child(7) { --rot: 10deg; }
+.wavy-text span:nth-child(8) { --rot: 15deg; }
+
+.subtitle { font-family: var(--font); font-size: 2.2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 
 /* Buttons */
 .btn {
@@ -44,6 +75,7 @@ body { background-color: var(--bg-color); color: var(--text); font-family: var(-
     font-family: var(--font); font-size: 1.3rem; font-weight: 700;
     cursor: pointer; margin-top: 12px; transition: transform 0.1s;
     text-transform: uppercase; letter-spacing: 1px;
+    border: 2px solid rgba(255,255,255,0.1);
 }
 .btn:active { transform: translateY(6px); box-shadow: none !important; }
 .btn-primary { background: var(--primary); color: white; box-shadow: 0 6px 0 #d90429; }
@@ -61,7 +93,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 
 /* Profile */
 .profile-card { background: var(--surface); border-radius: 30px; padding: 20px; width: 100%; max-width: 320px; text-align: center; margin-bottom: 20px; border: 4px solid var(--blue); box-shadow: var(--shadow-card); position: relative; margin-top: 40px; }
-.rank-icon-box { width: 80px; height: 80px; background: var(--bg-color); border-radius: 50%; margin: -60px auto 10px; display: flex; justify-content: center; align-items: center; border: 4px solid var(--blue); }
+.rank-icon-box { width: 80px; height: 80px; background: var(--bg-color); border-radius: 50%; margin: -60px auto 10px; display: flex; justify-content: center; align-items: center; border: 4px solid var(--blue); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 .rank-emoji { font-size: 3rem; }
 .rank-label { background: var(--blue); color: white; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; }
 .streak-label { color: var(--primary); font-weight: 800; margin-bottom: 5px; font-size: 0.9rem; }
@@ -84,7 +116,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .code-val { font-size: 2.5rem; font-weight: 800; line-height: 1; margin: 5px 0; }
 .code-label { font-size: 0.8rem; font-weight: 700; opacity: 0.7; }
 .code-hint { font-size: 0.7rem; opacity: 0.8; font-weight: 600; }
-.rules-tag { text-align: center; color: var(--secondary); font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; }
+.rules-tag { text-align: center; color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-bottom: 10px; font-weight: 600; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 10px; display: inline-block; margin-left: 50%; transform: translateX(-50%); }
 .player-list-scroll { max-height: 300px; overflow-y: auto; }
 .player-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid var(--secondary); }
 .rank-sub { font-size: 0.7rem; color: var(--accent); margin-left: 5px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
@@ -93,8 +125,8 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .game-layout { padding: 10px; }
 .rivals-bar-container { background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; margin-bottom: 10px; }
 .rivals-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
-.player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; }
-.player-chip b { display: block; font-size: 0.7rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+.player-chip b { display: block; font-size: 0.7rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-chip .rank-game { font-size: 0.6rem; color: var(--secondary); display: block; line-height: 1; margin-top: 2px; font-weight: 700; }
 .player-chip .dice-count { font-size: 0.9rem; font-weight: 800; color: white; margin-top: 2px; }
 .player-chip.turn { background: var(--text); border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 4px 0 var(--accent); }
@@ -110,11 +142,11 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .bid-bubble::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: var(--bg-color) transparent transparent transparent; }
 .bid-qty { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
 .bid-face { font-size: 2rem; background: var(--bg-color); color: white; padding: 2px 8px; border-radius: 8px; }
-.game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--secondary); text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
+.game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--white); text-shadow: 1px 1px 0 black; text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
 
 .my-controls-area { width: 100%; }
 .my-dice-panel { text-align: center; margin-bottom: 10px; }
-.panel-label { font-size: 0.7rem; color: var(--secondary); font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; }
+.panel-label { font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; text-shadow: 1px 1px 0 black; }
 .my-dice-row { display: flex; justify-content: center; gap: 8px; }
 .die { width: 45px; height: 45px; background: white; color: black; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 1.8rem; font-weight: 800; box-shadow: 0 4px 0 #bbb; border: 2px solid #eee; }
 .action-panel { background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
@@ -122,7 +154,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .bid-controls { display: flex; gap: 15px; margin-bottom: 15px; }
 .bid-stepper { flex: 1; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 16px; text-align: center; }
 .bid-stepper label { font-size: 0.65rem; color: var(--secondary); font-weight: 700; display: block; margin-bottom: 4px; }
-.bid-val { font-size: 1.5rem; font-weight: 800; color: white; min-width: 30px; }
+.bid-val { font-size: 1.5rem; font-weight: bold; color: white; min-width: 30px; }
 .dice-face { font-size: 1.5rem; background: white; color: black; border-radius: 6px; padding: 0 6px; font-weight: 800; }
 .main-actions { display: flex; gap: 10px; }
 .main-actions button { margin: 0; padding: 14px; font-size: 1.1rem; }
