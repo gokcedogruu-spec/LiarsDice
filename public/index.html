@@ -5,12 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Костяшки</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Подключаем Shantell Sans (поддерживает кириллицу и вариативность жирности) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@300..800&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -20,7 +17,10 @@
         <div id="screen-login" class="screen center-content">
             <div class="logo-container pop-in">
                 <div class="logo-icon">🎲</div>
-                <h1 class="title">КОСТЯШКИ</h1>
+                <!-- Анимированный заголовок -->
+                <h1 class="title wavy-text">
+                    <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
+                </h1>
             </div>
             <div class="card slide-up">
                 <input type="text" id="input-username" placeholder="Твое имя?" maxlength="12">
@@ -30,7 +30,9 @@
 
         <!-- HOME -->
         <div id="screen-home" class="screen center-content">
-            <h1 class="title">КОСТЯШКИ</h1>
+            <h1 class="title wavy-text">
+                <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
+            </h1>
             
             <div class="profile-card pop-in">
                 <div class="rank-icon-box">
@@ -153,7 +155,9 @@
         <!-- RESULT -->
         <div id="screen-result" class="screen center-content">
             <div class="pop-in">
-                <h1 class="title">ФИНАЛ</h1>
+                <h1 class="title wavy-text">
+                    <span>Ф</span><span>И</span><span>Н</span><span>А</span><span>Л</span>
+                </h1>
                 <div class="card winner-box">
                     <div class="trophy-icon">🏆</div>
                     <h2 id="winner-name" class="winner-name">...</h2>
