@@ -12,11 +12,9 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
-// Читаем ID админа из настроек
-const ADMIN_ID = parseInt(process.env.ADMIN_ID); 
+const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 const TURN_DURATION_MS = 30000; 
 
-// --- RATING SYSTEM ---
 const RANKS = [
     { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
@@ -28,23 +26,31 @@ const RANKS = [
     { name: "Легенда морей", min: 50000, reqStreak: 100, penalty: 100 } 
 ];
 
+// Ключ = UserID (число), Значение = Объект игрока
 const userDB = new Map();
 
-function getUserData(username) {
-    if (!userDB.has(username)) {
-        userDB.set(username, { xp: 0, matches: 0, wins: 0, streak: 0 });
+function getUserData(userId) {
+    if (!userDB.has(userId)) {
+        userDB.set(userId, { xp: 0, matches: 0, wins: 0, streak: 0, name: 'Unknown', username: null });
     }
-    return userDB.get(username);
+    return userDB.get(userId);
 }
 
-function syncUserData(username, savedData) {
-    const user = getUserData(username);
+function syncUserData(tgUser, savedData) {
+    const userId = tgUser.id;
+    const user = getUserData(userId);
+    
+    // Обновляем актуальные имена
+    user.name = tgUser.first_name;
+    user.username = tgUser.username ? tgUser.username.toLowerCase() : null;
+
     if (savedData && typeof savedData.xp === 'number') {
         if (savedData.xp > user.xp) {
             user.xp = savedData.xp;
             user.streak = savedData.streak || 0;
         }
     }
+    userDB.set(userId, user); // Сохраняем обновленные имена
     return user;
 }
 
@@ -67,8 +73,8 @@ function getRankInfo(xp, streak) {
     return { current, next };
 }
 
-function updateUserXP(username, type) {
-    const user = getUserData(username);
+function updateUserXP(userId, type) {
+    const user = getUserData(userId);
     const rankInfo = getRankInfo(user.xp, user.streak);
     const currentRank = rankInfo.current;
 
@@ -85,68 +91,72 @@ function updateUserXP(username, type) {
     }
 
     if (user.xp < 0) user.xp = 0;
-    userDB.set(username, user);
+    userDB.set(userId, user);
     return user;
 }
 
-// --- Bot & Admin Panel ---
+// --- Bot ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     bot.on('message', (msg) => {
         const chatId = msg.chat.id;
         const text = (msg.text || '').trim();
-        const userId = msg.from.id; // Кто пишет
+        const userId = msg.from.id;
 
-        // 1. Обычная команда старта
-        if (text.toLowerCase().startsWith('/start')) {
+        if (text.toLowerCase().startsWith('/start') && !text.includes('setxp')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
-            bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(e=>{});
-            return;
+            bot.sendMessage(chatId, "☠️ Костяшки: Вперед за сокровищами!", opts).catch(e=>{});
         }
 
-        // 2. АДМИНСКИЙ ЧИТ-КОД: /setxp Имя Опыт
-        // Пример: /setxp Alex 55000
+        // АДМИНКА: /setxp @username 50000  ИЛИ  /setxp 123456 50000
         if (userId === ADMIN_ID && text.startsWith('/setxp')) {
             const parts = text.split(' ');
             if (parts.length < 3) {
-                bot.sendMessage(chatId, "⚠️ Используй: `/setxp Имя Опыт`", { parse_mode: "Markdown" });
+                bot.sendMessage(chatId, "⚠️ Формат: `/setxp @username 5000` или `/setxp ID 5000`", { parse_mode: "Markdown" });
                 return;
             }
             
-            const targetName = parts[1]; // Имя игрока (как в Телеграм)
-            const amount = parseInt(parts[2]); // Сколько дать опыта
-
-            // Берем данные или создаем новые
-            let user = userDB.get(targetName);
-            if (!user) user = { xp: 0, matches: 0, wins: 0, streak: 0 };
+            const target = parts[1].toLowerCase().replace('@', ''); // Убираем собачку
+            const amount = parseInt(parts[2]);
             
-            user.xp = amount;
-            
-            // Если дали много опыта (на капитана+), накрутим стрик, чтобы ранг сразу применился
-            if (amount >= 50000) user.streak = 100; 
+            let foundUserId = null;
 
-            userDB.set(targetName, user);
+            // 1. Пробуем найти по ID (если ввели число)
+            if (/^\d+$/.test(target)) {
+                const idNum = parseInt(target);
+                if (userDB.has(idNum)) foundUserId = idNum;
+            }
 
-            // --- МГНОВЕННОЕ ОБНОВЛЕНИЕ В ИГРЕ ---
-            // Ищем сокет этого игрока, если он онлайн
-            let socketFound = false;
-            for (const [roomId, room] of rooms) {
-                const p = room.players.find(pl => pl.name === targetName);
-                if (p) {
-                    const rInfo = getRankInfo(user.xp, user.streak);
-                    // Отправляем обновление клиенту
-                    io.to(p.id).emit('profileUpdate', { 
-                        ...user, 
-                        rankName: rInfo.current.name, 
-                        nextRankXP: rInfo.next?.min 
-                    });
-                    socketFound = true;
+            // 2. Если не нашли, ищем по username
+            if (!foundUserId) {
+                for (const [uid, uData] of userDB.entries()) {
+                    if (uData.username === target) {
+                        foundUserId = uid;
+                        break;
+                    }
                 }
             }
 
-            const status = socketFound ? " (Онлайн, обновлено)" : " (Оффлайн, сохранено)";
-            bot.sendMessage(chatId, `✅ <b>${targetName}</b> теперь имеет <b>${amount} XP</b>${status}.`, { parse_mode: "HTML" });
+            if (!foundUserId) {
+                bot.sendMessage(chatId, `❌ Игрок "${target}" не найден в базе. Он должен зайти в игру хотя бы раз.`);
+                return;
+            }
+
+            // Обновляем
+            const user = userDB.get(foundUserId);
+            user.xp = amount;
+            if (amount >= 50000) user.streak = 100; // Бонус для легенды
+            userDB.set(foundUserId, user);
+
+            // Пушим обновление сокету, если онлайн
+            const socketId = findSocketIdByUserId(foundUserId);
+            if (socketId) {
+                const rInfo = getRankInfo(user.xp, user.streak);
+                io.to(socketId).emit('profileUpdate', { ...user, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
+            }
+
+            bot.sendMessage(chatId, `✅ Игроку <b>${user.name}</b> (@${user.username}) установлено <b>${amount} XP</b>.`, { parse_mode: "HTML" });
         }
     });
 }
@@ -159,6 +169,15 @@ function generateRoomId() { return Math.random().toString(36).substring(2, 8).to
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
+// Поиск сокета по UserID (для админки)
+function findSocketIdByUserId(uid) {
+    for (const [roomId, room] of rooms) {
+        const p = room.players.find(pl => pl.tgId === uid);
+        if (p) return p.id;
+    }
+    return null;
+}
+
 function resetTurnTimer(room) {
     if (room.timerId) clearTimeout(room.timerId);
     const duration = room.turnDuration || 30000;
@@ -170,22 +189,28 @@ function handleTimeout(room) {
     if (room.status !== 'PLAYING') return;
     const loser = room.players[room.currentTurn];
     io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул и выбывает!`, type: 'error' });
-    loser.diceCount = 0; // Смерть
+    loser.diceCount = 0; 
     checkEliminationAndContinue(room, loser, null);
 }
 
 io.on('connection', (socket) => {
-    socket.on('login', ({ username, savedData }) => {
-        const data = syncUserData(username, savedData);
+    // ЛОГИН: Принимаем весь объект User из телеграма
+    socket.on('login', ({ tgUser, savedData }) => {
+        if (!tgUser) return;
+        const data = syncUserData(tgUser, savedData);
         const rank = getRankInfo(data.xp, data.streak);
+        // Привязываем userId к сокету для удобства
+        socket.tgUserId = tgUser.id;
         socket.emit('profileUpdate', { ...data, rankName: rank.current.name, nextRankXP: rank.next?.min || 'MAX' });
     });
 
-    socket.on('joinOrCreateRoom', ({ roomId, username, options }) => {
+    socket.on('joinOrCreateRoom', ({ roomId, tgUser, options }) => {
         const old = getRoomBySocketId(socket.id);
         if (old) leaveRoom(socket, old);
 
-        const uData = getUserData(username);
+        if (!tgUser) return;
+        const userId = tgUser.id;
+        const uData = getUserData(userId);
         const rInfo = getRankInfo(uData.xp, uData.streak);
         let room; let isCreator = false;
 
@@ -207,7 +232,10 @@ io.on('connection', (socket) => {
             isCreator = true;
         }
         room.players.push({
-            id: socket.id, name: username, rank: rInfo.current.name,
+            id: socket.id, 
+            tgId: userId, // Важно: сохраняем ID телеграма в комнате
+            name: uData.name, 
+            rank: rInfo.current.name,
             dice: [], diceCount: room.initialDice, ready: false, isCreator: isCreator
         });
         socket.join(roomId);
@@ -294,13 +322,15 @@ io.on('connection', (socket) => {
 function checkEliminationAndContinue(room, loser, killer) {
     if (loser.diceCount === 0) {
         io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
-        const d = updateUserXP(loser.name, 'lose_game');
+        
+        // !!! Используем tgId для обновления базы !!!
+        const d = updateUserXP(loser.tgId, 'lose_game');
         const rInfo = getRankInfo(d.xp, d.streak);
         io.to(loser.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
 
         if (killer && loser.rank === 'Капитан') {
             io.to(room.id).emit('gameEvent', { text: `💰 ${killer.name} убил Капитана (+150 XP)!`, type: 'info' });
-            const kData = updateUserXP(killer.name, 'kill_captain');
+            const kData = updateUserXP(killer.tgId, 'kill_captain');
             const kRank = getRankInfo(kData.xp, kData.streak);
             io.to(killer.id).emit('profileUpdate', { ...kData, rankName: kRank.current.name, nextRankXP: kRank.next?.min });
         }
@@ -312,7 +342,7 @@ function checkEliminationAndContinue(room, loser, killer) {
         room.status = 'FINISHED';
         if (room.timerId) clearTimeout(room.timerId);
         
-        const d = updateUserXP(winner.name, 'win_game');
+        const d = updateUserXP(winner.tgId, 'win_game');
         const rInfo = getRankInfo(d.xp, d.streak);
         io.to(winner.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
         
