@@ -2,7 +2,8 @@ const socket = io();
 const tg = window.Telegram?.WebApp;
 
 let state = {
-    username: null, roomId: null,
+    tgUser: null, // Храним весь объект юзера
+    roomId: null,
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30
 };
@@ -17,33 +18,39 @@ function showScreen(name) {
 
 window.addEventListener('load', () => {
     if (tg?.initDataUnsafe?.user) {
-        state.username = tg.initDataUnsafe.user.first_name;
+        state.tgUser = tg.initDataUnsafe.user;
         document.getElementById('screen-login').classList.remove('active');
         loginSuccess();
     } else {
+        // Для браузера - фейковый юзер
         document.getElementById('screen-login').classList.add('active');
     }
 });
 
 document.getElementById('btn-login').addEventListener('click', () => {
     const val = document.getElementById('input-username').value.trim();
-    if (val) { state.username = val; loginSuccess(); }
+    if (val) { 
+        // Генерируем случайный ID для теста в браузере
+        state.tgUser = { id: Math.floor(Math.random() * 1000000), first_name: val, username: 'browser_user' };
+        loginSuccess(); 
+    }
 });
 
 function loginSuccess() {
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
-            socket.emit('login', { username: state.username, savedData });
+            // Отправляем ВЕСЬ объект юзера
+            socket.emit('login', { tgUser: state.tgUser, savedData });
         });
     } else {
-        socket.emit('login', { username: state.username, savedData: null });
+        socket.emit('login', { tgUser: state.tgUser, savedData: null });
     }
 }
 
 socket.on('profileUpdate', (data) => {
     showScreen('home'); 
-    document.getElementById('user-display').textContent = state.username;
+    document.getElementById('user-display').textContent = state.tgUser.first_name;
     document.getElementById('rank-display').textContent = data.rankName;
     document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
     
@@ -65,7 +72,6 @@ socket.on('profileUpdate', (data) => {
     if (tg && tg.CloudStorage) tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ xp: data.xp, streak: data.streak }));
 });
 
-// Buttons & Navigation
 document.getElementById('btn-to-create').addEventListener('click', () => showScreen('create-settings'));
 document.getElementById('btn-back-home').addEventListener('click', () => showScreen('home'));
 
@@ -79,11 +85,11 @@ window.adjSetting = (type, delta) => {
     else if (type === 'players') { state.createPlayers = Math.max(2, Math.min(10, state.createPlayers + delta)); document.getElementById('set-players').textContent = state.createPlayers; }
 };
 document.getElementById('btn-confirm-create').addEventListener('click', () => {
-    socket.emit('joinOrCreateRoom', { roomId: null, username: state.username, options: { dice: state.createDice, players: state.createPlayers, time: state.createTime } });
+    socket.emit('joinOrCreateRoom', { roomId: null, tgUser: state.tgUser, options: { dice: state.createDice, players: state.createPlayers, time: state.createTime } });
 });
 
 document.getElementById('btn-join-room').addEventListener('click', () => {
-    const code = prompt("Код:"); if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), username: state.username });
+    const code = prompt("Код:"); if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: state.tgUser });
 });
 document.getElementById('share-btn').addEventListener('click', () => {
     const code = state.roomId;
@@ -120,7 +126,7 @@ socket.on('roomUpdate', (room) => {
                 <span>${p.ready?'✅':'⏳'}</span>
             </div>`;
         });
-        const me = room.players.find(p => p.name === state.username);
+        const me = room.players.find(p => p.tgId === state.tgUser.id);
         document.getElementById('btn-start-game').style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
     }
 });
@@ -150,7 +156,7 @@ socket.on('gameState', (gs) => {
         state.bidQty = 1; state.bidVal = 2; updateInputs();
     }
 
-    const myTurn = gs.players.find(p => p.isTurn)?.name === state.username;
+    const myTurn = gs.players.find(p => p.isTurn)?.name === state.tgUser.first_name; // Имя может быть не уникальным, но для UI сойдет
     const controls = document.getElementById('game-controls');
     if(myTurn) { 
         controls.classList.remove('hidden'); controls.classList.add('slide-up');
