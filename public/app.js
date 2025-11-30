@@ -1,6 +1,6 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
-    // alert("Error: " + message); // Раскомментируй для отладки
+    // alert("Error: " + message); 
 };
 
 const socket = io();
@@ -17,7 +17,6 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -30,13 +29,10 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
-// --- INIT ---
 window.addEventListener('load', () => {
-    // Защита от вечной загрузки
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
         if (loading && loading.classList.contains('active')) {
-            // Если все еще грузимся, но телеграма нет - показываем логин
             if (!tg?.initDataUnsafe?.user) showScreen('login');
         }
     }, 3000);
@@ -75,7 +71,6 @@ function loginSuccess() {
 }
 
 socket.on('profileUpdate', (data) => {
-    // Убираем загрузку и переходим в меню
     if(document.getElementById('screen-loading')?.classList.contains('active') || 
        document.getElementById('screen-login')?.classList.contains('active')) {
         showScreen('home');
@@ -235,7 +230,7 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- JOIN & GAME ---
+// --- GAME ---
 bindClick('btn-join-room', () => {
     const code = prompt("Код:"); 
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
@@ -265,23 +260,22 @@ bindClick('btn-home', () => location.reload());
 
 // --- SOCKETS ---
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
-
-// ИСПРАВЛЕННЫЕ ЭМОДЗИ (ЛЕТАЮТ ПОВЕРХ ВСЕГО)
 socket.on('emoteReceived', (data) => {
-    const el = document.querySelector(`.player-chip[data-id="${data.id}"]`);
+    // Находим чип по ID
+    // Используем кавычки для селектора, чтобы спецсимволы в ID (например у ботов) не ломали поиск
+    const el = document.querySelector(`.player-chip[data-id='${data.id}']`);
     if (el) {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
         
-        // Вычисляем позицию
+        // Вычисляем позицию относительно экрана
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
-        b.style.top = (rect.top - 10) + 'px';
+        b.style.top = (rect.top - 20) + 'px';
         
-        // Добавляем в body, чтобы не обрезалось
+        // Добавляем в BODY
         document.body.appendChild(b);
-        
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
     }
@@ -303,7 +297,7 @@ socket.on('roomUpdate', (room) => {
         });
         const me = room.players.find(p => p.id === socket.id);
         const startBtn = document.getElementById('btn-start-game');
-        if(startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
+        if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
     }
 });
 socket.on('gameEvent', (evt) => {
