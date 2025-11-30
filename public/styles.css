@@ -3,8 +3,7 @@
   --secondary: #8d99ae; --accent: #ffb703; --success: #06d6a0;
   --blue: #118ab2; --text: #edf2f4;
   
-  --font: 'Fredoka', sans-serif;
-  --font-title: 'Chewy', cursive; /* Новый шрифт */
+  --font: 'Fredoka', sans-serif; /* Единый мультяшный шрифт */
   
   --radius: 20px;
   --shadow-card: 0px 8px 20px rgba(0,0,0,0.4);
@@ -19,17 +18,24 @@ body { background-color: var(--bg-color); color: var(--text); font-family: var(-
 
 /* Typography */
 .title {
-    font-family: var(--font-title);
+    font-family: var(--font); /* Fredoka */
     font-size: 4.5rem;
     color: var(--accent);
     line-height: 0.9;
     text-align: center;
-    text-shadow: 4px 4px 0px #d90429;
+    text-shadow: 4px 4px 0px #d90429; /* Мультяшная тень */
     margin-bottom: 20px;
+    font-weight: 700; /* Жирный для мультяшности */
     text-transform: uppercase;
     letter-spacing: 2px;
 }
-.subtitle { font-family: var(--font-title); font-size: 2.5rem; color: var(--text); margin-bottom: 15px; }
+.subtitle { 
+    font-family: var(--font); 
+    font-size: 2.5rem; 
+    color: var(--text); 
+    margin-bottom: 15px;
+    font-weight: 700; 
+}
 
 /* Buttons */
 .btn {
