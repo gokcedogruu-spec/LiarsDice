@@ -93,17 +93,13 @@ socket.on('profileUpdate', (data) => {
     state.inventory = data.inventory || [];
     state.equipped = data.equipped || {};
 
-    // 1. ОБНОВЛЕНИЕ ФОНА ИГРОВОГО СТОЛА (Если не в игре)
     if (!document.getElementById('screen-game').classList.contains('active')) {
         document.body.className = data.equipped.bg || 'bg_default';
     }
 
-    // 2. ОБНОВЛЕНИЕ РАМКИ ПРОФИЛЯ В МЕНЮ
     const profileCard = document.querySelector('.profile-card');
     if (profileCard) {
-        // Сбрасываем все классы, оставляем базовые
         profileCard.className = 'profile-card pop-in clickable-card';
-        // Добавляем класс рамки, если он есть и не дефолт
         if (data.equipped.frame && data.equipped.frame !== 'frame_default') {
             profileCard.classList.add(data.equipped.frame);
         }
@@ -119,14 +115,11 @@ socket.on('profileUpdate', (data) => {
     if (data.rankName === 'Легенда морей') rankIcon = '🔱';
     const badge = document.getElementById('rank-badge'); if(badge) badge.textContent = rankIcon;
 
-    // ИСПРАВЛЕН РАСЧЕТ ОПЫТА
     const next = (data.nextRankXP === 'MAX') ? data.xp : data.nextRankXP;
-    // Если next равен 0 (например, Салага), то 0%
     let pct = 0;
     if (next > 0) {
         pct = (data.xp / next) * 100;
     }
-    // Ограничиваем от 0 до 100
     pct = Math.min(100, Math.max(0, pct));
     
     const fill = document.getElementById('xp-fill'); if(fill) fill.style.width = `${pct}%`;
@@ -136,7 +129,6 @@ socket.on('profileUpdate', (data) => {
         else txt.textContent = `${data.xp} / ${next} XP`;
     }
 
-    // --- СОХРАНЕНИЕ В TELEGRAM CLOUD ---
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ 
             xp: data.xp, 
@@ -183,7 +175,8 @@ const ITEMS_META = {
     'bg_lvl1':    { name: 'Каюта фрегата', price: 150000, type: 'bg' },
     'bg_lvl2':    { name: 'Каюта Летучего Голландца', price: 150000, type: 'bg' },
     'bg_lvl3':    { name: 'Каюта Черной Жемчужины', price: 150000, type: 'bg' },
-    'bg_lvl4':    { name: 'Каюта старой шлюпки', price: 150000, type: 'bg' }
+    'bg_lvl4':    { name: 'Каюта старой шлюпки', price: 150000, type: 'bg' },
+    'bg_lvl5':    { name: 'Каюта корабля-призрака', price: 500000, type: 'bg' }
 };
 
 let currentShopTab = 'skins'; 
