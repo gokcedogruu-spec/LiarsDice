@@ -15,11 +15,9 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
 // --- 1. НАСТРОЙКА СТАТИЧЕСКИХ ФАЙЛОВ (ВАЖНО) ---
-// Указываем явный путь к папке public
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
-// Страховочный маршрут для главной страницы
 app.get('/', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
@@ -248,7 +246,6 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     if (startIdx !== null) room.currentTurn = startIdx;
     else if (isFirst) room.currentTurn = 0;
     
-    // Защита: ищем живого игрока
     let safety = 0;
     while (room.players[room.currentTurn].diceCount === 0) {
         room.currentTurn = (room.currentTurn + 1) % room.players.length;
@@ -268,7 +265,7 @@ function nextTurn(room) {
     do {
         room.currentTurn = (room.currentTurn + 1) % room.players.length;
         loopCount++;
-        if (loopCount > 20) return; // Защита от зацикливания
+        if (loopCount > 20) return; 
     } while (room.players[room.currentTurn].diceCount === 0);
     
     resetTurnTimer(room); 
@@ -424,7 +421,7 @@ function handleBotMove(room) {
 function handleTimeout(room) {
     if (room.status !== 'PLAYING') return;
     const loser = room.players[room.currentTurn];
-    if (!loser) { nextTurn(room); return; } // Защита если игрок вышел
+    if (!loser) { nextTurn(room); return; } 
 
     io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул и выбывает!`, type: 'error' });
     loser.diceCount = 0; 
@@ -604,7 +601,7 @@ if (bot) {
             const user = userDB.get(uid);
             user.inventory = [
                 'skin_white', 'skin_red', 'skin_gold', 'skin_black', 'skin_blue', 'skin_green', 'skin_purple', 'skin_cyber', 'skin_bone',
-                'bg_default', 'bg_lvl1', 'bg_lvl2', 'bg_lvl3', 'bg_lvl4',
+                'bg_default', 'bg_lvl1', 'bg_lvl2', 'bg_lvl3', 'bg_lvl4', 'bg_lvl5',
                 'frame_default', 'frame_wood', 'frame_silver', 'frame_gold', 'frame_fire', 'frame_ice', 'frame_neon', 'frame_royal', 'frame_ghost', 'frame_kraken', 'frame_captain'
             ];
             userDB.set(uid, user); pushProfileUpdate(uid);
@@ -639,7 +636,7 @@ io.on('connection', (socket) => {
         const user = getUserData(socket.tgUserId);
         const PRICES = { 
             'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 'skin_green': 400, 'skin_purple': 800, 'skin_cyber': 1500, 'skin_bone': 2500, 
-            'bg_lvl1': 150000, 'bg_lvl2': 150000, 'bg_lvl3': 150000, 'bg_lvl4': 150000,
+            'bg_lvl1': 150000, 'bg_lvl2': 150000, 'bg_lvl3': 150000, 'bg_lvl4': 150000, 'bg_lvl5': 500000,
             'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 'frame_kraken': 4000, 'frame_captain': 10000 
         };
         const price = PRICES[itemId];
