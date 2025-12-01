@@ -37,7 +37,6 @@
                 <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
             </h1>
             
-            <!-- Профиль с кликом для статистики -->
             <div class="profile-card pop-in clickable-card" onclick="requestMyStats()">
                 <div class="rank-icon-box">
                     <div id="rank-badge" class="rank-emoji">🧹</div>
@@ -66,8 +65,8 @@
             <h2 class="title">ЛАВКА</h2>
             <div class="shop-balance">💰 <span id="shop-coins">0</span></div>
             <div class="shop-tabs">
-                <button id="tab-all" class="tab-btn active" onclick="filterShop('all')">ВСЁ</button>
-                <button id="tab-skins" class="tab-btn" onclick="filterShop('skins')">КОСТИ</button>
+                <!-- Убрал вкладку ВСЕ, сделал КОСТИ активной -->
+                <button id="tab-skins" class="tab-btn active" onclick="filterShop('skins')">КОСТИ</button>
                 <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">РАМКИ</button>
                 <button id="tab-bg" class="tab-btn" onclick="filterShop('bg')">ФОНЫ</button>
             </div>
@@ -190,9 +189,7 @@
                 <div class="bid-bubble pop-in" id="current-bid-display">...</div>
                 <div id="game-log" class="game-log-box"></div>
             </div>
-            
             <div class="my-controls-area slide-up">
-                <!-- Кнопки навыков добавятся сюда через JS (перед .emotes-bar или .game-controls) -->
                 <div class="emotes-bar">
                     <button onclick="sendEmote('😂')">😂</button>
                     <button onclick="sendEmote('😡')">😡</button>
