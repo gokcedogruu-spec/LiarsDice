@@ -86,7 +86,7 @@ socket.on('profileUpdate', (data) => {
     state.inventory = data.inventory || [];
     state.equipped = data.equipped || {};
 
-    // ОБНОВЛЕНИЕ ФОНА В МЕНЮ (Если не в игре)
+    // ОБНОВЛЕНИЕ ФОНА
     if (!document.getElementById('screen-game').classList.contains('active')) {
         document.body.className = data.equipped.bg || 'bg_default';
     }
@@ -144,14 +144,13 @@ const ITEMS_META = {
     'frame_captain': { name: 'Капитанская', price: 10000, type: 'frames' },
 
     'bg_default': { name: 'Стандарт', price: 0, type: 'bg' },
-    'bg_blue':    { name: 'Океан', price: 300, type: 'bg' },
-    'bg_lvl1':    { name: 'Каюта фрегата', price: 10, type: 'bg' },
-    'bg_lvl2':    { name: 'Каюта Летучего Голландца', price: 10, type: 'bg' },
-    'bg_lvl3':    { name: 'Каюта Черной Жемчужины', price: 10, type: 'bg' },
-    'bg_lvl4':    { name: 'Каюта старой шлюпки', price: 10, type: 'bg' }
+    'bg_lvl1':    { name: 'Каюта фрегата', price: 150000, type: 'bg' },
+    'bg_lvl2':    { name: 'Каюта Летучего Голландца', price: 150000, type: 'bg' },
+    'bg_lvl3':    { name: 'Каюта Черной Жемчужины', price: 150000, type: 'bg' },
+    'bg_lvl4':    { name: 'Каюта старой шлюпки', price: 150000, type: 'bg' }
 };
 
-let currentShopTab = 'all';
+let currentShopTab = 'skins'; // ПО УМОЛЧАНИЮ
 window.filterShop = (type) => {
     currentShopTab = type;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -166,7 +165,7 @@ function renderShop() {
     grid.innerHTML = '';
     
     for (const [id, meta] of Object.entries(ITEMS_META)) {
-        if (currentShopTab !== 'all' && meta.type !== currentShopTab) continue;
+        if (meta.type !== currentShopTab) continue; // Только выбранный таб
         const owned = state.inventory.includes(id);
         const equipped = state.equipped.skin === id || state.equipped.bg === id || state.equipped.frame === id;
         let btnHTML = '';
@@ -419,7 +418,7 @@ socket.on('yourDice', (dice) => {
     document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin}">${d}</div>`).join('');
 });
 
-// --- GAME STATE UPDATE (Фон, Навыки) ---
+// --- GAME STATE UPDATE ---
 socket.on('gameState', (gs) => {
     showScreen('game');
     
