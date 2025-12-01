@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
+// --- RATING & ECONOMY ---
 const RANKS = [
     { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
@@ -136,7 +137,7 @@ function pushProfileUpdate(userId) {
     }
 }
 
-// --- BOT ---
+// --- BOT COMMANDS ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     bot.on('message', (msg) => {
@@ -144,7 +145,7 @@ if (bot) {
         const text = (msg.text || '').trim();
         const fromId = msg.from.id;
 
-        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/s') && !text.startsWith('/r') && !text.startsWith('/k') && !text.startsWith('/w')) {
+        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(()=>{});
@@ -197,7 +198,8 @@ if (bot) {
             if (socketId) {
                 const room = getRoomBySocketId(socketId);
                 if (room) {
-                    leaveRoom({ id: socketId }, room);
+                    // Эмулируем дисконнект (как будто игрок вышел)
+                    handlePlayerDisconnect(socketId, room);
                     io.to(socketId).emit('errorMsg', 'Админ выкинул вас со стола!');
                     pushProfileUpdate(uid);
                     bot.sendMessage(chatId, `👢 Игрок ${userDB.get(uid).name} кикнут.`);
@@ -209,6 +211,7 @@ if (bot) {
             if (!socketId) return bot.sendMessage(chatId, "❌ Ты не в игре.");
             const room = getRoomBySocketId(socketId);
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "❌ Игра не идет.");
+            
             room.players.forEach(p => { if (p.id !== socketId) p.diceCount = 0; });
             checkEliminationAndContinue(room, { diceCount: 0, isBot: true }, null); 
             bot.sendMessage(chatId, "🏆 Победа присуждена!");
@@ -218,21 +221,16 @@ if (bot) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- GAME LOGIC ---
+// --- Game Logic ---
 const rooms = new Map(); 
 function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
-// !!! ИСПРАВЛЕННЫЙ ТАЙМЕР !!!
 function resetTurnTimer(room) {
     if (room.timerId) clearTimeout(room.timerId);
-    
-    // 1. Определяем длительность (default 30s)
     const duration = (room.config && room.config.time) ? room.config.time * 1000 : 30000;
-    
-    // 2. ВАЖНО: Сохраняем это в комнату, чтобы отправить клиенту
-    room.turnDuration = duration; 
+    room.turnDuration = duration;
     room.turnDeadline = Date.now() + duration;
     
     const currentPlayer = room.players[room.currentTurn];
@@ -389,7 +387,7 @@ io.on('connection', (socket) => {
 
     socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
         const old = getRoomBySocketId(socket.id);
-        if (old) leaveRoom(socket, old);
+        if (old) handlePlayerDisconnect(socket.id, old); // Используем новую логику
 
         if (!tgUser) return;
         const userId = tgUser.id;
@@ -476,10 +474,7 @@ io.on('connection', (socket) => {
     socket.on('requestRestart', () => {
         const r = getRoomBySocketId(socket.id);
         if (r?.status === 'FINISHED') {
-            
-            // ОБНОВЛЯЕМ БАЛАНСЫ ИГРОКОВ
             r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); });
-
             if (r.isPvE) {
                 r.status = 'PLAYING';
                 r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; });
@@ -496,66 +491,79 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         const r = getRoomBySocketId(socket.id);
-        if (r) leaveRoom(socket, r);
+        if (r) handlePlayerDisconnect(socket.id, r);
     });
 });
 
-function checkEliminationAndContinue(room, loser, killer) {
-    if (loser.diceCount === 0) {
-        if (!loser.isBot) {
-            const d = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
-            if(d) {
-                const rInfo = getRankInfo(d.xp, d.streak);
-                io.to(loser.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
-            }
-        }
-        io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
-    }
+// !!! НОВАЯ ФУНКЦИЯ ОТКЛЮЧЕНИЯ ИГРОКА !!!
+function handlePlayerDisconnect(socketId, room) {
+    const i = room.players.findIndex(p => p.id === socketId);
+    if (i === -1) return;
 
-    const active = room.players.filter(p => p.diceCount > 0);
-    if (active.length === 1) {
-        const winner = active[0];
-        room.status = 'FINISHED';
-        if (room.timerId) clearTimeout(room.timerId);
-        
-        if (!winner.isBot) {
-            const type = room.isPvE ? 'win_pve' : 'win_game';
-            const diff = room.isPvE ? room.config.difficulty : null;
-            const d = updateUserXP(winner.tgId, type, diff);
-            if(d) {
-                const rInfo = getRankInfo(d.xp, d.streak);
-                io.to(winner.id).emit('profileUpdate', { ...d, rankName: rInfo.current.name, nextRankXP: rInfo.next?.min });
-            }
-        }
-        
-        io.to(room.id).emit('gameOver', { winner: winner.name });
-    } else {
-        let idx = room.players.indexOf(loser);
-        if (loser.diceCount === 0) {
-            let loopCount = 0;
-            do { 
-                idx = (idx + 1) % room.players.length; 
-                loopCount++;
-                if(loopCount > 20) break; 
-            } while (room.players[idx].diceCount === 0);
-        }
-        startNewRound(room, false, idx);
-    }
-}
+    const player = room.players[i];
+    const wasCreator = player.isCreator;
 
-function leaveRoom(socket, room) {
-    const i = room.players.findIndex(p => p.id === socket.id);
-    if (i !== -1) {
-        const cr = room.players[i].isCreator;
+    // 1. Если игра идет -> выбывает (поражение)
+    if (room.status === 'PLAYING') {
+        io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал с поля боя!`, type: 'error' });
+        player.diceCount = 0; // "Смерть"
+        
+        // Удаляем его полностью из массива, но после того как засчитаем поражение?
+        // Лучше оставить "призраком" с 0 костей, чтобы логика раунда не ломалась, 
+        // или удалить и передать ход. 
+        // Для простоты - удаляем, но если был его ход - передаем.
+        
         room.players.splice(i, 1);
-        if (room.players.filter(p => !p.isBot).length === 0) { 
-            if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id); 
+        
+        // Засчитываем поражение в стату (если это не бот)
+        if (!player.isBot && player.tgId) {
+            updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
+        }
+
+        // Если остался 1 живой -> победа
+        const active = room.players.filter(p => p.diceCount > 0);
+        if (active.length === 1) {
+            const winner = active[0];
+            room.status = 'FINISHED';
+            if (room.timerId) clearTimeout(room.timerId);
+            
+            if (!winner.isBot && winner.tgId) {
+                updateUserXP(winner.tgId, room.isPvE ? 'win_pve' : 'win_game');
+            }
+            io.to(room.id).emit('gameOver', { winner: winner.name });
         } else {
-            if (cr && room.players[0]) room.players[0].isCreator = true;
-            if (room.status === 'PLAYING' && i === room.currentTurn) nextTurn(room);
+            // Игра продолжается. Если был ход ливнувшего - передаем.
+            // Так как мы удалили игрока, индексы сместились.
+            // Если удаленный был ДО currentTurn, то currentTurn уменьшается на 1.
+            // Если удаленный был currentTurn, то теперь под этим индексом следующий игрок.
+            
+            if (i < room.currentTurn) {
+                room.currentTurn--;
+            }
+            
+            if (i === room.currentTurn) {
+                // Был его ход -> передаем следующему (по модулю, т.к. длина уменьшилась)
+                room.currentTurn = room.currentTurn % room.players.length;
+                resetTurnTimer(room);
+            }
+            broadcastGameState(room);
+        }
+    } else {
+        // 2. Если лобби -> просто удаляем
+        room.players.splice(i, 1);
+        if (room.players.filter(p => !p.isBot).length === 0) {
+            if(room.timerId) clearTimeout(room.timerId);
+            rooms.delete(room.id);
+        } else {
+            if (wasCreator && room.players[0]) room.players[0].isCreator = true;
             broadcastRoomUpdate(room);
         }
     }
+}
+
+// Дубликат leaveRoom больше не нужен, используем handlePlayerDisconnect везде
+function leaveRoom(socket, room) {
+    handlePlayerDisconnect(socket.id, room);
 }
 
 function broadcastRoomUpdate(room) {
@@ -586,8 +594,8 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
     io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
     
-    resetTurnTimer(room); // ВАЖНО: Сначала таймер
-    broadcastGameState(room); // Потом состояние
+    resetTurnTimer(room);
+    broadcastGameState(room);
 }
 
 function nextTurn(room) {
