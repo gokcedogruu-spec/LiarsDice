@@ -846,4 +846,3 @@ const MY_URL = 'https://liarsdicezmss.onrender.com';
 setInterval(() => { https.get(MY_URL, (res) => {}).on('error', (err) => {}); }, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-
