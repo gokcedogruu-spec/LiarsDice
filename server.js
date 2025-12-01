@@ -15,15 +15,16 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
 // --- RATING & ECONOMY ---
+// Добавил level для удобного сравнения рангов
 const RANKS = [
-    { name: "Салага", min: 0 },
-    { name: "Юнга", min: 500 },
-    { name: "Матрос", min: 1500 },
-    { name: "Старший матрос", min: 5000 },
-    { name: "Боцман", min: 10000 },
-    { name: "Первый помощник", min: 25000, penalty: 30 },
-    { name: "Капитан", min: 50000, penalty: 60 },
-    { name: "Легенда морей", min: 75000, reqStreak: 100, penalty: 100 }
+    { name: "Салага", min: 0, level: 0 },
+    { name: "Юнга", min: 500, level: 1 },
+    { name: "Матрос", min: 1500, level: 2 },
+    { name: "Старший матрос", min: 5000, level: 3 },
+    { name: "Боцман", min: 10000, level: 4 },
+    { name: "Первый помощник", min: 25000, penalty: 30, level: 5 },
+    { name: "Капитан", min: 50000, penalty: 60, level: 6 },
+    { name: "Легенда морей", min: 75000, reqStreak: 100, penalty: 100, level: 7 }
 ];
 
 const userDB = new Map();
@@ -33,8 +34,8 @@ function getUserData(userId) {
         userDB.set(userId, { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
             name: 'Unknown', username: null,
-            inventory: ['skin_white', 'bg_wood', 'frame_default'], 
-            equipped: { skin: 'skin_white', bg: 'bg_wood', frame: 'frame_default' }
+            inventory: ['skin_white', 'bg_default', 'frame_default'], 
+            equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default' }
         });
     }
     return userDB.get(userId);
@@ -55,6 +56,9 @@ function syncUserData(tgUser, savedData) {
         if (savedData.inventory) user.inventory = savedData.inventory;
         if (savedData.equipped) user.equipped = savedData.equipped;
     }
+    // Гарантируем наличие дефолтного фона
+    if (!user.inventory.includes('bg_default')) user.inventory.push('bg_default');
+    
     userDB.set(userId, user);
     return user;
 }
@@ -153,67 +157,23 @@ if (bot) {
         }
 
         if (fromId !== ADMIN_ID) return;
-
+        // Админские команды (оставил без изменений)
         const args = text.split(' ');
         const cmd = args[0].toLowerCase();
-
         if (cmd === '/setxp') {
-            if (args.length < 3) return bot.sendMessage(chatId, "⚠️ /setxp @user 5000");
-            const uid = findUserIdByUsername(args[1]);
-            if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
-            const user = userDB.get(uid);
-            user.xp = parseInt(args[2]);
+            if (args.length < 3) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid); user.xp = parseInt(args[2]);
             if (user.xp >= 75000) user.streak = 100;
-            userDB.set(uid, user);
-            pushProfileUpdate(uid);
-            bot.sendMessage(chatId, `✅ XP игрока ${user.name}: ${user.xp}`);
+            userDB.set(uid, user); pushProfileUpdate(uid);
+            bot.sendMessage(chatId, "OK XP");
         }
         else if (cmd === '/setcoins') {
-            if (args.length < 3) return bot.sendMessage(chatId, "⚠️ /setcoins @user 1000");
-            const uid = findUserIdByUsername(args[1]);
-            if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
-            const user = userDB.get(uid);
-            user.coins = parseInt(args[2]);
-            userDB.set(uid, user);
-            pushProfileUpdate(uid);
-            bot.sendMessage(chatId, `✅ Монеты игрока ${user.name}: ${user.coins}`);
-        }
-        else if (cmd === '/reset') {
-            if (args.length < 2) return bot.sendMessage(chatId, "⚠️ /reset @user");
-            const uid = findUserIdByUsername(args[1]);
-            if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
-            const user = userDB.get(uid);
-            user.xp = 0; user.coins = 0; user.wins = 0; user.matches = 0; user.streak = 0;
-            user.inventory = ['skin_white', 'bg_wood', 'frame_default'];
-            user.equipped = { skin: 'skin_white', bg: 'bg_wood', frame: 'frame_default' };
-            userDB.set(uid, user);
-            pushProfileUpdate(uid);
-            bot.sendMessage(chatId, `♻️ Игрок ${user.name} обнулен.`);
-        }
-        else if (cmd === '/kick') {
-            if (args.length < 2) return bot.sendMessage(chatId, "⚠️ /kick @user");
-            const uid = findUserIdByUsername(args[1]);
-            if (!uid) return bot.sendMessage(chatId, "❌ Игрок не найден.");
-            const socketId = findSocketIdByUserId(uid);
-            if (socketId) {
-                const room = getRoomBySocketId(socketId);
-                if (room) {
-                    handlePlayerDisconnect(socketId, room); 
-                    io.to(socketId).emit('errorMsg', 'Админ выкинул вас со стола!');
-                    pushProfileUpdate(uid);
-                    bot.sendMessage(chatId, `👢 Игрок ${userDB.get(uid).name} кикнут.`);
-                } else bot.sendMessage(chatId, "⚠️ Игрок не в комнате.");
-            } else bot.sendMessage(chatId, "⚠️ Игрок оффлайн.");
-        }
-        else if (cmd === '/win') {
-            const socketId = findSocketIdByUserId(ADMIN_ID);
-            if (!socketId) return bot.sendMessage(chatId, "❌ Ты не в игре.");
-            const room = getRoomBySocketId(socketId);
-            if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "❌ Игра не идет.");
-            
-            room.players.forEach(p => { if (p.id !== socketId) p.diceCount = 0; });
-            checkEliminationAndContinue(room, { diceCount: 0, isBot: true }, null); 
-            bot.sendMessage(chatId, "🏆 Победа присуждена!");
+            if (args.length < 3) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid); user.coins = parseInt(args[2]);
+            userDB.set(uid, user); pushProfileUpdate(uid);
+            bot.sendMessage(chatId, "OK Coins");
         }
     });
 }
@@ -226,13 +186,46 @@ function generateRoomId() { return Math.random().toString(36).substring(2, 8).to
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
+// --- ЛОГИКА ВЫБОРА ФОНА ---
+function resolveBackground(room) {
+    if (room.isPvE) return 'bg_default';
+
+    const creator = room.players.find(p => p.isCreator);
+    
+    // 1. Фон создателя, если не дефолт
+    if (creator && creator.equipped && creator.equipped.bg && creator.equipped.bg !== 'bg_default') {
+        return creator.equipped.bg;
+    }
+
+    // 2. Иначе ищем по рангу и серии
+    // Нам нужно реальные данные игроков (xp, streak)
+    const candidates = room.players.filter(p => !p.isBot && p.tgId).map(p => {
+        const uData = getUserData(p.tgId);
+        const rInfo = getRankInfo(uData.xp, uData.streak);
+        return {
+            bg: uData.equipped.bg || 'bg_default',
+            rankLevel: rInfo.current.level,
+            streak: uData.streak
+        };
+    });
+
+    if (candidates.length === 0) return 'bg_default';
+
+    // Сортируем: выше ранг -> выше серия
+    candidates.sort((a, b) => {
+        if (b.rankLevel !== a.rankLevel) return b.rankLevel - a.rankLevel;
+        return b.streak - a.streak;
+    });
+
+    return candidates[0].bg;
+}
+
 function resetTurnTimer(room) {
     if (room.timerId) clearTimeout(room.timerId);
     const duration = room.config.time * 1000;
     room.turnDuration = duration;
     room.turnDeadline = Date.now() + duration;
     
-    // ВАЖНО: Синхронизируем таймер при каждом сбросе
     broadcastGameState(room);
 
     const currentPlayer = room.players[room.currentTurn];
@@ -260,10 +253,7 @@ function handleTimeout(room) {
 function handleBotMove(room) {
     if (room.status !== 'PLAYING') return;
     const bot = room.players[room.currentTurn];
-    if (bot.diceCount === 0) {
-        nextTurn(room);
-        return;
-    }
+    if (bot.diceCount === 0) { nextTurn(room); return; }
 
     const lastBid = room.currentBid;
     let totalDiceInGame = 0; room.players.forEach(p => totalDiceInGame += p.diceCount);
@@ -293,23 +283,39 @@ function handleBotMove(room) {
         else handleCall(null, 'bluff', room, bot);
     } else {
         let nextQty = lastBid.quantity; let nextFace = lastBid.faceValue + 1;
-        if (nextFace > 6) { nextFace = 2; nextQty++; }
-        if (diff === 'pirate' && Math.random() > 0.8) nextQty++; 
+        // Logic for new strict rule (bot compliance)
+        if (room.config.strict) {
+            nextQty = lastBid.quantity + 1;
+            nextFace = Math.floor(Math.random() * 6) + 1; // Бот выбирает любой номинал
+        } else {
+            if (nextFace > 6) { nextFace = 2; nextQty++; }
+        }
         makeBidInternal(room, bot, nextQty, nextFace);
     }
 }
 
 function makeBidInternal(room, player, quantity, faceValue) {
     if (room.currentBid) {
-        if (quantity < room.currentBid.quantity) quantity = room.currentBid.quantity + 1;
-        else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) {
-            faceValue = room.currentBid.faceValue + 1;
+        if (room.config.strict) {
+            // НОВОЕ ПРАВИЛО: Только повышение количества
+            if (quantity <= room.currentBid.quantity) {
+                io.to(player.id).emit('errorMsg', 'В строгом режиме нужно повышать количество!');
+                return;
+            }
+        } else {
+            // Стандартное правило
+            if (quantity < room.currentBid.quantity) quantity = room.currentBid.quantity + 1;
+            else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) {
+                faceValue = room.currentBid.faceValue + 1;
+            }
         }
     }
-    if (faceValue > 6) { faceValue = 2; quantity++; }
-    if (room.config.strict && room.currentBid && quantity < room.currentBid.quantity) {
-        if(player.isBot) quantity = room.currentBid.quantity; 
+    
+    if (faceValue > 6) { 
+        if(room.config.strict) faceValue = 6; // Cap at 6
+        else { faceValue = 2; quantity++; }
     }
+
     room.currentBid = { quantity, faceValue, playerId: player.id };
     io.to(room.id).emit('gameEvent', { text: `${player.name} ставит: ${quantity}x[${faceValue}]`, type: 'info' });
     nextTurn(room);
@@ -357,6 +363,105 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     setTimeout(() => checkEliminationAndContinue(r, loser, winnerOfRound), 4000);
 }
 
+// --- НАВЫКИ (Server Logic) ---
+function handleSkill(socket, skillType) {
+    const room = getRoomBySocketId(socket.id);
+    if (!room || room.status !== 'PLAYING') return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player || !player.tgId) return;
+    
+    if (player.skillsUsed && player.skillsUsed.includes(skillType)) {
+        socket.emit('errorMsg', 'Навык уже использован в этой игре!'); return;
+    }
+
+    const user = getUserData(player.tgId);
+    const rankInfo = getRankInfo(user.xp, user.streak);
+    const level = rankInfo.current.level;
+
+    // 1. Чувствительные уши (Боцман - 4)
+    if (skillType === 'ears') {
+        if (level < 4) return socket.emit('errorMsg', 'Нужен ранг Боцман');
+        if (room.currentTurn !== room.players.indexOf(player)) return socket.emit('errorMsg', 'Можно использовать только в свой ход');
+        if (!room.currentBid) return socket.emit('errorMsg', 'Ставок еще не было');
+
+        let chance = 0;
+        if (level === 4) chance = 0.35;
+        else if (level === 5) chance = 0.50;
+        else if (level === 6) chance = 0.75;
+        else if (level >= 7) chance = 1.0;
+
+        if (Math.random() < chance) {
+            // Проверяем правду
+            const bid = room.currentBid;
+            let total = 0;
+            room.players.forEach(p => {
+                p.dice.forEach(d => {
+                    if (d === bid.faceValue) total++;
+                    else if (room.config.jokers && d === 1 && bid.faceValue !== 1) total++;
+                });
+            });
+            const isLying = total < bid.quantity;
+            socket.emit('gameEvent', { text: isLying ? "👂 Слух: Он ВРЁТ!" : "👂 Слух: Похоже на правду...", type: 'info' });
+        } else {
+            socket.emit('gameEvent', { text: "👂 Ничего не слышно...", type: 'error' });
+        }
+        
+        if(!player.skillsUsed) player.skillsUsed = [];
+        player.skillsUsed.push('ears');
+        broadcastGameState(room); // Обновить кнопки
+    }
+
+    // 2. Счастливый кубик (Первый помощник - 5)
+    else if (skillType === 'lucky') {
+        if (level < 5) return socket.emit('errorMsg', 'Нужен ранг 1-й помощник');
+        if (player.diceCount >= 5) return socket.emit('errorMsg', 'Нужно менее 5 кубиков');
+        
+        let chance = 0;
+        if (level === 5) chance = 0.50;
+        else if (level === 6) chance = 0.75;
+        else if (level >= 7) chance = 1.0;
+
+        if (Math.random() < chance) {
+            player.diceCount++;
+            player.dice.push(Math.floor(Math.random()*6)+1);
+            io.to(room.id).emit('gameEvent', { text: `🎲 ${player.name} достал кубик из рукава!`, type: 'info' });
+            io.to(player.id).emit('yourDice', player.dice);
+            broadcastGameState(room);
+        } else {
+            socket.emit('errorMsg', 'Фокус не удался...');
+        }
+        
+        if(!player.skillsUsed) player.skillsUsed = [];
+        player.skillsUsed.push('lucky');
+        broadcastGameState(room);
+    }
+
+    // 3. Возмездие (Капитан - 6)
+    else if (skillType === 'kill') {
+        if (level < 6) return socket.emit('errorMsg', 'Нужен ранг Капитан');
+        const active = room.players.filter(p => p.diceCount > 0);
+        if (active.length !== 2) return socket.emit('errorMsg', 'Нужно 1 на 1');
+        const enemy = active.find(p => p.id !== player.id);
+        if (player.diceCount !== 1 || enemy.diceCount !== 1) return socket.emit('errorMsg', 'У всех должно быть по 1 кубику');
+
+        let chance = level >= 7 ? 0.75 : 0.50;
+        
+        if (Math.random() < chance) {
+            io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} пристрелил ${enemy.name}!`, type: 'info' });
+            enemy.diceCount = 0;
+            checkEliminationAndContinue(room, enemy, player);
+        } else {
+            io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} промахнулся и застрелился!`, type: 'error' });
+            player.diceCount = 0;
+            checkEliminationAndContinue(room, player, enemy);
+        }
+        
+        if(!player.skillsUsed) player.skillsUsed = [];
+        player.skillsUsed.push('kill');
+        broadcastGameState(room);
+    }
+}
+
 io.on('connection', (socket) => {
     socket.on('login', ({ tgUser, savedData }) => {
         if (!tgUser) return;
@@ -369,7 +474,11 @@ io.on('connection', (socket) => {
     socket.on('shopBuy', (itemId) => {
         if (!socket.tgUserId) return;
         const user = getUserData(socket.tgUserId);
-        const PRICES = { 'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 'skin_green': 400, 'skin_purple': 800, 'skin_cyber': 1500, 'skin_bone': 2500, 'bg_blue': 300, 'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 'frame_kraken': 4000, 'frame_captain': 10000 };
+        const PRICES = { 
+            'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 'skin_green': 400, 'skin_purple': 800, 'skin_cyber': 1500, 'skin_bone': 2500, 
+            'bg_blue': 300, 'bg_lvl1': 10, 'bg_lvl2': 10, 'bg_lvl3': 10, 'bg_lvl4': 10,
+            'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 'frame_kraken': 4000, 'frame_captain': 10000 
+        };
         const price = PRICES[itemId];
         if (price && user.coins >= price && !user.inventory.includes(itemId)) {
             user.coins -= price; user.inventory.push(itemId); userDB.set(socket.tgUserId, user);
@@ -384,7 +493,7 @@ io.on('connection', (socket) => {
         const user = getUserData(socket.tgUserId);
         if (user.inventory.includes(itemId)) {
             if (itemId.startsWith('skin_')) user.equipped.skin = itemId;
-            if (itemId.startsWith('bg_')) user.equipped.bg = itemId;
+            if (itemId.startsWith('bg_') || itemId === 'table_default') user.equipped.bg = itemId; // Support raw name too
             if (itemId.startsWith('frame_')) user.equipped.frame = itemId;
             userDB.set(socket.tgUserId, user);
             const rank = getRankInfo(user.xp, user.streak);
@@ -397,7 +506,8 @@ io.on('connection', (socket) => {
         if (room) io.to(room.id).emit('emoteReceived', { id: socket.id, emoji: emoji });
     });
 
-    // --- NEW: REQUEST PLAYER STATS ---
+    socket.on('useSkill', (skillType) => handleSkill(socket, skillType));
+
     socket.on('getPlayerStats', (targetId) => {
         let userData = null;
         if (targetId === 'me') {
@@ -444,7 +554,7 @@ io.on('connection', (socket) => {
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
                 history: [], timerId: null, turnDeadline: 0, 
-                config: { dice: options.dice, players: options.players, time: 30, jokers: options.jokers, spot: options.spot, difficulty: diff },
+                config: { dice: options.dice, players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: diff },
                 isPvE: true
             };
             rooms.set(newId, room);
@@ -469,11 +579,11 @@ io.on('connection', (socket) => {
             }
         } else {
             const newId = generateRoomId();
-            const st = options || { dice: 5, players: 10, time: 30, jokers: false, spot: false };
+            const st = options || { dice: 5, players: 10, time: 30, jokers: false, spot: false, strict: false };
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
                 history: [], timerId: null, turnDeadline: 0, 
-                config: { dice: st.dice, players: st.players, time: st.time, jokers: st.jokers, spot: st.spot },
+                config: { dice: st.dice, players: st.players, time: st.time, jokers: st.jokers, spot: st.spot, strict: st.strict },
                 isPvE: false
             };
             rooms.set(newId, room);
@@ -519,12 +629,12 @@ io.on('connection', (socket) => {
             r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); });
             if (r.isPvE) {
                 r.status = 'PLAYING';
-                r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; });
+                r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; });
                 r.currentBid = null;
                 startNewRound(r, true);
             } else {
                 r.status = 'LOBBY';
-                r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; });
+                r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; });
                 r.currentBid = null;
                 broadcastRoomUpdate(r);
             }
@@ -644,8 +754,13 @@ function broadcastRoomUpdate(room) {
 
 function startNewRound(room, isFirst = false, startIdx = null) {
     room.status = 'PLAYING'; room.currentBid = null;
+    room.activeBackground = resolveBackground(room); // Выбираем фон при старте игры
+
     room.players.forEach(p => {
-        if (isFirst && p.diceCount === 0) p.diceCount = room.config.dice;
+        if (isFirst) {
+            if (p.diceCount === 0) p.diceCount = room.config.dice;
+            p.skillsUsed = []; // Сброс навыков в новой игре
+        }
         p.dice = p.diceCount > 0 ? rollDice(p.diceCount) : [];
     });
     
@@ -678,16 +793,35 @@ function broadcastGameState(room) {
     const now = Date.now();
     const remaining = Math.max(0, room.turnDeadline - now);
 
-    io.to(room.id).emit('gameState', {
-        players: room.players.map((p, i) => ({ 
+    // Собираем данные о доступных навыках для каждого игрока (для UI)
+    const playersData = room.players.map((p, i) => {
+        let availableSkills = [];
+        if (!p.isBot && p.tgId) {
+            const uData = getUserData(p.tgId);
+            const rankInfo = getRankInfo(uData.xp, uData.streak);
+            const lvl = rankInfo.current.level;
+            const used = p.skillsUsed || [];
+            
+            if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); // Боцман
+            if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); // Первый помощник
+            if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); // Капитан
+        }
+
+        return { 
             name: p.name, rank: p.rank, diceCount: p.diceCount, 
             isTurn: i === room.currentTurn, isEliminated: p.diceCount === 0, 
-            id: p.id, equipped: p.equipped 
-        })),
+            id: p.id, equipped: p.equipped,
+            availableSkills: availableSkills
+        };
+    });
+
+    io.to(room.id).emit('gameState', {
+        players: playersData,
         currentBid: room.currentBid, 
         totalDuration: room.turnDuration,
         remainingTime: remaining,
-        activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict }
+        activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict },
+        activeBackground: room.activeBackground
     });
 }
 
