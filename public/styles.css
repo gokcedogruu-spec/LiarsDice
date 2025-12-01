@@ -15,23 +15,22 @@ body {
   font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
   background-color: #5D4037;
   
-  /* Настройки для замощения (плитка) */
+  /* ТЕКСТУРА 2X БОЛЬШЕ */
   background-repeat: repeat;
-  background-size: 128px auto; /* Размер одной плитки */
-  background-attachment: fixed; /* Фон стоит на месте */
+  background-size: 256px auto; 
+  background-attachment: fixed;
   
   box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
   transition: background-image 0.3s ease;
 }
 
-/* --- ФОНЫ (Правильные ссылки raw) --- */
+/* ФОНЫ */
 body.bg_default { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
 body.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
 body.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
 body.bg_lvl3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
 body.bg_lvl4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
 
-/* Остальные стили без изменений */
 #app { height: 100%; display: flex; flex-direction: column; }
 .screen { display: none; height: 100%; padding: 15px; flex-direction: column; }
 .screen.active { display: flex; }
@@ -90,7 +89,12 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; }
 .tab-btn { padding: 8px 15px; border: none; background: rgba(0,0,0,0.3); color: #8d99ae; border-radius: 10px; font-weight: bold; cursor: pointer; }
 .tab-btn.active { background: #ef233c; color: white; }
-.shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; max-height: 60vh; overflow-y: auto; }
+/* ЛАВКА: Отступ снизу, чтобы не обрезалось */
+.shop-grid { 
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; 
+    max-width: 400px; max-height: 60vh; overflow-y: auto; 
+    padding-bottom: 40px; /* ВАЖНО */
+}
 .shop-item { background: var(--surface); padding: 10px; border-radius: 16px; text-align: center; border: 2px solid rgba(255,255,255,0.1); }
 .shop-item h4 { font-size: 0.9rem; margin: 5px 0; }
 .shop-item.owned { border-color: var(--success); }
