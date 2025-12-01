@@ -44,6 +44,14 @@ window.addEventListener('load', () => {
     }
 });
 
+// ЕСЛИ СЕРВЕР ПЕРЕЗАГРУЗИЛСЯ, ПЕРЕ-ЛОГИНИМСЯ, ЧТОБЫ ВОССТАНОВИТЬ ДАННЫЕ
+socket.on('connect', () => {
+    if (state.username) {
+        console.log("Reconnecting...");
+        loginSuccess();
+    }
+});
+
 function bindClick(id, handler) {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', handler);
@@ -106,10 +114,16 @@ socket.on('profileUpdate', (data) => {
     const fill = document.getElementById('xp-fill'); if(fill) fill.style.width = `${pct}%`;
     const txt = document.getElementById('xp-text'); if(txt) txt.textContent = `${data.xp} / ${next} XP`;
 
+    // --- СОХРАНЕНИЕ В TELEGRAM CLOUD ---
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ 
-            xp: data.xp, streak: data.streak, coins: data.coins, 
-            inventory: data.inventory, equipped: data.equipped 
+            xp: data.xp, 
+            streak: data.streak, 
+            coins: data.coins, 
+            wins: data.wins,
+            matches: data.matches,
+            inventory: data.inventory, 
+            equipped: data.equipped 
         }));
     }
 
@@ -422,7 +436,6 @@ socket.on('yourDice', (dice) => {
 socket.on('gameState', (gs) => {
     showScreen('game');
     
-    // 1. Обновляем ФОН
     document.body.className = gs.activeBackground || 'bg_default';
 
     let rulesText = '';
@@ -469,7 +482,6 @@ socket.on('gameState', (gs) => {
         else spotBtn.classList.add('hidden-rule');
     }
 
-    // --- Кнопки Навыков ---
     const existingSkills = document.querySelector('.skills-bar');
     if(existingSkills) existingSkills.remove();
     
@@ -489,7 +501,6 @@ socket.on('gameState', (gs) => {
             skillsDiv.appendChild(btn);
         });
         
-        // Вставляем перед панелью действий
         document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
     }
 
@@ -521,7 +532,6 @@ socket.on('gameOver', (data) => {
 
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 
-// --- FIXED TIMER ---
 function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
     const bar = document.querySelector('.timer-progress'); 
