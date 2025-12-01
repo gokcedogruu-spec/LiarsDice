@@ -3,8 +3,120 @@ window.onerror = function(message, source, lineno, colno, error) {
     // alert("Error: " + message); 
 };
 
-const socket = io();
-const tg = window.Telegram?.WebApp;
+// --- MOCK SOCKET & TG FOR PREVIEW ---
+// Этот блок кода эмулирует сервер и Telegram, если они недоступны,
+// чтобы интерфейс работал в браузере без реального бэкенда.
+
+const isPreview = !window.Telegram?.WebApp?.initDataUnsafe?.user;
+
+// Эмуляция Telegram WebApp
+const tg = window.Telegram?.WebApp || {
+    ready: () => {}, expand: () => {}, setHeaderColor: () => {}, setBackgroundColor: () => {},
+    initDataUnsafe: { user: { id: 999, first_name: "PreviewUser", username: "tester" } },
+    CloudStorage: {
+        getItem: (k, cb) => cb(null, localStorage.getItem(k)),
+        setItem: (k, v) => localStorage.setItem(k, v)
+    },
+    HapticFeedback: { notificationOccurred: () => {}, selectionChanged: () => {}, impactOccurred: () => {} },
+    showAlert: (msg) => alert(msg)
+};
+
+// Эмуляция Socket.io
+class MockSocket {
+    constructor() {
+        this.handlers = {};
+        this.id = 'socket_' + Math.random();
+        // Имитация задержки сервера
+        setTimeout(() => this.trigger('connect'), 100);
+    }
+    on(event, callback) {
+        this.handlers[event] = callback;
+    }
+    emit(event, data) {
+        console.log('Socket emit:', event, data);
+        // Простая эмуляция ответов сервера
+        if (event === 'login') {
+            setTimeout(() => {
+                const saved = data.savedData || {};
+                this.trigger('profileUpdate', {
+                    name: data.tgUser.first_name,
+                    rankName: 'Юнга', nextRankXP: 500,
+                    xp: saved.xp || 100, streak: saved.streak || 0,
+                    coins: saved.coins || 250,
+                    inventory: saved.inventory || ['skin_white', 'bg_wood', 'frame_default'],
+                    equipped: saved.equipped || { skin: 'skin_white', bg: 'bg_wood', frame: 'frame_default' }
+                });
+            }, 500);
+        }
+        if (event === 'shopBuy') {
+            // Эмуляция покупки
+            if(state.coins >= 100) { // Упрощенно
+                state.coins -= 100;
+                state.inventory.push(data);
+                this.trigger('gameEvent', { text: 'Покупка успешна!', type: 'info' });
+                // Обновляем профиль
+                this.trigger('profileUpdate', {
+                    name: state.username, rankName: 'Юнга', nextRankXP: 500,
+                    xp: 100, streak: 0, coins: state.coins,
+                    inventory: state.inventory, equipped: state.equipped
+                });
+            } else {
+                tg.showAlert("Не хватает монет (эмуляция)!");
+            }
+        }
+        if (event === 'shopEquip') {
+            if(data.startsWith('skin_')) state.equipped.skin = data;
+            if(data.startsWith('frame_')) state.equipped.frame = data;
+            this.trigger('profileUpdate', {
+                name: state.username, rankName: 'Юнга', nextRankXP: 500,
+                xp: 100, streak: 0, coins: state.coins,
+                inventory: state.inventory, equipped: state.equipped
+            });
+        }
+        if (event === 'joinOrCreateRoom') {
+            // Сразу кидаем в лобби
+            setTimeout(() => {
+                this.trigger('roomUpdate', {
+                    roomId: 'TEST01', status: 'LOBBY',
+                    config: data.options || {dice:5, players:2, time:30},
+                    players: [{ id: this.id, name: state.username, rank: 'Юнга', ready: true, isCreator: true, diceCount: 5, equipped: state.equipped }]
+                });
+            }, 500);
+        }
+        if (event === 'getProfile') {
+            // Эмуляция запроса профиля
+            setTimeout(() => {
+                this.trigger('userProfile', {
+                    id: data,
+                    name: "Пират (Тест)",
+                    rank: "Старший матрос",
+                    matches: 42,
+                    wins: 12,
+                    inventory: ['skin_red', 'frame_gold', 'skin_black', 'frame_fire']
+                });
+            }, 300);
+        }
+        if (event === 'startGame') {
+            // Запуск игры (эмуляция)
+            this.trigger('gameEvent', { text: '🎲 РАУНД!', type: 'info' });
+            this.trigger('yourDice', [1, 3, 4, 6, 6]);
+            this.trigger('gameState', {
+                players: [
+                    { id: this.id, name: state.username, rank: 'Юнга', diceCount: 5, isTurn: true, equipped: state.equipped },
+                    { id: 'bot1', name: 'Bot', rank: 'Матрос', diceCount: 5, isTurn: false, equipped: {} }
+                ],
+                currentBid: null, totalDuration: 30000, remainingTime: 30000,
+                activeRules: { jokers: false, spot: false, strict: false }
+            });
+        }
+    }
+    trigger(event, data) {
+        if (this.handlers[event]) this.handlers[event](data);
+    }
+}
+
+// Используем MockSocket если реальный io не определен (или для теста)
+const socket = (typeof io !== 'undefined' && !isPreview) ? io() : new MockSocket();
 
 let state = {
     username: null, roomId: null,
@@ -15,7 +127,9 @@ let state = {
     coins: 0, inventory: [], equipped: {}
 };
 
-if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
+if (tg) { 
+    try { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); } catch(e){} 
+}
 
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
@@ -31,16 +145,18 @@ function showScreen(name) {
 
 // --- INIT ---
 window.addEventListener('load', () => {
-    setTimeout(() => {
-        const loading = document.getElementById('screen-loading');
-        if (loading && loading.classList.contains('active')) {
-            if (!tg?.initDataUnsafe?.user) showScreen('login');
-        }
-    }, 3000);
-
+    // Если есть данные от TG (или мока), сразу логинимся
     if (tg?.initDataUnsafe?.user) {
         state.username = tg.initDataUnsafe.user.first_name;
         loginSuccess();
+    } else {
+        // Фолбек, если вдруг что-то пошло не так
+        setTimeout(() => {
+            const loading = document.getElementById('screen-loading');
+            if (loading && loading.classList.contains('active')) {
+                showScreen('login');
+            }
+        }, 3000);
     }
 });
 
@@ -53,7 +169,7 @@ bindClick('btn-login', () => {
     const val = document.getElementById('input-username').value.trim();
     if (val) { 
         state.username = val; 
-        socket.tgUserId = 123; 
+        // socket.tgUserId = 123; // Убрал лишнее, это должно на сервере обрабатываться
         loginSuccess(); 
     }
 });
@@ -108,7 +224,7 @@ socket.on('profileUpdate', (data) => {
         }));
     }
 
-    // Обновляем магазин
+    // Обновляем магазин если открыт
     if (document.getElementById('screen-shop').classList.contains('active')) {
         document.getElementById('shop-coins').textContent = state.coins;
         renderShop();
@@ -301,9 +417,11 @@ socket.on('emoteReceived', (data) => {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
+        
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
         b.style.top = (rect.top - 20) + 'px';
+        
         document.body.appendChild(b);
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
@@ -319,7 +437,7 @@ socket.on('roomUpdate', (room) => {
         if (room.config) document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
         const list = document.getElementById('lobby-players'); list.innerHTML = '';
         room.players.forEach(p => {
-            list.innerHTML += `<div class="player-item">
+            list.innerHTML += `<div class="player-item" data-id="${p.id}">
                 <div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div>
                 <span>${p.ready?'✅':'⏳'}</span>
             </div>`;
@@ -363,7 +481,6 @@ socket.on('gameState', (gs) => {
         bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
-        // Если ставки нет (начало раунда)
         const me = gs.players.find(p => p.id === socket.id);
         const myTurn = me?.isTurn;
         if (myTurn) {
@@ -395,6 +512,7 @@ socket.on('gameState', (gs) => {
         controls.classList.add('hidden');
     }
     
+    // ЗАПУСК ТАЙМЕРА (СИНХРОНИЗИРОВАННОГО)
     if (gs.remainingTime !== undefined && gs.totalDuration) {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
@@ -428,3 +546,60 @@ function startVisualTimer(remaining, total) {
     }
     tick();
 }
+
+// --- PROFILE MODAL ---
+window.closeProfile = () => {
+    document.getElementById('modal-profile').classList.remove('active');
+};
+
+document.body.addEventListener('click', (e) => {
+    const chip = e.target.closest('.player-chip, .player-item');
+    if (!chip) return;
+    
+    const id = chip.getAttribute('data-id');
+    // Игнорируем ботов (обычно их ID начинаются с bot) и если нет ID
+    if (!id || id.startsWith('bot') || id.startsWith('CPU_')) return;
+    
+    // Запрашиваем профиль
+    socket.emit('getProfile', id);
+});
+
+socket.on('userProfile', (data) => {
+    const m = document.getElementById('modal-profile');
+    if (!m) return;
+    
+    document.getElementById('pub-name').textContent = data.name;
+    document.getElementById('pub-rank-text').textContent = data.rank;
+    document.getElementById('pub-matches').textContent = data.matches;
+    document.getElementById('pub-wins').textContent = data.wins;
+    
+    const rate = data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0;
+    document.getElementById('pub-rate').textContent = rate + '%';
+    
+    let icon = '🧹';
+    if (data.rank === 'Юнга') icon = '⚓';
+    if (data.rank === 'Матрос') icon = '🌊';
+    if (data.rank === 'Старший матрос') icon = '🎖️';
+    if (data.rank === 'Боцман') icon = '💪';
+    if (data.rank === 'Первый помощник') icon = '⚔️';
+    if (data.rank === 'Капитан') icon = '☠️';
+    if (data.rank === 'Легенда морей') icon = '🔱';
+    document.getElementById('pub-rank-emoji').textContent = icon;
+    
+    const grid = document.getElementById('pub-inventory');
+    grid.innerHTML = '';
+    if (data.inventory && data.inventory.length > 0) {
+        data.inventory.forEach(item => {
+            let char = '?';
+            // Упрощенная логика иконок для инвентаря
+            if (item.startsWith('skin_')) char = '🎲';
+            if (item.startsWith('frame_')) char = '🖼️';
+            if (item.startsWith('bg_')) char = '🌄';
+            grid.innerHTML += `<div class="mini-item">${char}</div>`;
+        });
+    } else {
+        grid.innerHTML = '<div style="grid-column:1/-1; opacity:0.5; font-size:0.8rem; text-align: center;">Пусто</div>';
+    }
+    
+    m.classList.add('active');
+});
