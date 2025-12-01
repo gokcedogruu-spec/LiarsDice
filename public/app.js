@@ -44,7 +44,6 @@ window.addEventListener('load', () => {
     }
 });
 
-// ЕСЛИ СЕРВЕР ПЕРЕЗАГРУЗИЛСЯ, ПЕРЕ-ЛОГИНИМСЯ, ЧТОБЫ ВОССТАНОВИТЬ ДАННЫЕ
 socket.on('connect', () => {
     if (state.username) {
         console.log("Reconnecting...");
@@ -94,9 +93,20 @@ socket.on('profileUpdate', (data) => {
     state.inventory = data.inventory || [];
     state.equipped = data.equipped || {};
 
-    // ОБНОВЛЕНИЕ ФОНА
+    // 1. ОБНОВЛЕНИЕ ФОНА ИГРОВОГО СТОЛА (Если не в игре)
     if (!document.getElementById('screen-game').classList.contains('active')) {
         document.body.className = data.equipped.bg || 'bg_default';
+    }
+
+    // 2. ОБНОВЛЕНИЕ РАМКИ ПРОФИЛЯ В МЕНЮ
+    const profileCard = document.querySelector('.profile-card');
+    if (profileCard) {
+        // Сбрасываем все классы, оставляем базовые
+        profileCard.className = 'profile-card pop-in clickable-card';
+        // Добавляем класс рамки, если он есть и не дефолт
+        if (data.equipped.frame && data.equipped.frame !== 'frame_default') {
+            profileCard.classList.add(data.equipped.frame);
+        }
     }
 
     let rankIcon = '🧹';
@@ -109,10 +119,22 @@ socket.on('profileUpdate', (data) => {
     if (data.rankName === 'Легенда морей') rankIcon = '🔱';
     const badge = document.getElementById('rank-badge'); if(badge) badge.textContent = rankIcon;
 
-    const next = data.nextRankXP === 'MAX' ? data.xp : data.nextRankXP;
-    const pct = Math.min(100, (data.xp / next) * 100);
+    // ИСПРАВЛЕН РАСЧЕТ ОПЫТА
+    const next = (data.nextRankXP === 'MAX') ? data.xp : data.nextRankXP;
+    // Если next равен 0 (например, Салага), то 0%
+    let pct = 0;
+    if (next > 0) {
+        pct = (data.xp / next) * 100;
+    }
+    // Ограничиваем от 0 до 100
+    pct = Math.min(100, Math.max(0, pct));
+    
     const fill = document.getElementById('xp-fill'); if(fill) fill.style.width = `${pct}%`;
-    const txt = document.getElementById('xp-text'); if(txt) txt.textContent = `${data.xp} / ${next} XP`;
+    const txt = document.getElementById('xp-text'); 
+    if(txt) {
+        if (data.nextRankXP === 'MAX') txt.textContent = 'MAX';
+        else txt.textContent = `${data.xp} / ${next} XP`;
+    }
 
     // --- СОХРАНЕНИЕ В TELEGRAM CLOUD ---
     if (tg && tg.CloudStorage) {
@@ -164,7 +186,7 @@ const ITEMS_META = {
     'bg_lvl4':    { name: 'Каюта старой шлюпки', price: 150000, type: 'bg' }
 };
 
-let currentShopTab = 'skins'; // ПО УМОЛЧАНИЮ
+let currentShopTab = 'skins'; 
 window.filterShop = (type) => {
     currentShopTab = type;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -179,7 +201,7 @@ function renderShop() {
     grid.innerHTML = '';
     
     for (const [id, meta] of Object.entries(ITEMS_META)) {
-        if (meta.type !== currentShopTab) continue; // Только выбранный таб
+        if (meta.type !== currentShopTab) continue; 
         const owned = state.inventory.includes(id);
         const equipped = state.equipped.skin === id || state.equipped.bg === id || state.equipped.frame === id;
         let btnHTML = '';
