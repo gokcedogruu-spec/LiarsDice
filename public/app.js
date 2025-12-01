@@ -318,6 +318,12 @@ socket.on('showPlayerStats', (data) => {
     const modal = document.getElementById('modal-player');
     if (!modal) return;
 
+    const content = modal.querySelector('.modal-content');
+    content.className = 'modal-content pop-in'; // Reset classes
+    if (data.equipped && data.equipped.frame && data.equipped.frame !== 'frame_default') {
+        content.classList.add(data.equipped.frame);
+    }
+
     document.getElementById('info-name').textContent = data.name;
     document.getElementById('info-rank-name').textContent = data.rankName;
     document.getElementById('info-matches').textContent = data.matches;
@@ -447,7 +453,6 @@ socket.on('yourDice', (dice) => {
     document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin}">${d}</div>`).join('');
 });
 
-// --- GAME STATE UPDATE ---
 socket.on('gameState', (gs) => {
     showScreen('game');
     
@@ -532,12 +537,6 @@ socket.on('gameState', (gs) => {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
 });
-
-window.useSkill = (skillType) => {
-    if(confirm('Использовать навык? Это можно сделать 1 раз за игру.')) {
-        socket.emit('useSkill', skillType);
-    }
-};
 
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
 socket.on('gameOver', (data) => {
