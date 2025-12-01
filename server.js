@@ -50,7 +50,7 @@ function syncUserData(tgUser, savedData) {
             user.xp = savedData.xp;
             user.streak = savedData.streak || 0;
         }
-        if (savedData.coins) user.coins = savedData.coins;
+        if (savedData.coins !== undefined) user.coins = savedData.coins;
         if (savedData.inventory) user.inventory = savedData.inventory;
         if (savedData.equipped) user.equipped = savedData.equipped;
     }
@@ -136,6 +136,7 @@ function pushProfileUpdate(userId) {
     }
 }
 
+// --- BOT ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     bot.on('message', (msg) => {
@@ -143,7 +144,7 @@ if (bot) {
         const text = (msg.text || '').trim();
         const fromId = msg.from.id;
 
-        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/')) {
+        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/s') && !text.startsWith('/r') && !text.startsWith('/k') && !text.startsWith('/w')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(()=>{});
@@ -217,14 +218,21 @@ if (bot) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- GAME LOGIC ---
 const rooms = new Map(); 
 function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
+// !!! ИСПРАВЛЕННЫЙ ТАЙМЕР !!!
 function resetTurnTimer(room) {
     if (room.timerId) clearTimeout(room.timerId);
-    const duration = room.config.time * 1000;
+    
+    // 1. Определяем длительность (default 30s)
+    const duration = (room.config && room.config.time) ? room.config.time * 1000 : 30000;
+    
+    // 2. ВАЖНО: Сохраняем это в комнату, чтобы отправить клиенту
+    room.turnDuration = duration; 
     room.turnDeadline = Date.now() + duration;
     
     const currentPlayer = room.players[room.currentTurn];
@@ -469,10 +477,8 @@ io.on('connection', (socket) => {
         const r = getRoomBySocketId(socket.id);
         if (r?.status === 'FINISHED') {
             
-            // !!! ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ ДАННЫЕ ВСЕХ ИГРОКОВ ПЕРЕД НОВЫМ РАУНДОМ !!!
-            r.players.forEach(p => {
-                if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId);
-            });
+            // ОБНОВЛЯЕМ БАЛАНСЫ ИГРОКОВ
+            r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); });
 
             if (r.isPvE) {
                 r.status = 'PLAYING';
@@ -572,11 +578,16 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     if (startIdx !== null) room.currentTurn = startIdx;
     else if (isFirst) room.currentTurn = 0;
     else nextTurn(room);
-    while (room.players[room.currentTurn].diceCount === 0) room.currentTurn = (room.currentTurn + 1) % room.players.length;
+    
+    while (room.players[room.currentTurn].diceCount === 0) {
+        room.currentTurn = (room.currentTurn + 1) % room.players.length;
+    }
+
     room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
     io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
-    broadcastGameState(room);
-    resetTurnTimer(room);
+    
+    resetTurnTimer(room); // ВАЖНО: Сначала таймер
+    broadcastGameState(room); // Потом состояние
 }
 
 function nextTurn(room) {
