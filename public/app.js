@@ -1,6 +1,6 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
-    // alert("Error: " + message); 
+    // alert("Error: " + message); // Раскомментируй для отладки
 };
 
 const socket = io();
@@ -17,7 +17,6 @@ let state = {
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-// Перечисляем ВСЕ экраны
 const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
 
 function showScreen(name) {
@@ -32,6 +31,7 @@ function showScreen(name) {
 
 // --- INIT ---
 window.addEventListener('load', () => {
+    // Защита от зависания загрузки
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
         if (loading && loading.classList.contains('active')) {
@@ -109,7 +109,7 @@ socket.on('profileUpdate', (data) => {
         }));
     }
 
-    // ОБНОВЛЯЕМ МАГАЗИН (если он открыт)
+    // Обновляем магазин если открыт
     if (document.getElementById('screen-shop').classList.contains('active')) {
         document.getElementById('shop-coins').textContent = state.coins;
         renderShop();
@@ -191,9 +191,8 @@ bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
-    // Ищем кнопки только внутри блока сложности
     const container = document.querySelector('#screen-pve-settings .time-selector');
-    if (container) {
+    if(container) {
         Array.from(container.children).forEach(btn => {
             if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active');
         });
@@ -343,6 +342,7 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
+    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
@@ -397,7 +397,9 @@ socket.on('gameState', (gs) => {
     }
     
     // ЗАПУСК ТАЙМЕРА (СИНХРОНИЗИРОВАННОГО)
-    startVisualTimer(gs.remainingTime, gs.totalDuration);
+    if (gs.remainingTime !== undefined && gs.totalDuration) {
+        startVisualTimer(gs.remainingTime, gs.totalDuration);
+    }
 });
 
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
@@ -408,11 +410,11 @@ socket.on('gameOver', (data) => {
 
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 
+// ИСПРАВЛЕННЫЙ ТАЙМЕР (СИНХРОНИЗАЦИЯ)
 function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
     const bar = document.querySelector('.timer-progress'); if (!bar) return;
     
-    // Используем серверное оставшееся время
     const endTime = Date.now() + remaining; 
 
     function tick() {
@@ -421,9 +423,8 @@ function startVisualTimer(remaining, total) {
         
         if (left <= 0) { bar.style.width = '0%'; return; }
         
-        // Процент от общей длительности
         const pct = (left / total) * 100; 
-        bar.style.width = `${Math.min(100, pct)}%`;
+        bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
         bar.style.backgroundColor = pct < 30 ? '#ef233c' : '#06d6a0';
         
         state.timerFrame = requestAnimationFrame(tick);
