@@ -14,7 +14,17 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
-// --- 1. ДАННЫЕ И ФУНКЦИИ ИГРОКОВ ---
+// --- 1. НАСТРОЙКА СТАТИЧЕСКИХ ФАЙЛОВ (ВАЖНО) ---
+// Указываем явный путь к папке public
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
+
+// Страховочный маршрут для главной страницы
+app.get('/', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+// --- 2. ДАННЫЕ ИГРОКОВ ---
 const RANKS = [
     { name: "Салага", min: 0, level: 0 },
     { name: "Юнга", min: 500, level: 1 },
@@ -27,7 +37,7 @@ const RANKS = [
 ];
 
 const userDB = new Map();
-const rooms = new Map(); // Комнаты объявляем тут
+const rooms = new Map();
 
 function getUserData(userId) {
     if (!userDB.has(userId)) {
@@ -153,7 +163,7 @@ function pushProfileUpdate(userId) {
     }
 }
 
-// --- 2. ИГРОВАЯ ЛОГИКА (Определяем ДО io.on) ---
+// --- 3. ФУНКЦИИ ИГРЫ (ОБЪЯВЛЕНЫ ДО ИСПОЛЬЗОВАНИЯ) ---
 
 function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
@@ -171,6 +181,7 @@ function resolveBackground(room) {
         const rInfo = getRankInfo(uData.xp, uData.streak);
         return { bg: uData.equipped.bg || 'bg_default', rankLevel: rInfo.current.level, streak: uData.streak };
     }).filter(c => c.bg !== 'bg_default');
+    
     if (candidates.length === 0) return 'bg_default';
     candidates.sort((a, b) => {
         if (b.rankLevel !== a.rankLevel) return b.rankLevel - a.rankLevel;
@@ -185,7 +196,6 @@ function broadcastGameState(room) {
     
     const playersData = room.players.map((p, i) => {
         let availableSkills = [];
-        // Рассчитываем навыки только для живых людей
         if (!p.isBot && p.tgId && p.diceCount > 0) {
             const uData = getUserData(p.tgId);
             const rankInfo = getRankInfo(uData.xp, uData.streak);
@@ -223,42 +233,153 @@ function broadcastRoomUpdate(room) {
     });
 }
 
-function resetTurnTimer(room) {
-    if (room.timerId) clearTimeout(room.timerId);
-    const duration = room.config.time * 1000;
-    room.turnDuration = duration;
-    room.turnDeadline = Date.now() + duration;
+function startNewRound(room, isFirst = false, startIdx = null) {
+    room.status = 'PLAYING'; room.currentBid = null;
+    room.activeBackground = resolveBackground(room); 
     
-    broadcastGameState(room);
-
-    const currentPlayer = room.players[room.currentTurn];
-    // Проверка на всякий случай
-    if (!currentPlayer || currentPlayer.diceCount === 0) {
-        nextTurn(room);
-        return;
+    room.players.forEach(p => {
+        if (isFirst) {
+            if (p.diceCount === 0) p.diceCount = room.config.dice;
+            p.skillsUsed = []; 
+        }
+        p.dice = p.diceCount > 0 ? rollDice(p.diceCount) : [];
+    });
+    
+    if (startIdx !== null) room.currentTurn = startIdx;
+    else if (isFirst) room.currentTurn = 0;
+    
+    // Защита: ищем живого игрока
+    let safety = 0;
+    while (room.players[room.currentTurn].diceCount === 0) {
+        room.currentTurn = (room.currentTurn + 1) % room.players.length;
+        safety++;
+        if(safety > 20) break;
     }
 
-    if (currentPlayer.isBot) {
-        const thinkTime = Math.random() * 2000 + 2000;
-        room.timerId = setTimeout(() => handleBotMove(room), thinkTime);
+    room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
+    io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
+    
+    broadcastGameState(room);
+    resetTurnTimer(room);
+}
+
+function nextTurn(room) {
+    let loopCount = 0;
+    do {
+        room.currentTurn = (room.currentTurn + 1) % room.players.length;
+        loopCount++;
+        if (loopCount > 20) return; // Защита от зацикливания
+    } while (room.players[room.currentTurn].diceCount === 0);
+    
+    resetTurnTimer(room); 
+    broadcastGameState(room);
+}
+
+function makeBidInternal(room, player, quantity, faceValue) {
+    if (room.currentBid) {
+        if (room.config.strict) {
+            if (quantity <= room.currentBid.quantity) {
+                io.to(player.id).emit('errorMsg', 'В строгом режиме нужно повышать количество!'); return;
+            }
+        } else {
+            if (quantity < room.currentBid.quantity) quantity = room.currentBid.quantity + 1;
+            else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) {
+                faceValue = room.currentBid.faceValue + 1;
+            }
+        }
+    }
+    
+    if (faceValue > 6) { 
+        if(room.config.strict) faceValue = 6; else { faceValue = 2; quantity++; }
+    }
+    
+    room.currentBid = { quantity, faceValue, playerId: player.id };
+    io.to(room.id).emit('gameEvent', { text: `${player.name} ставит: ${quantity}x[${faceValue}]`, type: 'info' });
+    nextTurn(room);
+}
+
+function checkEliminationAndContinue(room, loser, killer) {
+    if (loser.diceCount === 0) {
+        if (!loser.isBot && loser.tgId) {
+            const d = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
+            if(d) pushProfileUpdate(loser.tgId);
+        }
+        io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
+    }
+
+    const active = room.players.filter(p => p.diceCount > 0);
+    
+    if (active.length === 1) {
+        const winner = active[0];
+        room.status = 'FINISHED';
+        if (room.timerId) clearTimeout(room.timerId);
+        
+        if (!winner.isBot && winner.tgId) {
+            const type = room.isPvE ? 'win_pve' : 'win_game';
+            const diff = room.isPvE ? room.config.difficulty : null;
+            updateUserXP(winner.tgId, type, diff);
+            pushProfileUpdate(winner.tgId);
+        }
+        io.to(room.id).emit('gameOver', { winner: winner.name });
     } else {
-        room.timerId = setTimeout(() => handleTimeout(room), duration);
+        let nextIdx = room.players.indexOf(loser);
+        if (nextIdx === -1 || loser.diceCount === 0) {
+            let searchStart = nextIdx !== -1 ? nextIdx : room.currentTurn;
+            let loopCount = 0;
+            do {
+                searchStart = (searchStart + 1) % room.players.length;
+                loopCount++;
+                if(loopCount > 20) break;
+            } while (room.players[searchStart].diceCount === 0);
+            nextIdx = searchStart;
+        }
+        startNewRound(room, false, nextIdx);
     }
 }
 
-function handleTimeout(room) {
-    if (room.status !== 'PLAYING') return;
-    const loser = room.players[room.currentTurn];
+function handleCall(socket, type, roomOverride = null, playerOverride = null) {
+    const r = roomOverride || getRoomBySocketId(socket.id);
+    if (!r || r.status !== 'PLAYING' || !r.currentBid) return;
     
-    if (!loser) {
-        // Если игрока нет (вышел), просто идем дальше
-        nextTurn(room);
-        return;
+    const challenger = playerOverride || r.players[r.players.findIndex(p => p.id === socket.id)];
+    if (!challenger || r.players[r.currentTurn].id !== challenger.id) return;
+    if (r.timerId) clearTimeout(r.timerId);
+
+    const bidder = r.players.find(x => x.id === r.currentBid.playerId);
+    if (!bidder) {
+        startNewRound(r, false, r.currentTurn); return;
     }
 
-    io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул и выбывает!`, type: 'error' });
-    loser.diceCount = 0; 
-    checkEliminationAndContinue(room, loser, null);
+    let total = 0; const allDice = {}; const targetFace = r.currentBid.faceValue;
+    r.players.forEach(p => {
+        if (p.diceCount > 0) {
+            p.dice.forEach(d => { 
+                if (d === targetFace) total++;
+                else if (r.config.jokers && d === 1 && targetFace !== 1) total++;
+            });
+            allDice[p.name] = p.dice;
+        }
+    });
+    io.to(r.id).emit('revealDice', allDice);
+
+    let loser, winnerOfRound, msg;
+    if (type === 'bluff') {
+        if (total < r.currentBid.quantity) {
+            msg = `На столе ${total}. Блеф! ${bidder.name} теряет куб.`; loser = bidder; winnerOfRound = challenger;
+        } else {
+            msg = `На столе ${total}. Ставка есть! ${challenger.name} теряет куб.`; loser = challenger; winnerOfRound = bidder;
+        }
+    } else if (type === 'spot') {
+        if (total === r.currentBid.quantity) {
+            msg = `В ТОЧКУ! ${total} кубов! ${bidder.name} теряет куб.`; loser = bidder; winnerOfRound = challenger;
+        } else {
+            msg = `Мимо! На столе ${total}. ${challenger.name} теряет куб.`; loser = challenger; winnerOfRound = bidder;
+        }
+    }
+
+    io.to(r.id).emit('roundResult', { message: msg });
+    loser.diceCount--;
+    setTimeout(() => checkEliminationAndContinue(r, loser, winnerOfRound), 4000);
 }
 
 function handleBotMove(room) {
@@ -300,167 +421,68 @@ function handleBotMove(room) {
     }
 }
 
-function nextTurn(room) {
-    let loopCount = 0;
-    do {
-        room.currentTurn = (room.currentTurn + 1) % room.players.length;
-        loopCount++;
-        if (loopCount > 20) {
-            // Если все мертвы (баг), завершаем
-            console.error("Loop in nextTurn");
-            return;
-        }
-    } while (room.players[room.currentTurn].diceCount === 0);
-    
-    resetTurnTimer(room);
-    broadcastGameState(room);
+function handleTimeout(room) {
+    if (room.status !== 'PLAYING') return;
+    const loser = room.players[room.currentTurn];
+    if (!loser) { nextTurn(room); return; } // Защита если игрок вышел
+
+    io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул и выбывает!`, type: 'error' });
+    loser.diceCount = 0; 
+    checkEliminationAndContinue(room, loser, null);
 }
 
-function startNewRound(room, isFirst = false, startIdx = null) {
-    room.status = 'PLAYING'; room.currentBid = null;
-    room.activeBackground = resolveBackground(room); 
-    
-    room.players.forEach(p => {
-        if (isFirst) {
-            if (p.diceCount === 0) p.diceCount = room.config.dice;
-            p.skillsUsed = []; 
-        }
-        p.dice = p.diceCount > 0 ? rollDice(p.diceCount) : [];
-    });
-    
-    if (startIdx !== null) room.currentTurn = startIdx;
-    else if (isFirst) room.currentTurn = 0;
-    
-    // Проверка на корректность хода
-    let safeLoop = 0;
-    while (room.players[room.currentTurn].diceCount === 0) {
-        room.currentTurn = (room.currentTurn + 1) % room.players.length;
-        safeLoop++;
-        if (safeLoop > 20) break;
-    }
-
-    room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
-    io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
+function resetTurnTimer(room) {
+    if (room.timerId) clearTimeout(room.timerId);
+    const duration = room.config.time * 1000;
+    room.turnDuration = duration;
+    room.turnDeadline = Date.now() + duration;
     
     broadcastGameState(room);
-    resetTurnTimer(room);
-}
 
-function makeBidInternal(room, player, quantity, faceValue) {
-    if (room.currentBid) {
-        if (room.config.strict) {
-            if (quantity <= room.currentBid.quantity) {
-                io.to(player.id).emit('errorMsg', 'В строгом режиме нужно повышать количество!'); return;
-            }
-        } else {
-            if (quantity < room.currentBid.quantity) quantity = room.currentBid.quantity + 1;
-            else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) {
-                faceValue = room.currentBid.faceValue + 1;
-            }
-        }
-    }
-    
-    if (faceValue > 6) { 
-        if(room.config.strict) faceValue = 6; else { faceValue = 2; quantity++; }
-    }
-    
-    room.currentBid = { quantity, faceValue, playerId: player.id };
-    io.to(room.id).emit('gameEvent', { text: `${player.name} ставит: ${quantity}x[${faceValue}]`, type: 'info' });
-    nextTurn(room);
-}
-
-function checkEliminationAndContinue(room, loser, killer) {
-    // 1. Обработка выбывшего
-    if (loser.diceCount === 0) {
-        if (!loser.isBot && loser.tgId) {
-            const d = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
-            if(d) pushProfileUpdate(loser.tgId);
-        }
-        io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
-    }
-
-    const active = room.players.filter(p => p.diceCount > 0);
-    
-    // 2. Проверка победы
-    if (active.length === 1) {
-        const winner = active[0];
-        room.status = 'FINISHED';
-        if (room.timerId) clearTimeout(room.timerId);
-        
-        if (!winner.isBot && winner.tgId) {
-            const type = room.isPvE ? 'win_pve' : 'win_game';
-            const diff = room.isPvE ? room.config.difficulty : null;
-            updateUserXP(winner.tgId, type, diff);
-            pushProfileUpdate(winner.tgId);
-        }
-        io.to(room.id).emit('gameOver', { winner: winner.name });
-    } else {
-        // 3. Продолжаем игру
-        // Начинает проигравший (если жив) или следующий за ним
-        let nextIdx = room.players.indexOf(loser);
-        
-        // Если игрока удалили (вылет) или у него 0 костей, ищем следующего живого
-        if (nextIdx === -1 || loser.diceCount === 0) {
-            let searchStart = nextIdx !== -1 ? nextIdx : room.currentTurn;
-            let loopCount = 0;
-            do {
-                searchStart = (searchStart + 1) % room.players.length;
-                loopCount++;
-                if(loopCount > 20) break;
-            } while (room.players[searchStart].diceCount === 0);
-            nextIdx = searchStart;
-        }
-        
-        startNewRound(room, false, nextIdx);
-    }
-}
-
-function handleCall(socket, type, roomOverride = null, playerOverride = null) {
-    const r = roomOverride || getRoomBySocketId(socket.id);
-    if (!r || r.status !== 'PLAYING' || !r.currentBid) return;
-    
-    const challenger = playerOverride || r.players[r.players.findIndex(p => p.id === socket.id)];
-    if (!challenger || r.players[r.currentTurn].id !== challenger.id) return;
-    if (r.timerId) clearTimeout(r.timerId);
-
-    const bidder = r.players.find(x => x.id === r.currentBid.playerId);
-    // Если тот кто ставил вышел, засчитываем победу вызывавшему (формально)
-    if (!bidder) {
-        io.to(r.id).emit('gameEvent', { text: 'Игрок ушел, раунд завершен', type: 'info' });
-        startNewRound(r, false, r.currentTurn);
+    const currentPlayer = room.players[room.currentTurn];
+    if (!currentPlayer || currentPlayer.diceCount === 0) {
+        nextTurn(room);
         return;
     }
 
-    let total = 0; const allDice = {}; const targetFace = r.currentBid.faceValue;
-    r.players.forEach(p => {
-        if (p.diceCount > 0) {
-            p.dice.forEach(d => { 
-                if (d === targetFace) total++;
-                else if (r.config.jokers && d === 1 && targetFace !== 1) total++;
-            });
-            allDice[p.name] = p.dice;
-        }
-    });
-    io.to(r.id).emit('revealDice', allDice);
-
-    let loser, winnerOfRound, msg;
-    if (type === 'bluff') {
-        if (total < r.currentBid.quantity) {
-            msg = `На столе ${total}. Блеф! ${bidder.name} теряет куб.`; loser = bidder; winnerOfRound = challenger;
-        } else {
-            msg = `На столе ${total}. Ставка есть! ${challenger.name} теряет куб.`; loser = challenger; winnerOfRound = bidder;
-        }
-    } else if (type === 'spot') {
-        if (total === r.currentBid.quantity) {
-            msg = `В ТОЧКУ! ${total} кубов! ${bidder.name} теряет куб.`; loser = bidder; winnerOfRound = challenger;
-        } else {
-            msg = `Мимо! На столе ${total}. ${challenger.name} теряет куб.`; loser = challenger; winnerOfRound = bidder;
-        }
+    if (currentPlayer.isBot) {
+        const thinkTime = Math.random() * 2000 + 2000;
+        room.timerId = setTimeout(() => handleBotMove(room), thinkTime);
+    } else {
+        room.timerId = setTimeout(() => handleTimeout(room), duration);
     }
+}
 
-    io.to(r.id).emit('roundResult', { message: msg });
-    loser.diceCount--;
-    setTimeout(() => checkEliminationAndContinue(r, loser, winnerOfRound), 4000);
+function handlePlayerDisconnect(socketId, room) {
+    const i = room.players.findIndex(p => p.id === socketId);
+    if (i === -1) return;
+    const player = room.players[i];
+    const wasCreator = player.isCreator;
+    
+    if (room.status === 'PLAYING') {
+        io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал!`, type: 'error' });
+        player.diceCount = 0; 
+        if (!player.isBot && player.tgId) updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
+        
+        room.players.splice(i, 1);
+        
+        if (i === room.currentTurn) {
+            if (room.currentTurn >= room.players.length) room.currentTurn = 0;
+            resetTurnTimer(room);
+        } else if (i < room.currentTurn) room.currentTurn--;
+        
+        const active = room.players.filter(p => p.diceCount > 0);
+        if (active.length === 1) {
+            const winner = active[0]; room.status = 'FINISHED';
+            if (room.timerId) clearTimeout(room.timerId);
+            if (!winner.isBot && winner.tgId) updateUserXP(winner.tgId, room.isPvE ? 'win_pve' : 'win_game');
+            io.to(room.id).emit('gameOver', { winner: winner.name });
+        } else broadcastGameState(room);
+    } else {
+        room.players.splice(i, 1);
+        if (room.players.filter(p => !p.isBot).length === 0) { if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id); }
+        else { if (wasCreator && room.players[0]) room.players[0].isCreator = true; broadcastRoomUpdate(room); }
+    }
 }
 
 function handleSkill(socket, skillType) {
@@ -532,39 +554,77 @@ function handleSkill(socket, skillType) {
     }
 }
 
-function handlePlayerDisconnect(socketId, room) {
-    const i = room.players.findIndex(p => p.id === socketId);
-    if (i === -1) return;
-    const player = room.players[i];
-    const wasCreator = player.isCreator;
-    
-    if (room.status === 'PLAYING') {
-        io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал!`, type: 'error' });
-        player.diceCount = 0; 
-        if (!player.isBot && player.tgId) updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
-        
-        room.players.splice(i, 1);
-        
-        if (i === room.currentTurn) {
-            if (room.currentTurn >= room.players.length) room.currentTurn = 0;
-            resetTurnTimer(room);
-        } else if (i < room.currentTurn) room.currentTurn--;
-        
-        const active = room.players.filter(p => p.diceCount > 0);
-        if (active.length === 1) {
-            const winner = active[0]; room.status = 'FINISHED';
-            if (room.timerId) clearTimeout(room.timerId);
-            if (!winner.isBot && winner.tgId) updateUserXP(winner.tgId, room.isPvE ? 'win_pve' : 'win_game');
-            io.to(room.id).emit('gameOver', { winner: winner.name });
-        } else broadcastGameState(room);
-    } else {
-        room.players.splice(i, 1);
-        if (room.players.filter(p => !p.isBot).length === 0) { if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id); }
-        else { if (wasCreator && room.players[0]) room.players[0].isCreator = true; broadcastRoomUpdate(room); }
-    }
+// --- 4. BOT COMMANDS ---
+const bot = token ? new TelegramBot(token, { polling: true }) : null;
+if (bot) {
+    bot.on('message', (msg) => {
+        const chatId = msg.chat.id;
+        const text = (msg.text || '').trim();
+        const fromId = msg.from.id;
+
+        console.log(`[BOT MSG] From: ${fromId}, Text: ${text}`);
+
+        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/')) {
+            const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
+            const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
+            bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(()=>{});
+            return;
+        }
+
+        if (fromId !== ADMIN_ID) return;
+
+        const args = text.split(' ');
+        const cmd = args[0].toLowerCase();
+
+        if (cmd === '/setxp') {
+            if (args.length < 3) return bot.sendMessage(chatId, "Usage: /setxp @user 1000");
+            const uid = findUserIdByUsername(args[1]); if (!uid) return bot.sendMessage(chatId, "User not found");
+            const user = userDB.get(uid); user.xp = parseInt(args[2]);
+            if (user.xp >= 75000) user.streak = 100;
+            userDB.set(uid, user); pushProfileUpdate(uid);
+            bot.sendMessage(chatId, `✅ XP Set: ${user.xp}`);
+        }
+        else if (cmd === '/setcoins') {
+            if (args.length < 3) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid); user.coins = parseInt(args[2]);
+            userDB.set(uid, user); pushProfileUpdate(uid);
+            bot.sendMessage(chatId, `✅ Coins Set: ${user.coins}`);
+        }
+        else if (cmd === '/rich') {
+            if (args.length < 2) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid); user.coins = 1000000;
+            userDB.set(uid, user); pushProfileUpdate(uid);
+            bot.sendMessage(chatId, `🤑 Rich: ${user.name}`);
+        }
+        else if (cmd === '/unlockall') {
+            if (args.length < 2) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid);
+            user.inventory = [
+                'skin_white', 'skin_red', 'skin_gold', 'skin_black', 'skin_blue', 'skin_green', 'skin_purple', 'skin_cyber', 'skin_bone',
+                'bg_default', 'bg_lvl1', 'bg_lvl2', 'bg_lvl3', 'bg_lvl4',
+                'frame_default', 'frame_wood', 'frame_silver', 'frame_gold', 'frame_fire', 'frame_ice', 'frame_neon', 'frame_royal', 'frame_ghost', 'frame_kraken', 'frame_captain'
+            ];
+            userDB.set(uid, user); pushProfileUpdate(uid);
+            bot.sendMessage(chatId, "Unlocked all items");
+        }
+        else if (cmd === '/reset') {
+            if (args.length < 2) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid);
+            user.xp = 0; user.coins = 0; user.wins = 0; user.matches = 0; user.streak = 0;
+            user.inventory = ['skin_white', 'bg_default', 'frame_default'];
+            user.equipped = { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default' };
+            userDB.set(uid, user);
+            pushProfileUpdate(uid);
+            bot.sendMessage(chatId, `♻️ Reset: ${user.name}`);
+        }
+    });
 }
 
-// --- 3. SOCKET LISTENERS ---
+// --- 5. SOCKET LISTENERS ---
 io.on('connection', (socket) => {
     socket.on('login', ({ tgUser, savedData }) => {
         if (!tgUser) return;
