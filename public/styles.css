@@ -14,16 +14,14 @@
 body {
   font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
   background-color: #5D4037;
-  
   background-repeat: repeat;
   background-size: 384px auto; 
   background-attachment: fixed;
-  
   box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
   transition: background-image 0.3s ease;
 }
 
-/* --- ФОНЫ СТОЛА --- */
+/* ФОНЫ */
 body.bg_default { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
 body.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
 body.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
@@ -42,26 +40,31 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-.title {
-    font-family: var(--font); font-size: clamp(2.5rem, 11vw, 4rem);
-    color: var(--accent); line-height: 1.2; text-align: center;
-    text-shadow: 3px 3px 0 #d90429, 5px 5px 0 rgba(0,0,0,0.3);
-    margin-bottom: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;
+/* ЛОГОТИП */
+.game-logo {
+    width: 100%;
+    max-width: 280px; /* Чтобы помещался */
+    height: auto;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
+    transition: transform 0.3s;
 }
-.wavy-text span { display: inline-block; position: relative; animation: bounce 2s ease-in-out infinite; }
-.wavy-text span:nth-child(1) { --rot: -10deg; animation-delay: 0s; top: 10px; }
-.wavy-text span:nth-child(2) { --rot: -6deg;  animation-delay: 0.1s; top: 5px; }
-.wavy-text span:nth-child(3) { --rot: -3deg;  animation-delay: 0.2s; top: 2px; }
-.wavy-text span:nth-child(4) { --rot: 0deg;   animation-delay: 0.3s; top: 0px; }
-.wavy-text span:nth-child(5) { --rot: 0deg;   animation-delay: 0.4s; top: 0px; }
-.wavy-text span:nth-child(6) { --rot: 3deg;   animation-delay: 0.5s; top: 2px; }
-.wavy-text span:nth-child(7) { --rot: 6deg;   animation-delay: 0.6s; top: 5px; }
-.wavy-text span:nth-child(8) { --rot: 10deg;  animation-delay: 0.7s; top: 10px; }
-@keyframes bounce { 0%, 100% { transform: translateY(0) rotate(var(--rot)); } 50% { transform: translateY(-8px) rotate(var(--rot)); } }
+/* Анимация парения */
+.float-anim { animation: floatLogo 3s ease-in-out infinite; }
+@keyframes floatLogo {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.title-text {
+    font-family: var(--font); font-size: 2rem; color: var(--accent); 
+    text-align: center; text-shadow: 2px 2px 0 #d90429; margin-bottom: 20px; font-weight: 800;
+}
 
 .subtitle { font-family: var(--font); font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 
-.btn { width: 100%; padding: 16px; border: none; border-radius: var(--radius); font-family: var(--font); font-size: 1.3rem; font-weight: 700; cursor: pointer; margin-top: 12px; transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); }
+/* УМЕНЬШЕННЫЕ КНОПКИ (padding 12px вместо 16px) */
+.btn { width: 100%; padding: 12px; border: none; border-radius: var(--radius); font-family: var(--font); font-size: 1.2rem; font-weight: 700; cursor: pointer; margin-top: 10px; transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); }
 .btn:active { transform: translateY(6px); box-shadow: none !important; }
 .btn-primary { background: var(--primary); color: white; box-shadow: 0 6px 0 #d90429; }
 .btn-orange { background: #fb8500; color: #2b2d42; box-shadow: 0 6px 0 #c46900; }
@@ -72,45 +75,49 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-mini { width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--surface); color: white; font-size: 1.5rem; font-weight: 800; box-shadow: 0 4px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(4px); box-shadow: none; }
 
+/* КНОПКА ПРАВИЛ */
+.btn-rules {
+    position: absolute; top: 15px; right: 15px;
+    width: 40px; height: 40px;
+    background: var(--surface); color: var(--accent);
+    border: 2px solid var(--accent); border-radius: 50%;
+    font-size: 1.5rem; font-weight: 800; cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+.btn-rules:active { transform: scale(0.9); }
+
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.2rem; text-align: center; outline: none; font-weight: 600; }
 
-/* --- КАРТОЧКА ПРОФИЛЯ (В МЕНЮ) --- */
+/* --- КАРТОЧКА ПРОФИЛЯ (УМЕНЬШЕННАЯ) --- */
 .profile-card { 
     background: var(--surface); 
-    border-radius: 30px; 
-    padding: 20px; 
-    width: 100%; max-width: 320px; 
+    border-radius: 24px; 
+    padding: 15px; /* Меньше padding */
+    width: 100%; max-width: 280px; /* Меньше ширина */
     text-align: center; 
-    margin-bottom: 20px; margin-top: 40px;
-    border: 4px solid var(--blue); 
+    margin-bottom: 10px; margin-top: 20px;
+    border: 3px solid var(--blue); 
     box-shadow: var(--shadow-card); 
     position: relative; 
-    
-    /* Настройки для фоновой картинки */
-    background-size: cover;
-    background-position: center;
-    text-shadow: 1px 1px 2px black; 
+    background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; 
 }
 
-.rank-icon-box { width: 80px; height: 80px; background: var(--bg-color); border-radius: 50%; margin: -60px auto 10px; display: flex; justify-content: center; align-items: center; border: 4px solid var(--blue); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-.rank-emoji { font-size: 3rem; }
-.rank-label { background: var(--blue); color: white; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-.streak-label { color: var(--primary); font-weight: 800; margin-bottom: 5px; font-size: 0.9rem; text-shadow: 1px 1px 0 black; }
-.coins-row { font-size: 1.2rem; font-weight: bold; color: var(--accent); margin-bottom: 8px; text-shadow: 1px 1px 0 black; }
-.xp-track { background: rgba(0,0,0,0.6); height: 24px; border-radius: 12px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+.rank-icon-box { width: 70px; height: 70px; background: var(--bg-color); border-radius: 50%; margin: -50px auto 5px; display: flex; justify-content: center; align-items: center; border: 3px solid var(--blue); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.rank-emoji { font-size: 2.5rem; }
+.rank-label { background: var(--blue); color: white; display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+.streak-label { color: var(--primary); font-weight: 800; margin-bottom: 5px; font-size: 0.8rem; text-shadow: 1px 1px 0 black; }
+.coins-row { font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 5px; text-shadow: 1px 1px 0 black; }
+.xp-track { background: rgba(0,0,0,0.6); height: 20px; border-radius: 10px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
 .xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #ff9f1c); transition: width 0.5s ease; border-radius: 12px; }
-.xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); color: white; }
+.xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); color: white; }
 
 .shop-balance { font-size: 2rem; color: var(--accent); font-weight: 800; margin-bottom: 20px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 .shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; }
 .tab-btn { padding: 8px 15px; border: none; background: rgba(0,0,0,0.3); color: #8d99ae; border-radius: 10px; font-weight: bold; cursor: pointer; }
 .tab-btn.active { background: #ef233c; color: white; }
-.shop-grid { 
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; 
-    max-width: 400px; max-height: 60vh; overflow-y: auto; 
-    padding-bottom: 40px; 
-}
+.shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; max-height: 60vh; overflow-y: auto; padding-bottom: 40px; }
 .shop-item { background: var(--surface); padding: 10px; border-radius: 16px; text-align: center; border: 2px solid rgba(255,255,255,0.1); }
 .shop-item h4 { font-size: 0.9rem; margin: 5px 0; }
 .shop-item.owned { border-color: var(--success); }
@@ -137,121 +144,43 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .rank-sub { font-size: 0.7rem; color: var(--accent); margin-left: 5px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
 
 .game-layout { padding: 10px; }
-.rivals-bar-container { 
-    background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; 
-    margin-bottom: 10px; overflow: visible; 
-}
-.rivals-row { 
-    display: flex; gap: 8px; overflow-x: auto; 
-    padding-bottom: 5px; scrollbar-width: none; 
-    padding-top: 40px; margin-top: -40px;
-}
+.rivals-bar-container { background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; margin-bottom: 10px; overflow: visible; }
+.rivals-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; padding-top: 40px; margin-top: -40px; }
 
-/* --- ФИШКИ ИГРОКОВ / РАМКИ / МОДАЛКА С ФОНОМ --- */
-.player-chip { 
-    background: var(--surface); 
-    border-radius: 12px; padding: 6px; 
-    min-width: 75px; max-width: 75px; 
-    text-align: center; 
-    border: 2px solid transparent; 
-    transition: all 0.2s; flex-shrink: 0; position: relative; 
-    box-shadow: 0 4px 0 rgba(0,0,0,0.2); z-index: 1;
-    background-size: cover;
-    background-position: center;
-    text-shadow: 1px 1px 2px black; 
-}
+.player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; box-shadow: 0 4px 0 rgba(0,0,0,0.2); z-index: 1; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
 .player-chip b { display: block; font-size: 0.7rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .player-chip .rank-game { font-size: 0.6rem; color: var(--secondary); display: block; line-height: 1; margin-top: 2px; font-weight: 700; color: rgba(255,255,255,0.8); }
 .player-chip .dice-count { font-size: 0.9rem; font-weight: 800; color: white; margin-top: 2px; }
 .player-chip.turn { transform: translateY(-3px); box-shadow: 0 0 15px var(--accent); border-color: var(--accent) !important; }
 .player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
-/* --- ОПРЕДЕЛЕНИЕ РАМОК (ФОН + ГРАНИЦА) --- */
-/* Добавил селектор .modal-content.frame_... ко всем */
-
-.player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default { 
-    border: 2px solid transparent; background-image: none; background-color: var(--surface); 
-}
-
-/* Дерево */
-.player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood { 
-    border: 3px solid #8d6e63; 
-    background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); 
-}
-/* Серебро */
-.player-chip.frame_silver, .profile-card.frame_silver, .modal-content.frame_silver { 
-    border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; 
-    background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_serebro.png'); 
-}
-/* Лед */
-.player-chip.frame_ice, .profile-card.frame_ice, .modal-content.frame_ice { 
-    border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; 
-    background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_led.png'); 
-}
-/* Неон */
-.player-chip.frame_neon, .profile-card.frame_neon, .modal-content.frame_neon { 
-    border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; 
-    background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_neon.png'); 
-}
-/* Золото */
-.player-chip.frame_gold, .profile-card.frame_gold, .modal-content.frame_gold { 
-    border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; 
-    background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_zoloto.png'); 
-}
-/* Огонь */
-.player-chip.frame_fire, .profile-card.frame_fire, .modal-content.frame_fire { 
-    border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; 
-    background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_ogon.png'); 
-}
-/* Король */
-.player-chip.frame_royal, .profile-card.frame_royal, .modal-content.frame_royal { 
-    border: 4px solid #ffd700; 
-    background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_korolevski.png'); 
-}
-/* Призрак */
-.player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost { 
-    border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; 
-    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); 
-}
-/* Кракен */
-.player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken { 
-    border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; 
-    background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); 
-}
-/* Капитан */
-.player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain { 
-    border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; 
-    background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); 
-}
+.player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default { border: 2px solid transparent; background-image: none; background-color: var(--surface); }
+.player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood { border: 3px solid #8d6e63; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); }
+.player-chip.frame_silver, .profile-card.frame_silver, .modal-content.frame_silver { border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_serebro.png'); }
+.player-chip.frame_ice, .profile-card.frame_ice, .modal-content.frame_ice { border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_led.png'); }
+.player-chip.frame_neon, .profile-card.frame_neon, .modal-content.frame_neon { border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_neon.png'); }
+.player-chip.frame_gold, .profile-card.frame_gold, .modal-content.frame_gold { border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_zoloto.png'); }
+.player-chip.frame_fire, .profile-card.frame_fire, .modal-content.frame_fire { border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_ogon.png'); }
+.player-chip.frame_royal, .profile-card.frame_royal, .modal-content.frame_royal { border: 4px solid #ffd700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_korolevski.png'); }
+.player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); }
+.player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); }
+.player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); }
 
 .inv-preview.player-chip { min-width: auto; max-width: none; width: 40px; height: 40px; padding: 0; }
-
-.emote-bubble {
-    position: fixed;
-    font-size: 2.5rem;
-    animation: floatUp 2s ease-out forwards;
-    pointer-events: none;
-    z-index: 9999;
-    text-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    transform: translateX(-50%);
-}
-
+.emote-bubble { position: fixed; font-size: 2.5rem; animation: floatUp 2s ease-out forwards; pointer-events: none; z-index: 9999; text-shadow: 0 2px 5px rgba(0,0,0,0.5); transform: translateX(-50%); }
 .table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
 .timer-capsule { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; width: 80%; margin-bottom: 15px; }
 .timer-track { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
-
 .timer-progress { height: 100%; background: var(--success); width: 100%; border-radius: 5px; transition: width 0.1s linear, background-color 0.3s; }
 .bid-bubble { background: var(--text); color: var(--bg-color); padding: 20px; border-radius: 24px; text-align: center; min-width: 200px; box-shadow: 0 8px 0 #999; border: 4px solid var(--bg-color); position: relative; }
 .bid-bubble::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: var(--bg-color) transparent transparent transparent; }
 .bid-qty { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
 .bid-face { font-size: 2rem; background: var(--bg-color); color: white; padding: 2px 8px; border-radius: 8px; }
 .game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--text); text-shadow: 1px 1px 0 black; text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
-
 .my-controls-area { width: 100%; }
 .emotes-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
 .emotes-bar button { background: none; border: none; font-size: 1.8rem; cursor: pointer; transition: transform 0.1s; padding: 0; }
 .emotes-bar button:active { transform: scale(1.2); }
-
 .my-dice-panel { text-align: center; margin-bottom: 10px; }
 .panel-label { font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; text-shadow: 1px 1px 0 black; }
 .my-dice-row { display: flex; justify-content: center; gap: 8px; }
@@ -264,7 +193,6 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .die.skin_purple { background: #7209b7; color: white; border-color: #480ca8; }
 .die.skin_cyber { background: #000; color: #0f0; border: 2px solid #0f0; box-shadow: 0 0 10px #0f0; font-family: monospace; }
 .die.skin_bone { background: #e3d5ca; color: #5D4037; border-color: #d5bdaf; }
-
 .action-panel { background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
 .hidden { display: none; }
 .bid-controls { display: flex; gap: 15px; margin-bottom: 15px; }
@@ -275,15 +203,8 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .main-actions { display: flex; gap: 10px; }
 .main-actions button { margin: 0; padding: 14px; font-size: 1rem; }
 #btn-call-spot.hidden-rule { display: none !important; }
-
 .skills-bar { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.btn-skill {
-    padding: 8px 12px; border: none; border-radius: 12px; 
-    font-size: 0.9rem; font-weight: 700; cursor: pointer;
-    display: flex; align-items: center; gap: 5px;
-    background: var(--surface); color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
-    border: 2px solid rgba(255,255,255,0.1);
-}
+.btn-skill { padding: 8px 12px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; background: var(--surface); color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.1); }
 .btn-skill:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
 .btn-skill.skill-ears { background: #ffb703; color: #2b2d42; }
 .btn-skill.skill-lucky { background: #06d6a0; color: #2b2d42; }
@@ -300,52 +221,29 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .pulse-btn { animation: pulse 2s infinite; }
 .slide-up-delay { animation: slideUp 0.4s 0.2s backwards; }
 
-.modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); z-index: 1000;
-    display: none; justify-content: center; align-items: center; padding: 20px;
-    backdrop-filter: blur(5px);
-}
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
 .modal-overlay.active { display: flex; }
-
-.modal-content {
-    background: var(--surface); border-radius: 24px; padding: 30px 20px;
-    width: 100%; max-width: 340px; position: relative;
-    border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-    text-align: center;
-    
-    /* Для фона рамок */
-    background-size: cover;
-    background-position: center;
-    text-shadow: 1px 1px 2px black;
-}
-.btn-close {
-    position: absolute; top: 10px; right: 10px;
-    background: none; border: none; color: var(--secondary);
-    font-size: 1.5rem; cursor: pointer; padding: 10px; z-index: 5;
-}
-
+.modal-content { background: var(--surface); border-radius: 24px; padding: 30px 20px; width: 100%; max-width: 340px; position: relative; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
+.btn-close { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--secondary); font-size: 1.5rem; cursor: pointer; padding: 10px; z-index: 5; }
 .rank-icon-box.small { width: 60px; height: 60px; margin-top: -10px; }
 .rank-icon-box.small .rank-emoji { font-size: 2rem; }
-
 .stats-row { display: flex; justify-content: space-around; margin: 20px 0; background: rgba(0,0,0,0.4); border-radius: 16px; padding: 15px 5px; border: 1px solid rgba(255,255,255,0.1); }
 .stat-box { text-align: center; }
 .stat-val { font-size: 1.4rem; font-weight: 800; color: white; text-shadow: 1px 1px 0 black; }
 .stat-label { font-size: 0.7rem; color: var(--secondary); text-transform: uppercase; font-weight: 700; color: rgba(255,255,255,0.7); }
-
 .modal-subtitle { font-size: 1rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; text-shadow: 1px 1px 0 black; }
-
-.inventory-grid-mini {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 8px; max-height: 150px; overflow-y: auto;
-}
-.inv-item {
-    background: rgba(0,0,0,0.4); border-radius: 10px; padding: 5px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    border: 1px solid rgba(255,255,255,0.1);
-}
+.inventory-grid-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; max-height: 150px; overflow-y: auto; }
+.inv-item { background: rgba(0,0,0,0.4); border-radius: 10px; padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); }
 .inv-item span { font-size: 0.6rem; margin-top: 4px; opacity: 0.9; line-height: 1; color: white; text-shadow: 1px 1px 0 black; }
 .inv-preview { width: 30px; height: 30px; border-radius: 6px; }
-
 .clickable-card { cursor: pointer; transition: transform 0.2s; }
 .clickable-card:active { transform: scale(0.98); }
+
+/* СТИЛИ ПРАВИЛ */
+.modal-title { font-size: 1.8rem; color: var(--accent); margin-bottom: 15px; text-transform: uppercase; font-weight: 800; text-shadow: 2px 2px 0 #d90429; }
+.scrollable-content { max-height: 80vh; overflow-y: auto; text-align: left; }
+.rules-section { margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 16px; }
+.rules-section h3 { color: var(--secondary); font-size: 1.1rem; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+.rules-section p { font-size: 0.9rem; line-height: 1.4; margin-bottom: 8px; color: rgba(255,255,255,0.9); }
+.rules-section b { color: var(--accent); }
+.rules-footer { text-align: center; font-size: 0.7rem; opacity: 0.5; margin-top: 20px; font-weight: 600; }
