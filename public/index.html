@@ -24,168 +24,171 @@
                 </h1>
             </div>
             <div class="card slide-up">
-                <input type="text" id="input-username" placeholder="Твое имя?" maxlength="12">
-                <button id="btn-login" class="btn btn-primary">В БОЙ!</button>
+                <p>Введите имя игрока:</p>
+                <input type="text" id="username-input" placeholder="Ваше имя" maxlength="15">
+                <button id="btn-login-play" class="btn btn-green">ИГРАТЬ</button>
             </div>
         </div>
 
         <div id="screen-home" class="screen center-content">
-            <h1 class="title wavy-text">
-                <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
-            </h1>
-            <div class="profile-card pop-in" onclick="showMyProfile()" style="cursor: pointer;">
-                <div class="rank-icon-box"><div id="rank-badge" class="rank-emoji">🧹</div></div>
-                <h2 id="user-display">...</h2>
-                <div class="rank-label" id="rank-display">...</div>
-                <div class="coins-row">💰 <span id="user-coins">0</span></div>
-                <div id="win-streak" class="streak-label">Серия: 0 🔥</div>
-                <div class="xp-track"><div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div><span id="xp-text" class="xp-text">...</span></div>
+            <div class="logo-container slide-down">
+                <div class="logo-icon">⚓</div>
+                <h1 class="title wavy-text">
+                    <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
+                </h1>
             </div>
-            <div class="menu-buttons slide-up-delay">
-                <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
-                <button id="btn-to-pve" class="btn btn-red">ИГРАТЬ С БОТОМ</button>
-                <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
-                <button id="btn-shop" class="btn btn-green" style="margin-top: 10px;">ЛАВКА</button>
+            
+            <div id="player-status-card" class="card player-status slide-up-delay"> <div id="player-equipped" class="equipped-icon"></div>
+                <div class="player-text-info"> <h2 id="player-name-home" class="player-name-home">...</h2>
+                    <p id="player-rank-home" class="player-rank-home">...</p>
+                </div>
+                <div class="coins-display">
+                    <span id="player-coins" class="coin-count">0</span>
+                    <span class="coin-icon">💰</span>
+                </div>
+            </div>
+
+            <div class="main-menu slide-up">
+                <button id="btn-start-game" class="btn btn-green">НАЧАТЬ ИГРУ</button>
+                <button id="btn-start-pve" class="btn btn-orange">PvE (С БОТАМИ)</button>
+                <button id="btn-join-room" class="btn btn-blue" disabled>ПРИСОЕДИНИТЬСЯ (WIP)</button>
+                <button id="btn-shop" class="btn btn-blue">В МАГАЗИН</button>
+            </div>
+        </div>
+
+        <div id="screen-create-settings" class="screen">
+            <div class="header slide-down">
+                <h2>Настройки комнаты</h2>
+            </div>
+            <div class="card settings-card slide-up">
+                <div class="setting-group">
+                    <label>Начальные кубики: <span id="display-dice">5</span></label>
+                    <input type="range" id="slider-dice" min="2" max="10" value="5" data-display="display-dice">
+                </div>
+                <div class="setting-group">
+                    <label>Время на ход (сек): <span id="display-time">30</span></label>
+                    <input type="range" id="slider-time" min="10" max="60" value="30" data-display="display-time">
+                </div>
+                <div class="rules-group">
+                    <h3>Правила</h3>
+                    <div class="rule-toggle">
+                        <label for="toggle-jokers">Джокеры (🎲1)</label>
+                        <input type="checkbox" id="toggle-jokers" class="toggle-switch">
+                    </div>
+                    <div class="rule-toggle">
+                        <label for="toggle-spot">В Точку (Spot)</label>
+                        <input type="checkbox" id="toggle-spot" class="toggle-switch">
+                    </div>
+                    <div class="rule-toggle">
+                        <label for="toggle-strict">Строгий порядок (WIP)</label>
+                        <input type="checkbox" id="toggle-strict" class="toggle-switch" disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="footer slide-up-delay">
+                <button id="btn-create-room" class="btn btn-green">СОЗДАТЬ</button>
+                <button id="btn-home" class="btn btn-blue">НАЗАД</button>
+            </div>
+        </div>
+
+        <div id="screen-pve-settings" class="screen">
+             <div class="header slide-down">
+                <h2>Настройки PvE</h2>
+            </div>
+            <div class="card settings-card slide-up">
+                <p class="wip-note">Режим "Игрок против ботов"</p>
+                <div class="setting-group">
+                    <label>Сложность: (WIP)</label>
+                    <select id="pve-difficulty" disabled>
+                        <option value="easy">Легко</option>
+                        <option value="medium" selected>Средне</option>
+                        <option value="hard">Сложно</option>
+                    </select>
+                </div>
+                <div class="rule-toggle">
+                    <label for="pve-toggle-jokers">Джокеры (🎲1)</label>
+                    <input type="checkbox" id="pve-toggle-jokers" class="toggle-switch">
+                </div>
+                <div class="rule-toggle">
+                    <label for="pve-toggle-spot">В Точку (Spot)</label>
+                    <input type="checkbox" id="pve-toggle-spot" class="toggle-switch">
+                </div>
+            </div>
+            <div class="footer slide-up-delay">
+                <button id="btn-create-pve" class="btn btn-orange">НАЧАТЬ PvE</button>
+                <button id="btn-home" class="btn btn-blue">НАЗАД</button>
+            </div>
+        </div>
+
+        <div id="screen-lobby" class="screen">
+            <div class="header slide-down">
+                <h2>Комната: <span id="room-id-display">...</span></h2>
+                <p>Ожидание игроков...</p>
+            </div>
+            <div class="card lobby-card slide-up">
+                <div id="lobby-players" class="lobby-players-list">
+                    </div>
+            </div>
+            <div class="footer slide-up-delay">
+                <button id="btn-lobby-start" class="btn btn-green">СТАРТ</button>
+                <button id="btn-home" class="btn btn-red">ВЫЙТИ</button>
             </div>
         </div>
 
         <div id="screen-shop" class="screen center-content">
-            <h2 class="title">ЛАВКА</h2>
-            <div class="shop-balance">💰 <span id="shop-coins">0</span></div>
-            <div class="shop-tabs">
-                <button id="tab-all" class="tab-btn active" onclick="filterShop('all')">ВСЁ</button>
-                <button id="tab-skins" class="tab-btn" onclick="filterShop('skins')">КОСТИ</button>
-                <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">РАМКИ</button>
+            <div class="header slide-down">
+                <h2>Магазин 🛍️</h2>
             </div>
-            <div class="shop-grid" id="shop-items"></div>
-            <button id="btn-shop-back" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
-        </div>
-
-        <div id="screen-pve-settings" class="screen center-content">
-            <h2 class="subtitle">БИТВА С БОТОМ</h2>
-            <div class="card slide-up">
-                <div class="setting-group">
-                    <label>Сложность</label>
-                    <div class="time-selector" id="pve-difficulty-selector">
-                        <button class="btn-time active" onclick="setDiff('easy')">Новичок</button>
-                        <button class="btn-time" onclick="setDiff('medium')">Пират</button>
-                        <button class="btn-time" onclick="setDiff('pirate')">Капитан</button>
-                    </div>
-                    <p id="pve-difficulty-desc" class="desc-text"></p>
+            <div class="card shop-card slide-up">
+                <p class="wip-note">В разработке...</p>
                 </div>
-                <div class="setting-group">
-                    <label>Кубиков у каждого</label>
-                    <div class="stepper-row">
-                        <button class="btn-mini" onclick="adjPveSettings('dice', -1)">-</button>
-                        <span class="stepper-val" id="pve-dice-count">5</span>
-                        <button class="btn-mini" onclick="adjPveSettings('dice', 1)">+</button>
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <label>Кол-во ботов</label>
-                    <div class="stepper-row">
-                        <button class="btn-mini" onclick="adjPveSettings('bots', -1)">-</button>
-                        <span class="stepper-val" id="pve-bot-count">3</span>
-                        <button class="btn-mini" onclick="adjPveSettings('bots', 1)">+</button>
-                    </div>
-                </div>
-                <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                    <button id="btn-rule-jokers-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
-                    <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
-                </div>
-                <button id="btn-confirm-pve" class="btn btn-red" style="margin-top: 20px;" onclick="startPveGame()">В БОЙ!</button>
-            </div>
-            <button id="btn-pve-back" class="btn btn-gray" style="margin-top: 15px;">НАЗАД</button>
-        </div>
-
-        <div id="screen-create-settings" class="screen center-content">
-            <h2 class="subtitle">НАСТРОЙКИ</h2>
-            <div class="card slide-up">
-                <div class="setting-group">
-                    <label>Кубиков у каждого (3-6)</label>
-                    <div class="stepper-row">
-                        <button class="btn-mini" onclick="adjCreateSettings('dice', -1)">-</button>
-                        <span class="stepper-val" id="create-dice-count">5</span>
-                        <button class="btn-mini" onclick="adjCreateSettings('dice', 1)">+</button>
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <label>Макс. игроков (2-10)</label>
-                    <div class="stepper-row">
-                        <button class="btn-mini" onclick="adjCreateSettings('players', -1)">-</button>
-                        <span class="stepper-val" id="create-player-count">10</span>
-                        <button class="btn-mini" onclick="adjCreateSettings('players', 1)">+</button>
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <label>Время на ход</label>
-                    <div class="time-selector">
-                        <button class="btn-time active" onclick="setTime(30)">30с</button>
-                        <button class="btn-time" onclick="setTime(45)">45с</button>
-                        <button class="btn-time" onclick="setTime(60)">60с</button>
-                    </div>
-                </div>
-                <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                    <button id="btn-rule-jokers" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
-                    <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
-                    <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
-                </div>
-                <button id="btn-confirm-create" class="btn btn-green" style="margin-top: 20px;">СОЗДАТЬ</button>
-            </div>
-            <button id="btn-create-back" class="btn btn-gray" style="margin-top: 15px;">НАЗАД</button>
-        </div>
-
-        <div id="screen-lobby" class="screen">
-            <h2 class="subtitle">ЛОББИ <span id="lobby-code">ABCD</span></h2>
-            <button id="share-btn" class="btn btn-blue" style="width: 250px; margin-top: 0; background: #2a9d8f;">🔗 Поделиться кодом</button>
-            <div class="lobby-players-list card slide-up">
-                <div class="list-title">Игроки:</div>
-                <div id="player-list"></div>
-            </div>
-            <div class="lobby-footer">
-                <p id="lobby-message" class="lobby-message"></p>
-                <div class="lobby-actions">
-                    <button id="btn-ready" class="btn btn-blue">Я ГОТОВ</button>
-                    <button id="btn-start-game" class="btn btn-green hidden">СТАРТ</button>
-                </div>
+            <div class="footer slide-up-delay">
+                <button id="btn-shop-back" class="btn btn-blue">НАЗАД</button>
             </div>
         </div>
 
         <div id="screen-game" class="screen">
-            <div class="game-header">
-                <div id="players-bar" class="players-bar"></div>
-                <div class="rules-display">
-                    <div id="active-rules-display" class="rules-text"></div>
-                    <div class="timer-bar"><div class="timer-progress"></div></div>
+            <div class="game-header slide-down">
+                <div class="timer-bar">
+                    <div class="timer-progress"></div>
                 </div>
+                <div id="player-list" class="player-list">
+                    </div>
             </div>
 
             <div class="game-content">
-                <div id="current-bid-display" class="current-bid-display">...</div>
-                <div id="my-dice-container">
-                    <h3 class="my-dice-label">Твои кости:</h3>
-                    <div id="my-dice-row" class="my-dice-row"></div>
+                <div id="all-dice-display" class="all-dice-display"></div>
+
+                <div class="current-bid-box pop-in-delay">
+                    <h3>Текущая ставка:</h3>
+                    <div id="current-bid" class="current-bid">Нет ставок</div>
                 </div>
+
+                <div id="game-event-log" class="game-event-log"></div>
             </div>
 
-            <div id="game-controls" class="game-controls">
-                <div class="card bid-card slide-up">
-                    <div class="bid-stepper-row">
-                        <div class="bid-stepper">
-                            <label>Кол-во</label>
-                            <div class="stepper-row-small">
-                                <button class="btn-mini" onclick="adjBid('qty', -1)">-</button>
-                                <span class="bid-val" id="display-qty">1</span>
-                                <button class="btn-mini" onclick="adjBid('qty', 1)">+</button>
-                            </div>
+            <div id="game-controls" class="game-controls hidden">
+                <div class="your-dice-container">
+                    <label>Ваши кубики:</label>
+                    <div id="your-dice" class="your-dice-list">
                         </div>
-                        <div class="bid-stepper">
-                            <label>Значение</label>
-                            <div class="stepper-row-small">
-                                <button class="btn-mini" onclick="adjBid('val', -1)">-</button>
-                                <span class="bid-val dice-face" id="display-val">2</span>
-                                <button class="btn-mini" onclick="adjBid('val', 1)">+</button>
-                            </div>
+                </div>
+                
+                <div class="bid-section">
+                    <div class="bid-stepper">
+                        <label>Количество</label>
+                        <div class="stepper-controls">
+                            <button id="btn-qty-minus" class="step-btn">-</button>
+                            <span id="display-qty" class="bid-val">1</span>
+                            <button id="btn-qty-plus" class="step-btn">+</button>
+                        </div>
+                    </div>
+                    <div class="bid-stepper">
+                        <label>Значение</label>
+                        <div class="stepper-controls">
+                            <button id="btn-val-minus" class="step-btn">-</button>
+                            <span id="display-val" class="dice-face">⚁</span>
+                            <button id="btn-val-plus" class="step-btn">+</button>
                         </div>
                     </div>
                     <div class="main-actions">
@@ -212,35 +215,6 @@
             <div class="slide-up-delay">
                 <button id="btn-restart" class="btn btn-green">ЕЩЕ РАЗ</button>
                 <button id="btn-home" class="btn btn-blue">В МЕНЮ</button>
-            </div>
-        </div>
-
-        <div id="modal-profile" class="modal-overlay hidden" onclick="closeProfile(event)">
-            <div class="card profile-view-card pop-in" onclick="event.stopPropagation()">
-                <button class="btn-close" onclick="closeProfile()">✖</button>
-                <div class="rank-icon-box small">
-                    <div id="view-rank-badge" class="rank-emoji">😎</div>
-                </div>
-                <h2 id="view-username">Имя игрока</h2>
-                <div class="rank-label" id="view-rank-name">Ранг</div>
-                
-                <div class="stats-row">
-                    <div class="stat-box">
-                        <span class="stat-val" id="view-matches">0</span>
-                        <span class="stat-label">Игр</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-val" id="view-wins">0</span>
-                        <span class="stat-label">Побед</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-val" id="view-winrate">0%</span>
-                        <span class="stat-label">Винрейт</span>
-                    </div>
-                </div>
-
-                <h3 class="subtitle-small">Коллекция</h3>
-                <div id="view-inventory" class="inventory-grid"></div>
             </div>
         </div>
     </div>
