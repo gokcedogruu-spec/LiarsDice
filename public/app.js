@@ -108,7 +108,6 @@ socket.on('profileUpdate', (data) => {
         }));
     }
 
-    // Обновляем магазин
     if (document.getElementById('screen-shop').classList.contains('active')) {
         document.getElementById('shop-coins').textContent = state.coins;
         renderShop();
@@ -265,6 +264,75 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
+// --- PLAYER STATS MODAL (НОВОЕ) ---
+window.requestMyStats = () => {
+    socket.emit('getPlayerStats', 'me');
+};
+
+window.requestPlayerStats = (socketId) => {
+    if (socketId && (socketId.toString().startsWith('bot') || socketId.toString().startsWith('CPU'))) {
+        if(tg) tg.showAlert("Это бот. У него нет души.");
+        return;
+    }
+    socket.emit('getPlayerStats', socketId);
+};
+
+socket.on('showPlayerStats', (data) => {
+    const modal = document.getElementById('modal-player');
+    if (!modal) return;
+
+    document.getElementById('info-name').textContent = data.name;
+    document.getElementById('info-rank-name').textContent = data.rankName;
+    document.getElementById('info-matches').textContent = data.matches;
+    document.getElementById('info-wins').textContent = data.wins;
+    
+    const wr = data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0;
+    document.getElementById('info-wr').textContent = wr + '%';
+
+    let rankIcon = '🧹';
+    if (data.rankName === 'Юнга') rankIcon = '⚓';
+    if (data.rankName === 'Матрос') rankIcon = '🌊';
+    if (data.rankName === 'Старший матрос') rankIcon = '🎖️';
+    if (data.rankName === 'Боцман') rankIcon = '💪';
+    if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
+    if (data.rankName === 'Капитан') rankIcon = '☠️';
+    if (data.rankName === 'Легенда морей') rankIcon = '🔱';
+    document.getElementById('info-rank-badge').textContent = rankIcon;
+
+    const invGrid = document.getElementById('info-inventory');
+    invGrid.innerHTML = '';
+    
+    if (data.inventory && data.inventory.length > 0) {
+        data.inventory.forEach(itemId => {
+            const meta = ITEMS_META[itemId];
+            if (!meta) return;
+            
+            let preview = '';
+            if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId}" style="font-size:0.8rem">?</div>`;
+            else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
+            else preview = `<div class="inv-preview" style="background:#555"></div>`;
+
+            invGrid.innerHTML += `
+                <div class="inv-item">
+                    ${preview}
+                    <span>${meta.name}</span>
+                </div>
+            `;
+        });
+    } else {
+        invGrid.innerHTML = '<div style="grid-column:1/-1; opacity:0.5; font-size:0.8rem;">Пусто</div>';
+    }
+
+    modal.classList.add('active');
+});
+
+window.closePlayerModal = (e) => {
+    if (!e || e.target.id === 'modal-player' || e.target.classList.contains('btn-close')) {
+        document.getElementById('modal-player').classList.remove('active');
+    }
+};
+
+
 // --- GAME ---
 bindClick('btn-join-room', () => {
     const code = prompt("Код:"); 
@@ -301,9 +369,11 @@ socket.on('emoteReceived', (data) => {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
+        
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
         b.style.top = (rect.top - 20) + 'px';
+        
         document.body.appendChild(b);
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
@@ -319,7 +389,8 @@ socket.on('roomUpdate', (room) => {
         if (room.config) document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
         const list = document.getElementById('lobby-players'); list.innerHTML = '';
         room.players.forEach(p => {
-            list.innerHTML += `<div class="player-item">
+            // ДОБАВЛЕН onclick
+            list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')">
                 <div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div>
                 <span>${p.ready?'✅':'⏳'}</span>
             </div>`;
@@ -350,8 +421,9 @@ socket.on('gameState', (gs) => {
     const bar = document.getElementById('players-bar');
     bar.innerHTML = gs.players.map(p => {
         const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default';
+        // ДОБАВЛЕН onclick
         return `
-        <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''} ${frameClass}" data-id="${p.id}">
+        <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''} ${frameClass}" data-id="${p.id}" onclick="requestPlayerStats('${p.id}')">
             <b>${p.name}</b>
             <span class="rank-game">${p.rank}</span>
             <div class="dice-count">🎲 ${p.diceCount}</div>
@@ -363,7 +435,6 @@ socket.on('gameState', (gs) => {
         bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
-        // Если ставки нет (начало раунда)
         const me = gs.players.find(p => p.id === socket.id);
         const myTurn = me?.isTurn;
         if (myTurn) {
@@ -408,21 +479,34 @@ socket.on('gameOver', (data) => {
 
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 
+// --- FIXED TIMER ---
 function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
-    const bar = document.querySelector('.timer-progress'); if (!bar) return;
+    const bar = document.querySelector('.timer-progress'); 
+    if (!bar) return;
     
+    if (remaining <= 0 || !total) {
+        bar.style.width = '0%';
+        return;
+    }
+
     const endTime = Date.now() + remaining; 
 
     function tick() {
         const now = Date.now(); 
         const left = endTime - now;
         
-        if (left <= 0) { bar.style.width = '0%'; return; }
+        if (left <= 0) { 
+            bar.style.width = '0%'; 
+            return; 
+        }
         
         const pct = (left / total) * 100; 
         bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-        bar.style.backgroundColor = pct < 30 ? '#ef233c' : '#06d6a0';
+        
+        if (pct < 25) bar.style.backgroundColor = '#ef233c'; 
+        else if (pct < 50) bar.style.backgroundColor = '#ffb703'; 
+        else bar.style.backgroundColor = '#06d6a0'; 
         
         state.timerFrame = requestAnimationFrame(tick);
     }
