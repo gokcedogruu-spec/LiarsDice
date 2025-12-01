@@ -108,7 +108,7 @@ socket.on('profileUpdate', (data) => {
         }));
     }
 
-    // Обновляем магазин если открыт
+    // Обновляем магазин
     if (document.getElementById('screen-shop').classList.contains('active')) {
         document.getElementById('shop-coins').textContent = state.coins;
         renderShop();
@@ -301,11 +301,9 @@ socket.on('emoteReceived', (data) => {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
-        
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
         b.style.top = (rect.top - 20) + 'px';
-        
         document.body.appendChild(b);
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
@@ -365,6 +363,7 @@ socket.on('gameState', (gs) => {
         bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
+        // Если ставки нет (начало раунда)
         const me = gs.players.find(p => p.id === socket.id);
         const myTurn = me?.isTurn;
         if (myTurn) {
@@ -396,7 +395,6 @@ socket.on('gameState', (gs) => {
         controls.classList.add('hidden');
     }
     
-    // ЗАПУСК ТАЙМЕРА (СИНХРОНИЗИРОВАННОГО)
     if (gs.remainingTime !== undefined && gs.totalDuration) {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
