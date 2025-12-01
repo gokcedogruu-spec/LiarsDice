@@ -452,4 +452,156 @@ socket.on('emoteReceived', (data) => {
 });
 
 socket.on('errorMsg', (msg) => tg ? tg.showAlert(msg) : alert(msg));
-socket.on('roomUpdate', (room) => 
+socket.on('roomUpdate', (room) => {
+    state.roomId = room.roomId;
+    if (room.status === 'LOBBY') {
+        showScreen('lobby');
+        document.getElementById('lobby-room-id').textContent = room.roomId;
+        if (room.config) document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
+        const list = document.getElementById('lobby-players'); list.innerHTML = '';
+        room.players.forEach(p => {
+            list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')">
+                <div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div>
+                <span>${p.ready?'✅':'⏳'}</span>
+            </div>`;
+        });
+        const me = room.players.find(p => p.id === socket.id);
+        const startBtn = document.getElementById('btn-start-game');
+        if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
+    }
+});
+socket.on('gameEvent', (evt) => {
+    const log = document.getElementById('game-log');
+    if(log) log.innerHTML = `<div>${evt.text}</div>`;
+    if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning');
+});
+socket.on('yourDice', (dice) => {
+    const skin = state.equipped.skin || 'skin_white';
+    document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin}">${d}</div>`).join('');
+});
+
+socket.on('gameState', (gs) => {
+    showScreen('game');
+    
+    document.body.className = gs.activeBackground || 'bg_default';
+
+    let rulesText = '';
+    if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
+    if (gs.activeRules.spot) rulesText += '🎯 В точку';
+    if (gs.activeRules.strict) rulesText += '🔒 Строго';
+    document.getElementById('active-rules-display').textContent = rulesText;
+
+    const bar = document.getElementById('players-bar');
+    bar.innerHTML = gs.players.map(p => {
+        const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default';
+        return `
+        <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''} ${frameClass}" data-id="${p.id}" onclick="requestPlayerStats('${p.id}')">
+            <b>${p.name}</b>
+            <span class="rank-game">${p.rank}</span>
+            <div class="dice-count">🎲 ${p.diceCount}</div>
+        </div>
+    `}).join('');
+
+    const bid = document.getElementById('current-bid-display');
+    if (gs.currentBid) {
+        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
+        state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
+    } else {
+        const me = gs.players.find(p => p.id === socket.id);
+        const myTurn = me?.isTurn;
+        if (myTurn) {
+            bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`;
+        } else {
+            const turnPlayer = gs.players.find(p => p.isTurn);
+            const name = turnPlayer ? turnPlayer.name : "Ожидание";
+            bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`;
+        }
+        state.bidQty = 1; state.bidVal = 2; updateInputs();
+    }
+
+    const me = gs.players.find(p => p.id === socket.id);
+    const myTurn = me?.isTurn;
+    const controls = document.getElementById('game-controls');
+    
+    const spotBtn = document.getElementById('btn-call-spot');
+    if (spotBtn) {
+        if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule');
+        else spotBtn.classList.add('hidden-rule');
+    }
+
+    const existingSkills = document.querySelector('.skills-bar');
+    if(existingSkills) existingSkills.remove();
+    
+    if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) {
+        const skillsDiv = document.createElement('div');
+        skillsDiv.className = 'skills-bar';
+        
+        me.availableSkills.forEach(skill => {
+            const btn = document.createElement('button');
+            btn.className = `btn-skill skill-${skill}`;
+            btn.onclick = () => useSkill(skill);
+            
+            if(skill === 'ears') btn.innerHTML = '👂 Слух';
+            if(skill === 'lucky') btn.innerHTML = '🎲 +1 Куб';
+            if(skill === 'kill') btn.innerHTML = '🔫 Выстрел';
+            
+            skillsDiv.appendChild(btn);
+        });
+        
+        document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
+    }
+
+    if(myTurn) { 
+        controls.classList.remove('hidden'); controls.classList.add('slide-up');
+        document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
+        if(spotBtn) spotBtn.disabled = !gs.currentBid;
+        if(tg) tg.HapticFeedback.impactOccurred('medium'); 
+    } else {
+        controls.classList.add('hidden');
+    }
+    
+    if (gs.remainingTime !== undefined && gs.totalDuration) {
+        startVisualTimer(gs.remainingTime, gs.totalDuration);
+    }
+});
+
+socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
+socket.on('gameOver', (data) => {
+    showScreen('result'); document.getElementById('winner-name').textContent = data.winner;
+    if(tg) tg.HapticFeedback.notificationOccurred('success');
+});
+
+function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
+
+function startVisualTimer(remaining, total) {
+    if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
+    const bar = document.querySelector('.timer-progress'); 
+    if (!bar) return;
+    
+    if (remaining <= 0 || !total) {
+        bar.style.width = '0%';
+        return;
+    }
+
+    const endTime = Date.now() + remaining; 
+
+    function tick() {
+        const now = Date.now(); 
+        const left = endTime - now;
+        
+        if (left <= 0) { 
+            bar.style.width = '0%'; 
+            return; 
+        }
+        
+        const pct = (left / total) * 100; 
+        bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+        
+        if (pct < 25) bar.style.backgroundColor = '#ef233c'; 
+        else if (pct < 50) bar.style.backgroundColor = '#ffb703'; 
+        else bar.style.backgroundColor = '#06d6a0'; 
+        
+        state.timerFrame = requestAnimationFrame(tick);
+    }
+    tick();
+}
