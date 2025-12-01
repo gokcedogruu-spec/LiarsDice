@@ -138,8 +138,12 @@ const ITEMS_META = {
     'frame_kraken':  { name: 'Кракен', price: 4000, type: 'frames' },
     'frame_captain': { name: 'Капитанская', price: 10000, type: 'frames' },
 
-    'bg_wood':    { name: 'Таверна', price: 0, type: 'bg' },
-    'bg_blue':    { name: 'Океан', price: 300, type: 'bg' }
+    'bg_default': { name: 'Стандарт', price: 0, type: 'bg' },
+    'bg_blue':    { name: 'Океан', price: 300, type: 'bg' },
+    'bg_lvl1':    { name: 'Каюта фрегата', price: 10, type: 'bg' },
+    'bg_lvl2':    { name: 'Каюта Летучего Голландца', price: 10, type: 'bg' },
+    'bg_lvl3':    { name: 'Каюта Черной Жемчужины', price: 10, type: 'bg' },
+    'bg_lvl4':    { name: 'Каюта старой шлюпки', price: 10, type: 'bg' }
 };
 
 let currentShopTab = 'all';
@@ -264,7 +268,7 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- PLAYER STATS MODAL (НОВОЕ) ---
+// --- PLAYER STATS MODAL ---
 window.requestMyStats = () => {
     socket.emit('getPlayerStats', 'me');
 };
@@ -310,6 +314,7 @@ socket.on('showPlayerStats', (data) => {
             let preview = '';
             if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId}" style="font-size:0.8rem">?</div>`;
             else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
+            else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
             else preview = `<div class="inv-preview" style="background:#555"></div>`;
 
             invGrid.innerHTML += `
@@ -389,7 +394,6 @@ socket.on('roomUpdate', (room) => {
         if (room.config) document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
         const list = document.getElementById('lobby-players'); list.innerHTML = '';
         room.players.forEach(p => {
-            // ДОБАВЛЕН onclick
             list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')">
                 <div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div>
                 <span>${p.ready?'✅':'⏳'}</span>
@@ -410,8 +414,13 @@ socket.on('yourDice', (dice) => {
     document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin}">${d}</div>`).join('');
 });
 
+// --- GAME STATE UPDATE (Фон, Навыки) ---
 socket.on('gameState', (gs) => {
     showScreen('game');
+    
+    // 1. Обновляем ФОН
+    document.body.className = gs.activeBackground || 'bg_default';
+
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
@@ -421,7 +430,6 @@ socket.on('gameState', (gs) => {
     const bar = document.getElementById('players-bar');
     bar.innerHTML = gs.players.map(p => {
         const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default';
-        // ДОБАВЛЕН onclick
         return `
         <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''} ${frameClass}" data-id="${p.id}" onclick="requestPlayerStats('${p.id}')">
             <b>${p.name}</b>
@@ -457,6 +465,30 @@ socket.on('gameState', (gs) => {
         else spotBtn.classList.add('hidden-rule');
     }
 
+    // --- Кнопки Навыков ---
+    const existingSkills = document.querySelector('.skills-bar');
+    if(existingSkills) existingSkills.remove();
+    
+    if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) {
+        const skillsDiv = document.createElement('div');
+        skillsDiv.className = 'skills-bar';
+        
+        me.availableSkills.forEach(skill => {
+            const btn = document.createElement('button');
+            btn.className = `btn-skill skill-${skill}`;
+            btn.onclick = () => useSkill(skill);
+            
+            if(skill === 'ears') btn.innerHTML = '👂 Слух';
+            if(skill === 'lucky') btn.innerHTML = '🎲 +1 Куб';
+            if(skill === 'kill') btn.innerHTML = '🔫 Выстрел';
+            
+            skillsDiv.appendChild(btn);
+        });
+        
+        // Вставляем перед панелью действий
+        document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
+    }
+
     if(myTurn) { 
         controls.classList.remove('hidden'); controls.classList.add('slide-up');
         document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
@@ -470,6 +502,12 @@ socket.on('gameState', (gs) => {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
 });
+
+window.useSkill = (skillType) => {
+    if(confirm('Использовать навык? Это можно сделать 1 раз за игру.')) {
+        socket.emit('useSkill', skillType);
+    }
+};
 
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
 socket.on('gameOver', (data) => {
