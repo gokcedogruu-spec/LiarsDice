@@ -14,21 +14,24 @@
 body {
   font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
   background-color: #5D4037;
-  /* Текстура по умолчанию */
-  background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png');
+  
+  /* Настройки для замощения (плитка) */
   background-repeat: repeat;
-  background-size: 128px; /* Размер плитки */
+  background-size: 128px auto; /* Размер одной плитки */
+  background-attachment: fixed; /* Фон стоит на месте */
+  
   box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
-  transition: background-image 0.5s;
+  transition: background-image 0.3s ease;
 }
 
-/* Классы фонов */
+/* --- ФОНЫ (Правильные ссылки raw) --- */
 body.bg_default { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
 body.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
 body.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
 body.bg_lvl3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
 body.bg_lvl4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
 
+/* Остальные стили без изменений */
 #app { height: 100%; display: flex; flex-direction: column; }
 .screen { display: none; height: 100%; padding: 15px; flex-direction: column; }
 .screen.active { display: flex; }
@@ -135,6 +138,14 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .player-chip.frame_default { border: 2px solid transparent; }
 .player-chip.frame_gold { border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; }
 .player-chip.frame_fire { border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; }
+.player-chip.frame_wood { border: 3px solid #8d6e63; }
+.player-chip.frame_silver { border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; }
+.player-chip.frame_ice { border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; }
+.player-chip.frame_neon { border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; }
+.player-chip.frame_royal { border: 4px solid #ffd700; background: #240046; }
+.player-chip.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.8; }
+.player-chip.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; }
+.player-chip.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background: #2b2d42; }
 
 .emote-bubble {
     position: fixed;
@@ -174,15 +185,6 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .die.skin_purple { background: #7209b7; color: white; border-color: #480ca8; }
 .die.skin_cyber { background: #000; color: #0f0; border: 2px solid #0f0; box-shadow: 0 0 10px #0f0; font-family: monospace; }
 .die.skin_bone { background: #e3d5ca; color: #5D4037; border-color: #d5bdaf; }
-
-.player-chip.frame_wood { border: 3px solid #8d6e63; }
-.player-chip.frame_silver { border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; }
-.player-chip.frame_ice { border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; }
-.player-chip.frame_neon { border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; }
-.player-chip.frame_royal { border: 4px solid #ffd700; background: #240046; }
-.player-chip.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.8; }
-.player-chip.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; }
-.player-chip.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background: #2b2d42; }
 
 .action-panel { background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
 .hidden { display: none; }
