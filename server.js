@@ -15,7 +15,6 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
 // --- RATING & ECONOMY ---
-// Добавил level для удобного сравнения рангов
 const RANKS = [
     { name: "Салага", min: 0, level: 0 },
     { name: "Юнга", min: 500, level: 1 },
@@ -56,7 +55,8 @@ function syncUserData(tgUser, savedData) {
         if (savedData.inventory) user.inventory = savedData.inventory;
         if (savedData.equipped) user.equipped = savedData.equipped;
     }
-    // Гарантируем наличие дефолтного фона
+    
+    // Гарантируем наличие дефолтных вещей
     if (!user.inventory.includes('bg_default')) user.inventory.push('bg_default');
     
     userDB.set(userId, user);
@@ -157,9 +157,10 @@ if (bot) {
         }
 
         if (fromId !== ADMIN_ID) return;
-        // Админские команды (оставил без изменений)
+
         const args = text.split(' ');
         const cmd = args[0].toLowerCase();
+
         if (cmd === '/setxp') {
             if (args.length < 3) return;
             const uid = findUserIdByUsername(args[1]); if (!uid) return;
@@ -186,32 +187,37 @@ function generateRoomId() { return Math.random().toString(36).substring(2, 8).to
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
-// --- ЛОГИКА ВЫБОРА ФОНА ---
+// --- ЛОГИКА ВЫБОРА ФОНА (ИСПРАВЛЕННАЯ) ---
 function resolveBackground(room) {
     if (room.isPvE) return 'bg_default';
 
+    // 1. Проверяем создателя (берем свежие данные из БД)
     const creator = room.players.find(p => p.isCreator);
-    
-    // 1. Фон создателя, если не дефолт
-    if (creator && creator.equipped && creator.equipped.bg && creator.equipped.bg !== 'bg_default') {
-        return creator.equipped.bg;
+    if (creator && creator.tgId) {
+        const uData = getUserData(creator.tgId);
+        if (uData.equipped.bg && uData.equipped.bg !== 'bg_default') {
+            return uData.equipped.bg;
+        }
     }
 
-    // 2. Иначе ищем по рангу и серии
-    // Нам нужно реальные данные игроков (xp, streak)
-    const candidates = room.players.filter(p => !p.isBot && p.tgId).map(p => {
-        const uData = getUserData(p.tgId);
-        const rInfo = getRankInfo(uData.xp, uData.streak);
-        return {
-            bg: uData.equipped.bg || 'bg_default',
-            rankLevel: rInfo.current.level,
-            streak: uData.streak
-        };
-    });
+    // 2. Ищем среди остальных по рангу/серии
+    // Создаем список кандидатов с НЕ дефолтными фонами
+    const candidates = room.players
+        .filter(p => !p.isBot && p.tgId)
+        .map(p => {
+            const uData = getUserData(p.tgId); // Берем свежие данные!
+            const rInfo = getRankInfo(uData.xp, uData.streak);
+            return {
+                bg: uData.equipped.bg || 'bg_default',
+                rankLevel: rInfo.current.level,
+                streak: uData.streak
+            };
+        })
+        .filter(c => c.bg !== 'bg_default');
 
     if (candidates.length === 0) return 'bg_default';
 
-    // Сортируем: выше ранг -> выше серия
+    // Сортируем: У кого выше ранг -> выше серия -> тот фон и ставим
     candidates.sort((a, b) => {
         if (b.rankLevel !== a.rankLevel) return b.rankLevel - a.rankLevel;
         return b.streak - a.streak;
@@ -283,10 +289,11 @@ function handleBotMove(room) {
         else handleCall(null, 'bluff', room, bot);
     } else {
         let nextQty = lastBid.quantity; let nextFace = lastBid.faceValue + 1;
-        // Logic for new strict rule (bot compliance)
+        
+        // Логика бота для СТРОГОГО режима
         if (room.config.strict) {
             nextQty = lastBid.quantity + 1;
-            nextFace = Math.floor(Math.random() * 6) + 1; // Бот выбирает любой номинал
+            nextFace = Math.floor(Math.random() * 6) + 1; 
         } else {
             if (nextFace > 6) { nextFace = 2; nextQty++; }
         }
@@ -296,14 +303,14 @@ function handleBotMove(room) {
 
 function makeBidInternal(room, player, quantity, faceValue) {
     if (room.currentBid) {
+        // СТРОГИЙ РЕЖИМ
         if (room.config.strict) {
-            // НОВОЕ ПРАВИЛО: Только повышение количества
             if (quantity <= room.currentBid.quantity) {
                 io.to(player.id).emit('errorMsg', 'В строгом режиме нужно повышать количество!');
                 return;
             }
         } else {
-            // Стандартное правило
+            // ОБЫЧНЫЙ РЕЖИМ
             if (quantity < room.currentBid.quantity) quantity = room.currentBid.quantity + 1;
             else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) {
                 faceValue = room.currentBid.faceValue + 1;
@@ -312,7 +319,7 @@ function makeBidInternal(room, player, quantity, faceValue) {
     }
     
     if (faceValue > 6) { 
-        if(room.config.strict) faceValue = 6; // Cap at 6
+        if(room.config.strict) faceValue = 6; 
         else { faceValue = 2; quantity++; }
     }
 
@@ -363,7 +370,7 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     setTimeout(() => checkEliminationAndContinue(r, loser, winnerOfRound), 4000);
 }
 
-// --- НАВЫКИ (Server Logic) ---
+// --- НАВЫКИ ---
 function handleSkill(socket, skillType) {
     const room = getRoomBySocketId(socket.id);
     if (!room || room.status !== 'PLAYING') return;
@@ -391,7 +398,6 @@ function handleSkill(socket, skillType) {
         else if (level >= 7) chance = 1.0;
 
         if (Math.random() < chance) {
-            // Проверяем правду
             const bid = room.currentBid;
             let total = 0;
             room.players.forEach(p => {
@@ -408,7 +414,7 @@ function handleSkill(socket, skillType) {
         
         if(!player.skillsUsed) player.skillsUsed = [];
         player.skillsUsed.push('ears');
-        broadcastGameState(room); // Обновить кнопки
+        broadcastGameState(room); 
     }
 
     // 2. Счастливый кубик (Первый помощник - 5)
@@ -493,11 +499,22 @@ io.on('connection', (socket) => {
         const user = getUserData(socket.tgUserId);
         if (user.inventory.includes(itemId)) {
             if (itemId.startsWith('skin_')) user.equipped.skin = itemId;
-            if (itemId.startsWith('bg_') || itemId === 'table_default') user.equipped.bg = itemId; // Support raw name too
+            if (itemId.startsWith('bg_') || itemId === 'table_default') user.equipped.bg = itemId; 
             if (itemId.startsWith('frame_')) user.equipped.frame = itemId;
             userDB.set(socket.tgUserId, user);
             const rank = getRankInfo(user.xp, user.streak);
             socket.emit('profileUpdate', { ...user, rankName: rank.current.name, nextRankXP: rank.next?.min || 'MAX' });
+
+            // ИСПРАВЛЕНИЕ: Обновляем объект игрока в текущей комнате сразу
+            const room = getRoomBySocketId(socket.id);
+            if (room) {
+                const p = room.players.find(pl => pl.id === socket.id);
+                if(p) {
+                    p.equipped = { ...user.equipped };
+                    // Если мы в лобби, обновляем вид
+                    if(room.status === 'LOBBY') broadcastRoomUpdate(room);
+                }
+            }
         }
     });
 
@@ -754,12 +771,12 @@ function broadcastRoomUpdate(room) {
 
 function startNewRound(room, isFirst = false, startIdx = null) {
     room.status = 'PLAYING'; room.currentBid = null;
-    room.activeBackground = resolveBackground(room); // Выбираем фон при старте игры
+    room.activeBackground = resolveBackground(room); 
 
     room.players.forEach(p => {
         if (isFirst) {
             if (p.diceCount === 0) p.diceCount = room.config.dice;
-            p.skillsUsed = []; // Сброс навыков в новой игре
+            p.skillsUsed = []; 
         }
         p.dice = p.diceCount > 0 ? rollDice(p.diceCount) : [];
     });
@@ -793,7 +810,6 @@ function broadcastGameState(room) {
     const now = Date.now();
     const remaining = Math.max(0, room.turnDeadline - now);
 
-    // Собираем данные о доступных навыках для каждого игрока (для UI)
     const playersData = room.players.map((p, i) => {
         let availableSkills = [];
         if (!p.isBot && p.tgId) {
@@ -802,9 +818,9 @@ function broadcastGameState(room) {
             const lvl = rankInfo.current.level;
             const used = p.skillsUsed || [];
             
-            if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); // Боцман
-            if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); // Первый помощник
-            if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); // Капитан
+            if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); 
+            if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); 
+            if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); 
         }
 
         return { 
