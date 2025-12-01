@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
-// --- RATING & ECONOMY ---
+// --- RATING SYSTEM ---
 const RANKS = [
     { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
@@ -198,7 +198,7 @@ if (bot) {
             if (socketId) {
                 const room = getRoomBySocketId(socketId);
                 if (room) {
-                    handlePlayerDisconnect(socketId, room); // Используем правильную функцию
+                    handlePlayerDisconnect(socketId, room);
                     io.to(socketId).emit('errorMsg', 'Админ выкинул вас со стола!');
                     pushProfileUpdate(uid);
                     bot.sendMessage(chatId, `👢 Игрок ${userDB.get(uid).name} кикнут.`);
@@ -228,12 +228,13 @@ function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p
 
 function resetTurnTimer(room) {
     if (room.timerId) clearTimeout(room.timerId);
-    const duration = room.config.time * 1000;
+    
+    const duration = (room.config && room.config.time) ? room.config.time * 1000 : 30000;
     room.turnDuration = duration;
     room.turnDeadline = Date.now() + duration;
     
     const currentPlayer = room.players[room.currentTurn];
-    // Если ход у выбывшего - пропускаем (защита)
+    // Если ход у мертвого игрока, пропускаем
     if (currentPlayer.diceCount === 0) {
         nextTurn(room);
         return;
@@ -251,14 +252,15 @@ function handleTimeout(room) {
     if (room.status !== 'PLAYING') return;
     const loser = room.players[room.currentTurn];
     io.to(room.id).emit('gameEvent', { text: `⏳ ${loser.name} уснул и выбывает!`, type: 'error' });
-    loser.diceCount = 0; 
+    loser.diceCount = 0; // СМЕРТЬ
     checkEliminationAndContinue(room, loser, null);
 }
 
 function handleBotMove(room) {
     if (room.status !== 'PLAYING') return;
     const bot = room.players[room.currentTurn];
-    // Если бот мертв - пропускаем
+    
+    // Если бот уже мертв, пропускаем (защита)
     if (bot.diceCount === 0) {
         nextTurn(room);
         return;
@@ -398,7 +400,7 @@ io.on('connection', (socket) => {
 
     socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
         const old = getRoomBySocketId(socket.id);
-        if (old) handlePlayerDisconnect(socket.id, old);
+        if (old) handlePlayerDisconnect(socket.id, old); // Используем функцию дисконнекта для чистоты
 
         if (!tgUser) return;
         const userId = tgUser.id;
@@ -412,7 +414,7 @@ io.on('connection', (socket) => {
             const botCount = options.players - 1;
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
-                history: [], timerId: null, turnDeadline: 0, 
+                history: [], timerId: null, turnDeadline: 0, turnDuration: 30000,
                 config: { dice: options.dice, players: options.players, time: 30, jokers: options.jokers, spot: options.spot, difficulty: diff },
                 isPvE: true
             };
@@ -441,7 +443,7 @@ io.on('connection', (socket) => {
             const st = options || { dice: 5, players: 10, time: 30, jokers: false, spot: false };
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
-                history: [], timerId: null, turnDeadline: 0, 
+                history: [], timerId: null, turnDeadline: 0, turnDuration: st.time * 1000,
                 config: { dice: st.dice, players: st.players, time: st.time, jokers: st.jokers, spot: st.spot },
                 isPvE: false
             };
@@ -515,31 +517,28 @@ function handlePlayerDisconnect(socketId, room) {
 
     if (room.status === 'PLAYING') {
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал!`, type: 'error' });
-        player.diceCount = 0; 
+        player.diceCount = 0;
         
         if (!player.isBot && player.tgId) {
             updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
         }
 
-        // Удаляем игрока из списка или оставляем как призрака?
-        // Если просто обнулить diceCount и оставить, то checkElimination обработает его.
-        // Но если он отключился, он больше не ответит на пинг.
-        // Поэтому удаляем из массива, но передаем ход.
-        
+        // Удаляем игрока
         room.players.splice(i, 1);
         
-        // Передача хода, если был его
-        if (i === room.currentTurn) {
-            // Если удалили i-го, то следующий игрок сместился на место i.
-            // Но currentTurn не должен выйти за границы
-            if (room.currentTurn >= room.players.length) room.currentTurn = 0;
-            resetTurnTimer(room);
-        } else if (i < room.currentTurn) {
-            // Если удалили кого-то до текущего игрока, индекс смещается
+        // Корректируем currentTurn
+        if (i < room.currentTurn) {
             room.currentTurn--;
         }
+        if (i === room.currentTurn) {
+            if (room.currentTurn >= room.players.length) room.currentTurn = 0;
+            // Если после удаления игрока, следующий тоже мертв (например бот с 0 костями), ищем живого
+            while (room.players.length > 0 && room.players[room.currentTurn].diceCount === 0) {
+                room.currentTurn = (room.currentTurn + 1) % room.players.length;
+            }
+            resetTurnTimer(room);
+        }
 
-        // Проверяем победу (если остался 1)
         const active = room.players.filter(p => p.diceCount > 0);
         if (active.length === 1) {
             const winner = active[0];
@@ -551,7 +550,6 @@ function handlePlayerDisconnect(socketId, room) {
             broadcastGameState(room);
         }
     } else {
-        // LOBBY
         room.players.splice(i, 1);
         if (room.players.filter(p => !p.isBot).length === 0) {
             if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id);
@@ -592,30 +590,23 @@ function checkEliminationAndContinue(room, loser, killer) {
         
         io.to(room.id).emit('gameOver', { winner: winner.name });
     } else {
-        // ВАЖНОЕ ИСПРАВЛЕНИЕ: Ищем следующего ЖИВОГО, начиная с проигравшего
-        let nextIdx = room.players.indexOf(loser);
+        // ИЩЕМ СЛЕДУЮЩЕГО ЖИВОГО
+        let idx = room.players.indexOf(loser);
         
-        // Если лузера нет (удалили при дисконнекте), или у него 0 костей -> ищем следующего
-        if (nextIdx === -1 || loser.diceCount === 0) {
-            // Если лузер еще в списке, начинаем поиск от него. Если нет - от currentTurn
-            let searchStart = nextIdx !== -1 ? nextIdx : room.currentTurn;
-            
-            let loopCount = 0;
-            do {
-                searchStart = (searchStart + 1) % room.players.length;
-                loopCount++;
-                if(loopCount > 20) break; // Защита
-            } while (room.players[searchStart].diceCount === 0);
-            
-            nextIdx = searchStart;
+        // Если выбывший был удален (при дисконнекте) или у него 0, ищем следующего
+        // Если игрок выбыл, он еще в массиве, но diceCount 0.
+        // Начинаем поиск со следующего за ним.
+        let startSearch = (idx !== -1) ? idx + 1 : room.currentTurn;
+        let loopCount = 0;
+        
+        while (room.players[startSearch % room.players.length].diceCount === 0) {
+            startSearch++;
+            loopCount++;
+            if(loopCount > 20) break;
         }
         
-        startNewRound(room, false, nextIdx);
+        startNewRound(room, false, startSearch % room.players.length);
     }
-}
-
-function leaveRoom(socket, room) {
-    handlePlayerDisconnect(socket.id, room);
 }
 
 function broadcastRoomUpdate(room) {
@@ -639,7 +630,7 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     if (startIdx !== null) room.currentTurn = startIdx;
     else if (isFirst) room.currentTurn = 0;
     
-    // Проверяем, жив ли тот, чей ход (на всякий случай)
+    // Защита от мертвецов на старте
     while (room.players[room.currentTurn].diceCount === 0) {
         room.currentTurn = (room.currentTurn + 1) % room.players.length;
     }
@@ -647,8 +638,8 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
     io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
     
+    resetTurnTimer(room); // Таймер ДО отправки
     broadcastGameState(room);
-    resetTurnTimer(room);
 }
 
 function nextTurn(room) {
