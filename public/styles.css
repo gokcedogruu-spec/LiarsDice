@@ -14,13 +14,20 @@
 body {
   font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
   background-color: #5D4037;
-  /* Базовый фон */
+  /* Текстура по умолчанию */
   background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png');
   background-repeat: repeat;
-  background-size: 300px; 
+  background-size: 128px; /* Размер плитки */
   box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
   transition: background-image 0.5s;
 }
+
+/* Классы фонов */
+body.bg_default { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
+body.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
+body.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
+body.bg_lvl3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
+body.bg_lvl4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
 
 #app { height: 100%; display: flex; flex-direction: column; }
 .screen { display: none; height: 100%; padding: 15px; flex-direction: column; }
@@ -60,10 +67,8 @@ body {
 .btn-green { background: var(--success); color: #2b2d42; box-shadow: 0 6px 0 #04916c; }
 .btn-red { background: var(--primary); color: white; box-shadow: 0 6px 0 #d90429; }
 .btn-gray { background: var(--surface); color: var(--secondary); box-shadow: 0 6px 0 #2b2d42; }
-.btn-purple { background: #7209b7; color: white; box-shadow: 0 6px 0 #480ca8; }
 .btn-mini { width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--surface); color: white; font-size: 1.5rem; font-weight: 800; box-shadow: 0 4px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(4px); box-shadow: none; }
-.btn-mini:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.2rem; text-align: center; outline: none; font-weight: 600; }
@@ -79,8 +84,8 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); }
 
 .shop-balance { font-size: 2rem; color: var(--accent); font-weight: 800; margin-bottom: 20px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
-.shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; flex-wrap: wrap; }
-.tab-btn { padding: 8px 15px; border: none; background: rgba(0,0,0,0.3); color: #8d99ae; border-radius: 10px; font-weight: bold; cursor: pointer; flex: 1; }
+.shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; }
+.tab-btn { padding: 8px 15px; border: none; background: rgba(0,0,0,0.3); color: #8d99ae; border-radius: 10px; font-weight: bold; cursor: pointer; }
 .tab-btn.active { background: #ef233c; color: white; }
 .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; max-height: 60vh; overflow-y: auto; }
 .shop-item { background: var(--surface); padding: 10px; border-radius: 16px; text-align: center; border: 2px solid rgba(255,255,255,0.1); }
@@ -144,6 +149,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
 .timer-capsule { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; width: 80%; margin-bottom: 15px; }
 .timer-track { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
+
 .timer-progress { height: 100%; background: var(--success); width: 100%; border-radius: 5px; transition: width 0.1s linear, background-color 0.3s; }
 .bid-bubble { background: var(--text); color: var(--bg-color); padding: 20px; border-radius: 24px; text-align: center; min-width: 200px; box-shadow: 0 8px 0 #999; border: 4px solid var(--bg-color); position: relative; }
 .bid-bubble::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: var(--bg-color) transparent transparent transparent; }
@@ -188,6 +194,20 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .main-actions { display: flex; gap: 10px; }
 .main-actions button { margin: 0; padding: 14px; font-size: 1rem; }
 #btn-call-spot.hidden-rule { display: none !important; }
+
+/* Кнопки навыков */
+.skills-bar { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.btn-skill {
+    padding: 8px 12px; border: none; border-radius: 12px; 
+    font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    background: var(--surface); color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.1);
+}
+.btn-skill:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.btn-skill.skill-ears { background: #ffb703; color: #2b2d42; }
+.btn-skill.skill-lucky { background: #06d6a0; color: #2b2d42; }
+.btn-skill.skill-kill { background: #d90429; color: white; }
 
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -245,15 +265,3 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .clickable-card { cursor: pointer; transition: transform 0.2s; }
 .clickable-card:active { transform: scale(0.98); }
 .player-chip, .player-item { cursor: pointer; } 
-
-/* --- SKILLS (НОВОЕ) --- */
-.skills-bar {
-    display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
-}
-.skill-btn {
-    background: #240046; border: 2px solid #7209b7; color: #fff;
-    border-radius: 12px; padding: 6px 12px; font-size: 0.8rem; font-weight: bold;
-    cursor: pointer; box-shadow: 0 4px 0 #480ca8;
-}
-.skill-btn:active { transform: translateY(2px); box-shadow: none; }
-.skill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
