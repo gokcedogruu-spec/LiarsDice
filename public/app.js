@@ -301,7 +301,7 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- PLAYER STATS MODAL ---
+// --- MODALS (STATS & RULES) ---
 window.requestMyStats = () => {
     socket.emit('getPlayerStats', 'me');
 };
@@ -319,7 +319,7 @@ socket.on('showPlayerStats', (data) => {
     if (!modal) return;
 
     const content = modal.querySelector('.modal-content');
-    content.className = 'modal-content pop-in'; // Reset classes
+    content.className = 'modal-content pop-in'; 
     if (data.equipped && data.equipped.frame && data.equipped.frame !== 'frame_default') {
         content.classList.add(data.equipped.frame);
     }
@@ -373,6 +373,16 @@ socket.on('showPlayerStats', (data) => {
 window.closePlayerModal = (e) => {
     if (!e || e.target.id === 'modal-player' || e.target.classList.contains('btn-close')) {
         document.getElementById('modal-player').classList.remove('active');
+    }
+};
+
+// ПРАВИЛА
+window.openRules = () => {
+    document.getElementById('modal-rules').classList.add('active');
+};
+window.closeRules = (e) => {
+    if (!e || e.target.id === 'modal-rules' || e.target.classList.contains('btn-close')) {
+        document.getElementById('modal-rules').classList.remove('active');
     }
 };
 
@@ -537,6 +547,12 @@ socket.on('gameState', (gs) => {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
 });
+
+window.useSkill = (skillType) => {
+    if(confirm('Использовать навык? Это можно сделать 1 раз за игру.')) {
+        socket.emit('useSkill', skillType);
+    }
+};
 
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
 socket.on('gameOver', (data) => {
