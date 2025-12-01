@@ -86,6 +86,11 @@ socket.on('profileUpdate', (data) => {
     state.inventory = data.inventory || [];
     state.equipped = data.equipped || {};
 
+    // ОБНОВЛЕНИЕ ФОНА В МЕНЮ (Если не в игре)
+    if (!document.getElementById('screen-game').classList.contains('active')) {
+        document.body.className = data.equipped.bg || 'bg_default';
+    }
+
     let rankIcon = '🧹';
     if (data.rankName === 'Юнга') rankIcon = '⚓';
     if (data.rankName === 'Матрос') rankIcon = '🌊';
