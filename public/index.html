@@ -37,7 +37,6 @@
                 <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
             </h1>
             
-            <!-- ДОБАВЛЕНО: onclick и класс clickable-card -->
             <div class="profile-card pop-in clickable-card" onclick="requestMyStats()">
                 <div class="rank-icon-box">
                     <div id="rank-badge" class="rank-emoji">🧹</div>
@@ -69,6 +68,7 @@
                 <button id="tab-all" class="tab-btn active" onclick="filterShop('all')">ВСЁ</button>
                 <button id="tab-skins" class="tab-btn" onclick="filterShop('skins')">КОСТИ</button>
                 <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">РАМКИ</button>
+                <button id="tab-bg" class="tab-btn" onclick="filterShop('bg')">ФОНЫ</button>
             </div>
             <div class="shop-grid" id="shop-items"></div>
             <button id="btn-shop-back" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
@@ -190,6 +190,9 @@
                 <div id="game-log" class="game-log-box"></div>
             </div>
             <div class="my-controls-area slide-up">
+                <!-- SKILLS CONTAINER -->
+                <div id="skills-container" class="skills-bar hidden"></div>
+
                 <div class="emotes-bar">
                     <button onclick="sendEmote('😂')">😂</button>
                     <button onclick="sendEmote('😡')">😡</button>
@@ -215,9 +218,9 @@
                         <div class="bid-stepper">
                             <label>ЧИСЛО</label>
                             <div class="stepper-row">
-                                <button class="btn-mini" onclick="adjBid('val', -1)">-</button>
+                                <button id="btn-dec-val" class="btn-mini" onclick="adjBid('val', -1)">-</button>
                                 <span id="display-val" class="dice-face">2</span>
-                                <button class="btn-mini" onclick="adjBid('val', 1)">+</button>
+                                <button id="btn-inc-val" class="btn-mini" onclick="adjBid('val', 1)">+</button>
                             </div>
                         </div>
                     </div>
@@ -249,7 +252,7 @@
             </div>
         </div>
 
-        <!-- 9. PLAYER INFO MODAL (НОВОЕ) -->
+        <!-- 9. PLAYER INFO MODAL -->
         <div id="modal-player" class="modal-overlay" onclick="closePlayerModal(event)">
             <div class="modal-content pop-in">
                 <button class="btn-close" onclick="closePlayerModal(null)">✕</button>
