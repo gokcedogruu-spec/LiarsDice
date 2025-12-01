@@ -20,10 +20,7 @@
         <!-- 1. LOGIN -->
         <div id="screen-login" class="screen center-content">
             <div class="logo-container pop-in">
-                <div class="logo-icon">🎲</div>
-                <h1 class="title wavy-text">
-                    <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
-                </h1>
+                <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             </div>
             <div class="card slide-up">
                 <input type="text" id="input-username" placeholder="Твое имя?" maxlength="12">
@@ -33,9 +30,10 @@
 
         <!-- 2. HOME -->
         <div id="screen-home" class="screen center-content">
-            <h1 class="title wavy-text">
-                <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
-            </h1>
+            <!-- Кнопка правил -->
+            <button class="btn-rules" onclick="openRules()">?</button>
+
+            <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             
             <div class="profile-card pop-in clickable-card" onclick="requestMyStats()">
                 <div class="rank-icon-box">
@@ -56,16 +54,15 @@
                 <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
                 <button id="btn-to-pve" class="btn btn-red">ИГРАТЬ С БОТОМ</button>
                 <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
-                <button id="btn-shop" class="btn btn-green" style="margin-top: 10px;">ЛАВКА</button>
+                <button id="btn-shop" class="btn btn-green" style="margin-top: 8px;">ЛАВКА</button>
             </div>
         </div>
 
         <!-- 3. SHOP -->
         <div id="screen-shop" class="screen center-content">
-            <h2 class="title">ЛАВКА</h2>
+            <h2 class="title-text">ЛАВКА</h2>
             <div class="shop-balance">💰 <span id="shop-coins">0</span></div>
             <div class="shop-tabs">
-                <!-- Убрал вкладку ВСЕ, сделал КОСТИ активной -->
                 <button id="tab-skins" class="tab-btn active" onclick="filterShop('skins')">КОСТИ</button>
                 <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">РАМКИ</button>
                 <button id="tab-bg" class="tab-btn" onclick="filterShop('bg')">ФОНЫ</button>
@@ -233,10 +230,7 @@
         <!-- 8. RESULT -->
         <div id="screen-result" class="screen center-content">
             <div class="pop-in">
-                <h1 class="title wavy-text">
-                    <span>И</span><span>Г</span><span>Р</span><span>А</span><br>
-                    <span>О</span><span>К</span><span>О</span><span>Н</span><span>Ч</span><span>Е</span><span>Н</span><span>А</span>
-                </h1>
+                <h1 class="title-text">ИГРА ОКОНЧЕНА</h1>
                 <div class="card winner-box">
                     <div class="trophy-icon">🏆</div>
                     <h2 id="winner-name" class="winner-name">...</h2>
@@ -278,6 +272,39 @@
 
                 <h3 class="modal-subtitle">Коллекция</h3>
                 <div id="info-inventory" class="inventory-grid-mini"></div>
+            </div>
+        </div>
+
+        <!-- 10. RULES MODAL (НОВОЕ) -->
+        <div id="modal-rules" class="modal-overlay" onclick="closeRules(event)">
+            <div class="modal-content pop-in scrollable-content">
+                <button class="btn-close" onclick="closeRules(null)">✕</button>
+                <h2 class="modal-title">Кодекс Пирата</h2>
+                
+                <div class="rules-section">
+                    <h3>🎲 База</h3>
+                    <p>Угадай, сколько костей определенного номинала (или больше) на столе. Ставка <b>"3x[4]"</b> значит: "Я думаю, тут минимум три четверки".</p>
+                    <p>Следующий должен повысить ставку (кол-во или номинал) или сказать <b>"НЕ ВЕРЮ!"</b>.</p>
+                    <p>Если не поверил и оказался прав — лжец теряет куб. Если кубы были — теряешь ты.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h3>⚔️ Режимы</h3>
+                    <p><b>🃏 Джокеры:</b> Единицы (1) считаются за любой номинал.</p>
+                    <p><b>🔒 Строго:</b> Повышать можно ТОЛЬКО количество кубов.</p>
+                    <p><b>🎯 В точку:</b> Можно сказать "В точку". Если угадал точное число кубов — жертва теряет куб. Ошибся — теряешь ты.</p>
+                </div>
+
+                <div class="rules-section">
+                    <h3>⚓ Навыки (1 раз за игру)</h3>
+                    <p><b>👂 Чувствительные уши (Боцман+):</b> Шанс узнать, врет ли игрок перед тобой.</p>
+                    <p><b>🎲 Счастливый кубик (Помощник+):</b> Шанс получить +1 куб (если их < 5).</p>
+                    <p><b>🔫 Возмездие (Капитан+):</b> В дуэли 1 на 1 (по 1 кубу) шанс пристрелить врага и победить.</p>
+                </div>
+
+                <div class="rules-footer">
+                    by ZMSS Games. Все права защищены.
+                </div>
             </div>
         </div>
 
