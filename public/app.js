@@ -12,7 +12,9 @@ let state = {
     createDice: 5, createPlayers: 10, createTime: 30,
     rules: { jokers: false, spot: false, strict: false },
     pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
-    coins: 0, inventory: [], equipped: {}
+    coins: 0, inventory: [], equipped: {},
+    myDice: [], // Храним свои кубики
+    currentBid: null // Текущая ставка
 };
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
@@ -29,548 +31,322 @@ function showScreen(name) {
     else console.error(`Screen not found: ${name}`);
 }
 
-// --- INIT ---
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        const loading = document.getElementById('screen-loading');
-        if (loading && loading.classList.contains('active')) {
-            if (!tg?.initDataUnsafe?.user) showScreen('login');
-        }
-    }, 3000);
-
-    if (tg?.initDataUnsafe?.user) {
-        state.username = tg.initDataUnsafe.user.first_name;
-        loginSuccess();
-    }
-});
-
-function bindClick(id, handler) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('click', handler);
+function getDiceFace(val) {
+    // 1: ⚀, 2: ⚁, 3: ⚂, 4: ⚃, 5: ⚄, 6: ⚅
+    const faces = ['?', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    return faces[val] || '?';
 }
 
-bindClick('btn-login', () => {
-    const val = document.getElementById('input-username').value.trim();
-    if (val) { 
-        state.username = val; 
-        socket.tgUserId = 123; 
-        loginSuccess(); 
-    }
-});
+function updateInputs() { 
+    document.getElementById('display-qty').textContent = state.bidQty; 
+    document.getElementById('display-val').textContent = getDiceFace(state.bidVal); 
+}
 
-function loginSuccess() {
-    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
-    
-    if (tg && tg.CloudStorage) {
-        tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
-            let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
-            socket.emit('login', { tgUser: userPayload, savedData });
+// --- CONNECTION & AUTH ---
+socket.on('connect', () => {
+    if (tg && tg.initDataUnsafe.user) {
+        state.username = tg.initDataUnsafe.user.first_name || 'Игрок';
+        socket.emit('login', { 
+            username: state.username, 
+            userId: tg.initDataUnsafe.user.id, 
+            coins: state.coins, 
+            inventory: state.inventory,
+            equipped: state.equipped
         });
     } else {
-        socket.emit('login', { tgUser: userPayload, savedData: null });
+        showScreen('login');
     }
-}
+});
 
-socket.on('profileUpdate', (data) => {
-    if(document.getElementById('screen-loading')?.classList.contains('active') || 
-       document.getElementById('screen-login')?.classList.contains('active')) {
-        showScreen('home');
-    }
-    
-    const disp = document.getElementById('user-display'); if(disp) disp.textContent = data.name;
-    const rankD = document.getElementById('rank-display'); if(rankD) rankD.textContent = data.rankName;
-    const streak = document.getElementById('win-streak'); if(streak) streak.textContent = `Серия: ${data.streak} 🔥`;
-    const coins = document.getElementById('user-coins'); if(coins) coins.textContent = data.coins;
-    
+socket.on('loginSuccess', (data) => {
+    state.username = data.name;
     state.coins = data.coins;
-    state.inventory = data.inventory || [];
-    state.equipped = data.equipped || {};
+    state.inventory = data.inventory;
+    state.equipped = data.equipped;
+    
+    document.getElementById('player-name-home').textContent = data.name;
+    document.getElementById('player-rank-home').textContent = data.rank;
+    document.getElementById('player-coins').textContent = data.coins;
 
-    let rankIcon = '🧹';
-    if (data.rankName === 'Юнга') rankIcon = '⚓';
-    if (data.rankName === 'Матрос') rankIcon = '🌊';
-    if (data.rankName === 'Старший матрос') rankIcon = '🎖️';
-    if (data.rankName === 'Боцман') rankIcon = '💪';
-    if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
-    if (data.rankName === 'Капитан') rankIcon = '☠️';
-    if (data.rankName === 'Легенда морей') rankIcon = '🔱';
-    const badge = document.getElementById('rank-badge'); if(badge) badge.textContent = rankIcon;
-
-    const next = data.nextRankXP === 'MAX' ? data.xp : data.nextRankXP;
-    const pct = Math.min(100, (data.xp / next) * 100);
-    const fill = document.getElementById('xp-fill'); if(fill) fill.style.width = `${pct}%`;
-    const txt = document.getElementById('xp-text'); if(txt) txt.textContent = `${data.xp} / ${next} XP`;
-
-    if (tg && tg.CloudStorage) {
-        tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ 
-            xp: data.xp, streak: data.streak, coins: data.coins, 
-            inventory: data.inventory, equipped: data.equipped 
-        }));
+    // Временное отображение экипировки (первый символ)
+    const equippedEl = document.getElementById('player-equipped');
+    if (equippedEl && data.equipped.avatar) {
+        equippedEl.textContent = data.equipped.avatar.charAt(0);
+    } else if (equippedEl) {
+        equippedEl.textContent = '👤';
     }
-
-    // Обновляем магазин
-    if (document.getElementById('screen-shop').classList.contains('active')) {
-        document.getElementById('shop-coins').textContent = state.coins;
-        renderShop();
-    }
+    
+    showScreen('home');
 });
 
-// --- SHOP ---
-const ITEMS_META = {
-    'skin_white': { name: 'Классика', price: 0, type: 'skins' },
-    'skin_red':   { name: 'Рубин', price: 200, type: 'skins' },
-    'skin_gold':  { name: 'Золото', price: 1000, type: 'skins' },
-    'skin_black': { name: 'Черная метка', price: 500, type: 'skins' },
-    'skin_blue':  { name: 'Морской', price: 300, type: 'skins' },
-    'skin_green': { name: 'Яд', price: 400, type: 'skins' },
-    'skin_purple':{ name: 'Магия вуду', price: 800, type: 'skins' },
-    'skin_cyber': { name: 'Кибер', price: 1500, type: 'skins' },
-    'skin_bone':  { name: 'Костяной', price: 2500, type: 'skins' },
-
-    'frame_default': { name: 'Нет рамки', price: 0, type: 'frames' },
-    'frame_wood':    { name: 'Дерево', price: 100, type: 'frames' },
-    'frame_silver':  { name: 'Серебро', price: 300, type: 'frames' },
-    'frame_gold':    { name: 'Золото', price: 500, type: 'frames' },
-    'frame_fire':    { name: 'Огонь', price: 1500, type: 'frames' },
-    
-    'bg_wood':       { name: 'Стол', price: 0, type: 'bg' }
-};
-
-let shopFilter = 'all';
-
-window.filterShop = (filter) => {
-    shopFilter = filter;
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`tab-${filter}`).classList.add('active');
-    renderShop();
-}
-
-function renderShop() {
-    const grid = document.getElementById('shop-items');
-    if (!grid) return;
-    grid.innerHTML = '';
-    
-    for (const [id, meta] of Object.entries(ITEMS_META)) {
-        if (shopFilter !== 'all' && meta.type !== shopFilter) continue;
-        
-        const owned = state.inventory.includes(id);
-        const equipped = (state.equipped[meta.type] === id);
-        
-        let btnHTML = '';
-        if (equipped) btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
-        else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
-        else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
-        
-        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><h4>${meta.name}</h4>${btnHTML}</div>`;
-    }
-}
-
-bindClick('btn-shop', () => { 
-    showScreen('shop'); 
-    const coinEl = document.getElementById('shop-coins'); 
-    if(coinEl) coinEl.textContent = state.coins; 
-    renderShop();
+// --- NAVIGATION ---
+document.getElementById('btn-login-play').addEventListener('click', () => {
+    state.username = document.getElementById('username-input').value || 'Игрок';
+    socket.emit('login', { username: state.username, userId: Date.now() }); // Для тестового входа
 });
-bindClick('btn-shop-back', () => showScreen('home'));
 
-window.buyItem = (id, price) => {
-    if (state.coins >= price) socket.emit('shopBuy', id);
-    else tg ? tg.showAlert("Не хватает монет!") : alert("Мало денег!");
-};
-window.equipItem = (id) => socket.emit('shopEquip', id);
+document.getElementById('btn-start-game').addEventListener('click', () => showScreen('create-settings'));
+document.getElementById('btn-start-pve').addEventListener('click', () => showScreen('pve-settings'));
+document.getElementById('btn-home').addEventListener('click', () => showScreen('home'));
+document.getElementById('btn-restart').addEventListener('click', () => showScreen('home'));
+document.getElementById('btn-shop').addEventListener('click', () => showScreen('shop'));
+document.getElementById('btn-shop-back').addEventListener('click', () => showScreen('home'));
 
 
-// --- PVE ---
-bindClick('btn-to-pve', () => { showScreen('pve-settings'); window.setDiff(state.pve.difficulty); });
-bindClick('btn-pve-back', () => showScreen('home'));
-
-window.setDiff = (diff) => { 
-    state.pve.difficulty = diff; 
-    
-    document.querySelectorAll('#pve-difficulty-selector .btn-time').forEach(b => b.classList.remove('active'));
-    const container = document.querySelector('#screen-pve-settings .time-selector');
-    if(container) { Array.from(container.children).forEach(btn => { if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active'); }); } 
-    
-    const desc = {
-        'easy': 'Противники делают ставки, близкие к истине. Легко блефовать.',
-        'medium': 'Противники считают шансы. Рискуют, если шансы выше 50%.',
-        'pirate': 'Противники блефуют агрессивно. Ставки могут быть сильно завышены.'
+// --- ROOM AND LOBBY ---
+document.getElementById('btn-create-room').addEventListener('click', () => {
+    const settings = {
+        dice: state.createDice,
+        time: state.createTime,
+        rules: state.rules
     };
-    const descEl = document.getElementById('pve-difficulty-desc');
-    if(descEl) descEl.textContent = desc[diff];
-};
+    socket.emit('createRoom', { settings });
+});
 
-window.adjPveSettings = (type, delta) => {
-    let min, max;
-    if (type === 'dice') { min = 3; max = 6; }
-    if (type === 'bots') { min = 1; max = 9; }
-    
-    let current = state.pve[type];
-    let newVal = Math.max(min, Math.min(max, current + delta));
-    state.pve[type] = newVal;
-    
-    if (type === 'dice') document.getElementById('pve-dice-count').textContent = newVal;
-    if (type === 'bots') document.getElementById('pve-bot-count').textContent = newVal;
-};
+document.getElementById('btn-create-pve').addEventListener('click', () => {
+    const settings = {
+        pve: state.pve
+    };
+    socket.emit('createRoom', { settings });
+});
 
-window.startPveGame = () => {
-    const totalPlayers = state.pve.bots + 1;
-    socket.emit('joinOrCreateRoom', { 
-        roomId: 'CPU_' + Math.random().toString(36).substring(2,6), 
-        tgUser: tg?.initDataUnsafe?.user,
-        options: {
-            dice: state.pve.dice,
-            players: totalPlayers,
-            time: 30, // PVE time is fixed
-            jokers: state.pve.jokers,
-            spot: state.pve.spot,
-            difficulty: state.pve.difficulty
-        }
+document.getElementById('btn-lobby-start').addEventListener('click', () => {
+    socket.emit('startGame');
+});
+
+// Обновление настроек создания комнаты
+document.querySelectorAll('#create-settings input[type="range"]').forEach(input => {
+    input.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        const displayId = e.target.getAttribute('data-display');
+        document.getElementById(displayId).textContent = value;
+        state[e.target.id.replace('slider-', '')] = value;
     });
-};
-
-// --- CREATE ROOM ---
-bindClick('btn-to-create', () => showScreen('create-settings'));
-bindClick('btn-create-back', () => showScreen('home'));
-bindClick('btn-confirm-create', () => {
-    socket.emit('joinOrCreateRoom', { 
-        roomId: null, 
-        tgUser: tg?.initDataUnsafe?.user, 
-        options: {
-            dice: state.createDice,
-            players: state.createPlayers,
-            time: state.createTime,
-            jokers: state.rules.jokers,
-            spot: state.rules.spot,
-            strict: state.rules.strict
-        }
+});
+// Обновление правил (toggle switches)
+document.querySelectorAll('#create-settings input[type="checkbox"]').forEach(input => {
+    input.addEventListener('change', (e) => {
+        state.rules[e.target.id.replace('toggle-', '')] = e.target.checked;
+    });
+});
+document.querySelectorAll('#pve-settings input[type="checkbox"]').forEach(input => {
+    input.addEventListener('change', (e) => {
+        state.pve[e.target.id.replace('pve-toggle-', '')] = e.target.checked;
     });
 });
 
-window.adjCreateSettings = (type, delta) => {
-    let min, max, target;
-    if (type === 'dice') { min = 3; max = 6; target = 'createDice'; }
-    if (type === 'players') { min = 2; max = 10; target = 'createPlayers'; }
-    
-    let current = state[target];
-    let newVal = Math.max(min, Math.min(max, current + delta));
-    state[target] = newVal;
-    
-    if (type === 'dice') document.getElementById('create-dice-count').textContent = newVal;
-    if (type === 'players') document.getElementById('create-player-count').textContent = newVal;
-};
-
-window.setTime = (time) => {
-    state.createTime = time;
-    document.querySelectorAll('.time-selector .btn-time').forEach(b => b.classList.remove('active'));
-    document.querySelector(`.time-selector button[onclick="setTime(${time})"]`).classList.add('active');
-};
-
-window.toggleRule = (rule, isPve = false) => {
-    const target = isPve ? state.pve : state.rules;
-    target[rule] = !target[rule];
-    
-    const id = isPve ? (rule==='jokers'?'btn-rule-jokers-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-jokers':`btn-rule-${rule}`);
-    const btn = document.getElementById(id);
-    if(btn) btn.classList.toggle('active', target[rule]);
-};
-
-// --- ROOM / LOBBY ---
 socket.on('joinedRoom', (data) => {
     state.roomId = data.roomId;
+    state.rules = data.settings;
+    document.getElementById('room-id-display').textContent = data.roomId;
+    
+    // Скрытие/показ кнопки "В ТОЧКУ"
+    const spotBtn = document.getElementById('btn-call-spot');
+    if (spotBtn) {
+        if (state.rules.spot) {
+            spotBtn.classList.remove('hidden-rule');
+        } else {
+            spotBtn.classList.add('hidden-rule');
+        }
+    }
+    
     showScreen('lobby');
-    
-    const startBtn = document.getElementById('btn-start-game');
-    if(startBtn) data.isCreator ? startBtn.classList.remove('hidden') : startBtn.classList.add('hidden');
-    
-    document.getElementById('lobby-code').textContent = data.roomId;
-    document.getElementById('btn-ready').textContent = "Я ГОТОВ";
-    document.getElementById('btn-ready').className = "btn btn-blue";
 });
 
-socket.on('roomUpdate', (room) => {
-    const list = document.getElementById('player-list');
-    if (!list) return;
+socket.on('roomUpdate', (data) => {
+    const lobbyPlayers = document.getElementById('lobby-players');
+    if (!lobbyPlayers) return;
     
-    document.getElementById('lobby-code').textContent = room.roomId;
-    state.roomId = room.roomId;
+    lobbyPlayers.innerHTML = data.players.map(p => `
+        <div class="lobby-player-card">
+            <span class="lobby-player-name">${p.name} ${p.isBot ? '🤖' : '👤'}</span>
+            <span class="lobby-player-rank">${p.rank}</span>
+            <span class="equipped-icon">${p.equipped.avatar ? p.equipped.avatar.charAt(0) : '👤'}</span>
+        </div>
+    `).join('');
     
-    list.innerHTML = '';
-    room.players.forEach(p => {
-        // Добавляем onclick и класс clickable-player
-        const isBot = p.id.toString().startsWith('bot');
-        const clickAttr = isBot ? '' : `onclick="openProfile('${p.id}')"`;
-        const cursorClass = isBot ? '' : 'clickable-player';
-
-        list.innerHTML += `<div class="player-item ${cursorClass}" ${clickAttr}>
-            <div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div>
-            <span>${p.ready?'✅':'⏳'}</span>
-        </div>`;
-    });
-    
-    const isCreator = room.players.find(p => p.id === socket.id)?.isCreator;
-    const allReady = room.players.length > 1 && room.players.every(p => p.ready);
-    const startBtn = document.getElementById('btn-start-game');
-    if (startBtn && isCreator) {
-        allReady ? startBtn.classList.remove('hidden') : startBtn.classList.add('hidden');
+    // Кнопка Старт доступна, только если вы хост и игроков >= 2 или это PvE с ботами
+    const isHost = data.players[0].id === socket.id;
+    const isPve = data.settings.bots > 0;
+    const btnStart = document.getElementById('btn-lobby-start');
+    if (btnStart) {
+        btnStart.style.display = isHost ? 'block' : 'none';
+        btnStart.disabled = (!isPve && data.players.length < 2);
     }
 });
 
-bindClick('btn-join-room', () => {
-    const code = prompt("Код:");
-    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
-    if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: userPayload });
+// --- GAME ACTIONS ---
+document.getElementById('btn-qty-minus').addEventListener('click', () => { state.bidQty = Math.max(1, state.bidQty - 1); updateInputs(); if(tg) tg.HapticFeedback.impactOccurred('light'); });
+document.getElementById('btn-qty-plus').addEventListener('click', () => { state.bidQty++; updateInputs(); if(tg) tg.HapticFeedback.impactOccurred('light'); });
+document.getElementById('btn-val-minus').addEventListener('click', () => { 
+    state.bidVal = Math.max(2, state.bidVal - 1); 
+    if (state.bidVal < 2) { state.bidVal = 6; state.bidQty = Math.max(1, state.bidQty - 1); } // Переход вниз
+    updateInputs(); 
+    if(tg) tg.HapticFeedback.impactOccurred('light'); 
+});
+document.getElementById('btn-val-plus').addEventListener('click', () => { 
+    state.bidVal = Math.min(6, state.bidVal + 1); 
+    if (state.bidVal > 6) { state.bidVal = 2; state.bidQty++; } // Переход вверх
+    updateInputs(); 
+    if(tg) tg.HapticFeedback.impactOccurred('light'); 
 });
 
-bindClick('share-btn', () => {
-    const code = state.roomId;
-    navigator.clipboard.writeText(code).then(() => tg ? tg.showAlert('Скопировано!') : alert('Скопировано!')).catch(()=>prompt("Код:", code));
+document.getElementById('btn-make-bid').addEventListener('click', () => {
+    socket.emit('makeBid', { qty: state.bidQty, val: state.bidVal });
 });
-
-bindClick('btn-ready', function() {
-    const isReady = this.textContent === "Я ГОТОВ";
-    socket.emit('setReady', isReady);
-    this.textContent = isReady ? "НЕ ГОТОВ" : "Я ГОТОВ";
-    this.className = isReady ? "btn btn-green" : "btn btn-blue";
+document.getElementById('btn-call-bluff').addEventListener('click', () => {
+    socket.emit('callBluff');
 });
-
-bindClick('btn-start-game', () => socket.emit('startGame'));
-
-
-// --- GAME ---
-window.adjBid = (type, delta) => {
-    if (type === 'qty') {
-        state.bidQty = Math.max(1, state.bidQty + delta);
-    } else if (type === 'val') {
-        state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta));
-    }
-    updateInputs();
-};
-
-bindClick('btn-make-bid', () => {
-    socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal });
-    if(tg) tg.HapticFeedback.impactOccurred('light');
+document.getElementById('btn-call-spot').addEventListener('click', () => {
+    socket.emit('callSpot');
 });
-bindClick('btn-call-bluff', () => socket.emit('callBluff'));
-bindClick('btn-call-spot', () => socket.emit('callSpot'));
-
 
 socket.on('yourDice', (dice) => {
-    showScreen('game');
-    const row = document.getElementById('my-dice-row');
-    row.innerHTML = dice.map(d => `<div class="die ${state.equipped.skin}">${d}</div>`).join('');
-    
-    // Сброс ставки для следующего хода
-    state.bidQty = 1;
-    state.bidVal = 2;
-    updateInputs();
-
-    // Обновление фона стола
-    document.body.className = state.equipped.bg;
-});
-
-socket.on('currentBid', (bid) => {
-    const display = document.getElementById('current-bid-display');
-    if (!bid) {
-        display.innerHTML = `<h3>Первая ставка!</h3>`;
-    } else {
-        display.innerHTML = `
-            <h3>Текущая ставка:</h3>
-            <span style="font-size: 2rem;">${bid.quantity}x <span class="dice-face">${bid.faceValue}</span></span>
-        `;
-    }
+    state.myDice = dice;
+    // Обновление ваших кубиков будет происходить в gameState
 });
 
 socket.on('gameEvent', (data) => {
-    if (tg) tg.showAlert(data.text);
-    // Более заметные нотификации
-    if (data.type === 'error') tg?.HapticFeedback.notificationOccurred('error');
-    if (data.type === 'bid') tg?.HapticFeedback.notificationOccurred('success');
-});
-
-socket.on('revealDice', (allDice) => {
-    // Временно не отображаем анимацию раскрытия, чтобы не загромождать
-    // В будущих версиях тут может быть красивая анимация
+    const eventLog = document.getElementById('game-event-log');
+    if (!eventLog) return;
+    
+    const item = document.createElement('div');
+    item.className = `log-item log-${data.type}`;
+    item.textContent = data.text;
+    eventLog.appendChild(item);
+    eventLog.scrollTop = eventLog.scrollHeight;
+    
+    if (tg && data.type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    if (tg && data.type === 'alert') tg.HapticFeedback.notificationOccurred('warning');
 });
 
 socket.on('gameState', (gs) => {
-    const currentBidDisplay = document.getElementById('current-bid-display');
-    if (!gs.currentBid) {
-         currentBidDisplay.innerHTML = `<h3>Первая ставка!</h3>`;
-    }
+    showScreen('game');
+    state.currentBid = gs.currentBid;
     
-    // Обновление правил
-    let rulesText = '';
-    if (gs.activeRules.jokers) rulesText += '🃏 Джокеры ';
-    if (gs.activeRules.spot) rulesText += '🎯 В точку ';
-    if (gs.activeRules.strict) rulesText += '🔒 Строго';
-    document.getElementById('active-rules-display').textContent = rulesText;
-    
-    // Кнопка В ТОЧКУ
-    const spotBtn = document.getElementById('btn-call-spot');
-    if (spotBtn) {
-        gs.activeRules.spot ? spotBtn.classList.remove('hidden-rule') : spotBtn.classList.add('hidden-rule');
-    }
-
-    // Рендер игроков (обновляем кликабельность)
-    const bar = document.getElementById('players-bar');
-    bar.innerHTML = gs.players.map(p => {
-        const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default';
-        const isBot = p.id.toString().startsWith('bot');
-        const clickAttr = isBot ? '' : `onclick="openProfile('${p.id}')"`;
-        const cursorClass = isBot ? '' : 'clickable-player';
-
-        return `
-        <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''} ${frameClass} ${cursorClass}" 
-             data-id="${p.id}" ${clickAttr}>
-            <b>${p.name}</b>
-            <span class="rank-game">${p.rank}</span>
-            <div class="dice-count">🎲 ${p.diceCount}</div>
+    // --- ИЗМЕНЕНИЕ: ОБНОВЛЕНИЕ СПИСКА ИГРОКОВ (включая смайлики и кубики) ---
+    const playerList = document.getElementById('player-list');
+    if (!playerList) return;
+    playerList.innerHTML = gs.players.map(p => `
+        <div class="player-card ${p.isTurn ? 'is-turn' : ''} ${p.isEliminated ? 'eliminated' : ''}" data-player-id="${p.id}">
+            <div class="player-info">
+                <span class="equipped-icon">${p.equipped.avatar ? p.equipped.avatar.charAt(0) : '👤'}</span>
+                <span class="player-name">${p.name} ${p.isEliminated ? '❌' : p.isTurn ? '➡️' : ''}</span>
+                <span class="player-rank">${p.rank}</span>
+            </div>
+            <div class="player-dice">
+                ${p.isEliminated ? '—' : (p.diceCount > 0 ? (p.isTurn ? `(${p.diceCount} 🎲)` : `(${p.diceCount} 🎲)`) : '—')}
+            </div>
         </div>
-    `}).join('');
+    `).join('');
     
-    // Управление контролами
+    // Обновление текущей ставки
+    const bidDisplay = document.getElementById('current-bid');
+    if (bidDisplay) {
+        if (gs.currentBid) {
+            bidDisplay.textContent = `${gs.currentBid.qty} x ${getDiceFace(gs.currentBid.val)}`;
+            bidDisplay.classList.add('active');
+            
+            // Сброс и установка текущей ставки для нового хода
+            state.bidQty = gs.currentBid.qty;
+            state.bidVal = gs.currentBid.val;
+            
+            // Автоматическое повышение минимальной ставки на +1
+            state.bidVal++;
+            if (state.bidVal > 6) {
+                state.bidVal = 2;
+                state.bidQty++;
+            }
+            // Гарантируем, что новая ставка выше
+            if (state.bidQty * 10 + state.bidVal <= gs.currentBid.qty * 10 + gs.currentBid.val) {
+                state.bidQty = gs.currentBid.qty + 1;
+                state.bidVal = gs.currentBid.val;
+            }
+
+            updateInputs();
+
+        } else {
+            bidDisplay.textContent = 'Нет ставок';
+            bidDisplay.classList.remove('active');
+            
+            // Сброс до минимальной ставки 1x2
+            state.bidQty = 1;
+            state.bidVal = 2;
+            updateInputs();
+        }
+    }
+    
+    // --- ИЗМЕНЕНИЕ: Обновление Ваших кубиков ---
+    const yourDiceContainer = document.getElementById('your-dice');
+    if (yourDiceContainer) {
+        const myPlayer = gs.players.find(p => p.id === socket.id);
+        if (myPlayer && myPlayer.diceCount > 0 && state.myDice) {
+            yourDiceContainer.innerHTML = state.myDice.map(d => `<span class="dice-face">${getDiceFace(d)}</span>`).join('');
+        } else if (myPlayer && myPlayer.diceCount === 0) {
+            // Если игрок выбыл, очищаем контейнер
+            yourDiceContainer.innerHTML = 'Вы выбыли';
+        } else {
+            yourDiceContainer.innerHTML = '';
+        }
+    }
+
+    // --- ИЗМЕНЕНИЕ: Управление кнопками и controls ---
     const controls = document.getElementById('game-controls');
     const isMyTurn = gs.players[gs.currentTurn]?.id === socket.id;
-    const bluffBtn = document.getElementById('btn-call-bluff');
-    
+
     if (isMyTurn) {
         controls.classList.remove('hidden');
-        if(bluffBtn) bluffBtn.disabled = !gs.currentBid;
+        
+        const bidBtn = document.getElementById('btn-make-bid');
+        const bluffBtn = document.getElementById('btn-call-bluff');
+        const spotBtn = document.getElementById('btn-call-spot');
+
+        if(bidBtn) bidBtn.disabled = false; // Можно всегда делать ставку
+        if(bluffBtn) bluffBtn.disabled = !gs.currentBid; 
         if(spotBtn) spotBtn.disabled = !gs.currentBid;
         if(tg) tg.HapticFeedback.impactOccurred('medium'); 
     } else {
         controls.classList.add('hidden');
     }
     
-    // Обновление таймера
     if (gs.remainingTime !== undefined && gs.totalDuration) {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
 });
 
-socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
-
-bindClick('btn-home', () => {
-    state.roomId = null;
-    document.body.className = '';
-    showScreen('home');
-    if(state.timerFrame) cancelAnimationFrame(state.timerFrame);
+socket.on('roundResult', (data) => {
+    // Показываем кубики для всех
+    const allDiceDisplay = document.getElementById('all-dice-display');
+    if (allDiceDisplay && data.allDice) {
+        allDiceDisplay.innerHTML = data.allDice.map(d => `<span class="dice-face">${getDiceFace(d)}</span>`).join('');
+        allDiceDisplay.classList.add('active');
+        setTimeout(() => allDiceDisplay.classList.remove('active'), 5000);
+    }
+    tg ? tg.showAlert(data.message) : alert(data.message);
 });
-bindClick('btn-restart', () => socket.emit('requestRestart'));
 
 socket.on('gameOver', (data) => {
     showScreen('result'); document.getElementById('winner-name').textContent = data.winner;
     if(tg) tg.HapticFeedback.notificationOccurred('success');
-    if(state.timerFrame) cancelAnimationFrame(state.timerFrame);
 });
 
-function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
-
-
-// --- FIX: VISUAL TIMER LOGIC ---
 function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
+    const bar = document.querySelector('.timer-progress'); if (!bar) return;
     
-    const bar = document.querySelector('.timer-progress'); 
-    if (!bar) return;
-
     const endTime = Date.now() + remaining; 
 
     function tick() {
         const now = Date.now(); 
         const left = endTime - now;
         
-        if (left <= 0) { 
-            bar.style.width = '0%'; 
-            return; 
-        }
+        if (left <= 0) { bar.style.width = '0%'; state.timerFrame = null; return; }
         
-        const pct = (left / total) * 100; 
-        bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-        
-        // Цвет меняется от зеленого к красному
-        if (pct < 30) bar.style.backgroundColor = '#ef233c'; // Красный
-        else if (pct < 60) bar.style.backgroundColor = '#ffb703'; // Желтый
-        else bar.style.backgroundColor = '#06d6a0'; // Зеленый
+        const pct = (left / total) * 100;
+        bar.style.width = `${pct}%`;
         
         state.timerFrame = requestAnimationFrame(tick);
     }
-    tick();
+    
+    state.timerFrame = requestAnimationFrame(tick);
 }
-
-// --- NEW: PROFILE VIEW SYSTEM ---
-const modal = document.getElementById('modal-profile');
-
-window.showMyProfile = () => {
-    socket.emit('getUserProfile', socket.id);
-};
-
-window.openProfile = (targetSocketId) => {
-    // Не открываем профиль ботов (у них id начинается на bot_)
-    if (targetSocketId.toString().startsWith('bot')) {
-        if(tg) tg.HapticFeedback.notificationOccurred('error');
-        return;
-    }
-    // Если кликнули на себя
-    if (targetSocketId === socket.id) {
-        showMyProfile();
-    } else {
-        socket.emit('getUserProfile', targetSocketId);
-    }
-};
-
-window.closeProfile = (e) => {
-    if (!e || e.target === modal || e.target.classList.contains('btn-close')) {
-        modal.classList.add('hidden');
-    }
-};
-
-socket.on('showUserProfile', (data) => {
-    document.getElementById('view-username').textContent = data.name;
-    document.getElementById('view-rank-name').textContent = data.rankName;
-    document.getElementById('view-matches').textContent = data.matches;
-    document.getElementById('view-wins').textContent = data.wins;
-    
-    // Расчет винрейта
-    const wr = data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0;
-    document.getElementById('view-winrate').textContent = `${wr}%`;
-
-    // Иконка ранга
-    let rankIcon = '🧹';
-    if (data.rankName === 'Юнга') rankIcon = '⚓';
-    if (data.rankName === 'Матрос') rankIcon = '🌊';
-    if (data.rankName === 'Старший матрос') rankIcon = '🎖️';
-    if (data.rankName === 'Боцман') rankIcon = '💪';
-    if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
-    if (data.rankName === 'Капитан') rankIcon = '☠️';
-    if (data.rankName === 'Легенда морей') rankIcon = '🔱';
-    document.getElementById('view-rank-badge').textContent = rankIcon;
-
-    // Рендер инвентаря с подписями
-    const grid = document.getElementById('view-inventory');
-    grid.innerHTML = '';
-    
-    if (!data.inventory || data.inventory.length === 0) {
-        grid.innerHTML = '<div style="grid-column: span 3; opacity: 0.5; font-size: 0.8rem;">Пусто...</div>';
-    } else {
-        data.inventory.forEach(itemId => {
-            const meta = ITEMS_META[itemId];
-            if (!meta) return;
-            
-            let preview = '📦';
-            if (meta.type === 'skins') preview = '🎲';
-            if (meta.type === 'frames') preview = '🖼️';
-            if (meta.type === 'bg') preview = '🌄';
-
-            grid.innerHTML += `
-                <div class="inv-item">
-                    <div class="inv-preview">${preview}</div>
-                    <div class="inv-item-name">${meta.name}</div>
-                </div>
-            `;
-        });
-    }
-
-    modal.classList.remove('hidden');
-});
