@@ -1,6 +1,6 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
-    // alert("Error: " + message); // Раскомментируй для отладки
+    // alert("Error: " + message); 
 };
 
 const socket = io();
@@ -31,7 +31,6 @@ function showScreen(name) {
 
 // --- INIT ---
 window.addEventListener('load', () => {
-    // Защита от зависания загрузки
     setTimeout(() => {
         const loading = document.getElementById('screen-loading');
         if (loading && loading.classList.contains('active')) {
@@ -302,9 +301,11 @@ socket.on('emoteReceived', (data) => {
         const b = document.createElement('div');
         b.className = 'emote-bubble';
         b.textContent = data.emoji;
+        
         const rect = el.getBoundingClientRect();
         b.style.left = (rect.left + rect.width / 2) + 'px';
         b.style.top = (rect.top - 20) + 'px';
+        
         document.body.appendChild(b);
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
@@ -342,7 +343,6 @@ socket.on('yourDice', (dice) => {
 
 socket.on('gameState', (gs) => {
     showScreen('game');
-    
     let rulesText = '';
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  ';
     if (gs.activeRules.spot) rulesText += '🎯 В точку';
@@ -410,7 +410,6 @@ socket.on('gameOver', (data) => {
 
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 
-// ИСПРАВЛЕННЫЙ ТАЙМЕР (СИНХРОНИЗАЦИЯ)
 function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
     const bar = document.querySelector('.timer-progress'); if (!bar) return;
