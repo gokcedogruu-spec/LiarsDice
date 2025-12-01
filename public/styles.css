@@ -14,9 +14,12 @@
 body {
   font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
   background-color: #5D4037;
+  
+  /* УВЕЛИЧИЛ РАЗМЕР (256 * 1.5 = 384) */
   background-repeat: repeat;
-  background-size: 256px auto; 
+  background-size: 384px auto; 
   background-attachment: fixed;
+  
   box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
   transition: background-image 0.3s ease;
 }
@@ -27,6 +30,7 @@ body.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedog
 body.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
 body.bg_lvl3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
 body.bg_lvl4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
+body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); }
 
 #app { height: 100%; display: flex; flex-direction: column; }
 .screen { display: none; height: 100%; padding: 15px; flex-direction: column; }
@@ -166,8 +170,6 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
 /* --- ОПРЕДЕЛЕНИЕ РАМОК (ФОН + ГРАНИЦА) --- */
-/* Используем затемняющий градиент поверх картинки */
-
 .player-chip.frame_default, .profile-card.frame_default { border: 2px solid transparent; background-image: none; background-color: var(--surface); }
 
 /* Дерево */
