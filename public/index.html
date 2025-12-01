@@ -37,6 +37,7 @@
                 <span>К</span><span>О</span><span>С</span><span>Т</span><span>Я</span><span>Ш</span><span>К</span><span>И</span>
             </h1>
             
+            <!-- Профиль с кликом для статистики -->
             <div class="profile-card pop-in clickable-card" onclick="requestMyStats()">
                 <div class="rank-icon-box">
                     <div id="rank-badge" class="rank-emoji">🧹</div>
@@ -189,10 +190,9 @@
                 <div class="bid-bubble pop-in" id="current-bid-display">...</div>
                 <div id="game-log" class="game-log-box"></div>
             </div>
+            
             <div class="my-controls-area slide-up">
-                <!-- SKILLS CONTAINER -->
-                <div id="skills-container" class="skills-bar hidden"></div>
-
+                <!-- Кнопки навыков добавятся сюда через JS (перед .emotes-bar или .game-controls) -->
                 <div class="emotes-bar">
                     <button onclick="sendEmote('😂')">😂</button>
                     <button onclick="sendEmote('😡')">😡</button>
@@ -218,9 +218,9 @@
                         <div class="bid-stepper">
                             <label>ЧИСЛО</label>
                             <div class="stepper-row">
-                                <button id="btn-dec-val" class="btn-mini" onclick="adjBid('val', -1)">-</button>
+                                <button class="btn-mini" onclick="adjBid('val', -1)">-</button>
                                 <span id="display-val" class="dice-face">2</span>
-                                <button id="btn-inc-val" class="btn-mini" onclick="adjBid('val', 1)">+</button>
+                                <button class="btn-mini" onclick="adjBid('val', 1)">+</button>
                             </div>
                         </div>
                     </div>
