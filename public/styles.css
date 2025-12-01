@@ -84,7 +84,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .tab-btn.active { background: var(--primary); color: var(--text); }
 .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 400px; max-height: 60vh; overflow-y: auto; }
 .shop-item { background: var(--surface); padding: 10px; border-radius: 16px; text-align: center; border: 2px solid rgba(255,255,255,0.1); }
-.shop-item h4 { font-size: 0.8rem; margin-bottom: 5px; color: var(--accent); } /* Изменено: font-size */
+.shop-item h4 { font-size: 0.8rem; margin-bottom: 5px; color: var(--accent); } 
 .shop-item.owned { border-color: var(--success); }
 .shop-btn { width: 100%; padding: 8px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
 .shop-btn.buy { background: var(--accent); color: var(--bg-color); }
@@ -232,3 +232,8 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 /* Курсор для кликабельных элементов */
 .clickable-player { cursor: pointer; transition: transform 0.1s; }
 .clickable-player:active { transform: scale(0.95); }
+
+/* --- FIX: Утилитарный класс для скрытия элемента по умолчанию --- */
+.hidden {
+    display: none !important;
+}
