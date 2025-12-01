@@ -655,4 +655,21 @@ io.on('connection', (socket) => {
             room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: st, isPvE: false };
             rooms.set(newId, room); roomId = newId; isCreator = true;
         }
-        
+        room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: false, isCreator: isCreator, equipped: uData.equipped });
+        socket.join(roomId); broadcastRoomUpdate(room);
+    });
+
+    socket.on('setReady', (isReady) => { const r = getRoomBySocketId(socket.id); if (r?.status === 'LOBBY') { const p = r.players.find(x => x.id === socket.id); if (p) { p.ready = isReady; broadcastRoomUpdate(r); } } });
+    socket.on('startGame', () => { const r = getRoomBySocketId(socket.id); if (r) { const p = r.players.find(x => x.id === socket.id); if (p?.isCreator && r.players.length >= 2 && r.players.every(x => x.ready)) startNewRound(r, true); } });
+    socket.on('makeBid', ({ quantity, faceValue }) => { const r = getRoomBySocketId(socket.id); if (!r || r.status !== 'PLAYING' || r.players[r.currentTurn].id !== socket.id) return; makeBidInternal(r, r.players[r.currentTurn], parseInt(quantity), parseInt(faceValue)); });
+    socket.on('callBluff', () => handleCall(socket, 'bluff'));
+    socket.on('callSpot', () => handleCall(socket, 'spot'));
+    socket.on('requestRestart', () => { const r = getRoomBySocketId(socket.id); if (r?.status === 'FINISHED') { r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); }); if (r.isPvE) { r.status = 'PLAYING'; r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; startNewRound(r, true); } else { r.status = 'LOBBY'; r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; broadcastRoomUpdate(r); } } });
+    socket.on('disconnect', () => { const r = getRoomBySocketId(socket.id); if (r) handlePlayerDisconnect(socket.id, r); });
+});
+
+const PING_INTERVAL = 10 * 60 * 1000;
+const MY_URL = 'https://liarsdicezmss.onrender.com';
+setInterval(() => { https.get(MY_URL, (res) => {}).on('error', (err) => {}); }, PING_INTERVAL);
+
+server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
