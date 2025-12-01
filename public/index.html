@@ -38,8 +38,10 @@
                 </h1>
             </div>
             
-            <div id="player-status-card" class="card player-status slide-up-delay"> <div id="player-equipped" class="equipped-icon"></div>
-                <div class="player-text-info"> <h2 id="player-name-home" class="player-name-home">...</h2>
+            <div id="player-status-card" class="card player-status slide-up-delay">
+                <div id="player-equipped" class="equipped-icon"></div>
+                <div class="player-text-info">
+                    <h2 id="player-name-home" class="player-name-home">...</h2>
                     <p id="player-rank-home" class="player-rank-home">...</p>
                 </div>
                 <div class="coins-display">
@@ -51,7 +53,7 @@
             <div class="main-menu slide-up">
                 <button id="btn-start-game" class="btn btn-green">НАЧАТЬ ИГРУ</button>
                 <button id="btn-start-pve" class="btn btn-orange">PvE (С БОТАМИ)</button>
-                <button id="btn-join-room" class="btn btn-blue" disabled>ПРИСОЕДИНИТЬСЯ (WIP)</button>
+                <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button> 
                 <button id="btn-shop" class="btn btn-blue">В МАГАЗИН</button>
             </div>
         </div>
@@ -119,6 +121,20 @@
                 <button id="btn-home" class="btn btn-blue">НАЗАД</button>
             </div>
         </div>
+        
+        <div id="screen-join-room" class="screen center-content">
+            <div class="header slide-down">
+                <h2>Присоединиться к игре</h2>
+            </div>
+            <div class="card slide-up">
+                <p>Введите ID комнаты:</p>
+                <input type="text" id="room-id-input" placeholder="ROOM_ID_XXXX" maxlength="20">
+                <button id="btn-submit-join" class="btn btn-green">ВОЙТИ</button>
+            </div>
+            <div class="footer slide-up-delay">
+                <button id="btn-join-back" class="btn btn-blue">НАЗАД</button>
+            </div>
+        </div>
 
         <div id="screen-lobby" class="screen">
             <div class="header slide-down">
@@ -140,7 +156,7 @@
                 <h2>Магазин 🛍️</h2>
             </div>
             <div class="card shop-card slide-up">
-                <p class="wip-note">В разработке...</p>
+                <p>Здесь скоро появятся новые предметы!</p>
                 </div>
             <div class="footer slide-up-delay">
                 <button id="btn-shop-back" class="btn btn-blue">НАЗАД</button>
@@ -157,7 +173,7 @@
             </div>
 
             <div class="game-content">
-                <div id="all-dice-display" class="all-dice-display"></div>
+                 <div id="all-dice-display" class="all-dice-display"></div>
 
                 <div class="current-bid-box pop-in-delay">
                     <h3>Текущая ставка:</h3>
@@ -187,7 +203,7 @@
                         <label>Значение</label>
                         <div class="stepper-controls">
                             <button id="btn-val-minus" class="step-btn">-</button>
-                            <span id="display-val" class="dice-face">⚁</span>
+                            <span id="display-val" class="dice-face">🎲2</span>
                             <button id="btn-val-plus" class="step-btn">+</button>
                         </div>
                     </div>
