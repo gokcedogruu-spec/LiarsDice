@@ -14,7 +14,6 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
-// --- RATING SYSTEM ---
 const RANKS = [
     { name: "Салага", min: 0 },
     { name: "Юнга", min: 500 },
@@ -104,7 +103,6 @@ function updateUserXP(userId, type, difficulty = null) {
     return user;
 }
 
-// --- HELPER: Find User ---
 function findUserIdByUsername(input) {
     const target = input.toLowerCase().replace('@', '');
     if (/^\d+$/.test(target)) {
@@ -138,7 +136,6 @@ function pushProfileUpdate(userId) {
     }
 }
 
-// --- BOT COMMANDS ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     bot.on('message', (msg) => {
@@ -146,7 +143,7 @@ if (bot) {
         const text = (msg.text || '').trim();
         const fromId = msg.from.id;
 
-        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/s') && !text.startsWith('/r') && !text.startsWith('/k') && !text.startsWith('/w')) {
+        if (text.toLowerCase().startsWith('/start') && !text.startsWith('/')) {
             const WEB_APP_URL = 'https://liarsdicezmss.onrender.com'; 
             const opts = { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: WEB_APP_URL } }]] } };
             bot.sendMessage(chatId, "☠️ Костяшки: Врывайся в игру!", opts).catch(()=>{});
@@ -211,7 +208,6 @@ if (bot) {
             if (!socketId) return bot.sendMessage(chatId, "❌ Ты не в игре.");
             const room = getRoomBySocketId(socketId);
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "❌ Игра не идет.");
-            
             room.players.forEach(p => { if (p.id !== socketId) p.diceCount = 0; });
             checkEliminationAndContinue(room, { diceCount: 0, isBot: true }, null); 
             bot.sendMessage(chatId, "🏆 Победа присуждена!");
@@ -221,7 +217,6 @@ if (bot) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Game Logic ---
 const rooms = new Map(); 
 function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
@@ -229,10 +224,7 @@ function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p
 
 function resetTurnTimer(room) {
     if (room.timerId) clearTimeout(room.timerId);
-    
-    // Получаем длительность хода из конфига (или 30 сек по умолчанию)
-    const duration = (room.config && room.config.time) ? room.config.time * 1000 : 30000;
-    room.turnDuration = duration; // Сохраняем для отправки
+    const duration = room.config.time * 1000;
     room.turnDeadline = Date.now() + duration;
     
     const currentPlayer = room.players[room.currentTurn];
@@ -297,11 +289,9 @@ function makeBidInternal(room, player, quantity, faceValue) {
         }
     }
     if (faceValue > 6) { faceValue = 2; quantity++; }
-    
     if (room.config.strict && room.currentBid && quantity < room.currentBid.quantity) {
         if(player.isBot) quantity = room.currentBid.quantity; 
     }
-
     room.currentBid = { quantity, faceValue, playerId: player.id };
     io.to(room.id).emit('gameEvent', { text: `${player.name} ставит: ${quantity}x[${faceValue}]`, type: 'info' });
     nextTurn(room);
@@ -405,7 +395,7 @@ io.on('connection', (socket) => {
             const botCount = options.players - 1;
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
-                history: [], timerId: null, turnDeadline: 0, turnDuration: 30000,
+                history: [], timerId: null, turnDeadline: 0, 
                 config: { dice: options.dice, players: options.players, time: 30, jokers: options.jokers, spot: options.spot, difficulty: diff },
                 isPvE: true
             };
@@ -434,7 +424,7 @@ io.on('connection', (socket) => {
             const st = options || { dice: 5, players: 10, time: 30, jokers: false, spot: false };
             room = {
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null,
-                history: [], timerId: null, turnDeadline: 0, turnDuration: st.time * 1000,
+                history: [], timerId: null, turnDeadline: 0, 
                 config: { dice: st.dice, players: st.players, time: st.time, jokers: st.jokers, spot: st.spot },
                 isPvE: false
             };
@@ -478,6 +468,12 @@ io.on('connection', (socket) => {
     socket.on('requestRestart', () => {
         const r = getRoomBySocketId(socket.id);
         if (r?.status === 'FINISHED') {
+            
+            // !!! ИСПРАВЛЕНИЕ: ОБНОВЛЯЕМ ДАННЫЕ ВСЕХ ИГРОКОВ ПЕРЕД НОВЫМ РАУНДОМ !!!
+            r.players.forEach(p => {
+                if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId);
+            });
+
             if (r.isPvE) {
                 r.status = 'PLAYING';
                 r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; });
@@ -576,16 +572,11 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     if (startIdx !== null) room.currentTurn = startIdx;
     else if (isFirst) room.currentTurn = 0;
     else nextTurn(room);
-    
-    while (room.players[room.currentTurn].diceCount === 0) {
-        room.currentTurn = (room.currentTurn + 1) % room.players.length;
-    }
-
+    while (room.players[room.currentTurn].diceCount === 0) room.currentTurn = (room.currentTurn + 1) % room.players.length;
     room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
     io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
-    
-    resetTurnTimer(room);
     broadcastGameState(room);
+    resetTurnTimer(room);
 }
 
 function nextTurn(room) {
@@ -600,7 +591,6 @@ function nextTurn(room) {
 }
 
 function broadcastGameState(room) {
-    // Вычисляем РЕАЛЬНОЕ оставшееся время
     const now = Date.now();
     const remaining = Math.max(0, room.turnDeadline - now);
 
@@ -611,11 +601,8 @@ function broadcastGameState(room) {
             id: p.id, equipped: p.equipped 
         })),
         currentBid: room.currentBid, 
-        
-        // ОТПРАВЛЯЕМ СИНХРОНИЗИРОВАННОЕ ВРЕМЯ
         totalDuration: room.turnDuration,
         remainingTime: remaining,
-
         activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict }
     });
 }
