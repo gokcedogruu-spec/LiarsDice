@@ -42,10 +42,7 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 
 /* ЛОГОТИП */
 .game-logo {
-    width: 100%;
-    max-width: 420px; 
-    height: auto;
-    margin-bottom: 20px;
+    width: 100%; max-width: 420px; height: auto; margin-bottom: 20px;
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
     transition: transform 0.3s;
 }
@@ -73,20 +70,29 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-mini { width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--surface); color: white; font-size: 1.5rem; font-weight: 800; box-shadow: 0 4px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(4px); box-shadow: none; }
 
-/* КНОПКИ НАВИГАЦИИ (ПРАВЫЙ/ЛЕВЫЙ ВЕРХНИЙ УГОЛ) */
+/* КНОПКИ НАВИГАЦИИ */
 .btn-icon {
-    position: absolute; top: 15px;
-    width: 40px; height: 40px;
+    position: absolute; top: 15px; width: 40px; height: 40px;
     background: var(--surface); color: var(--accent);
     border: 2px solid var(--accent); border-radius: 50%;
     font-size: 1.5rem; font-weight: 800; cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    z-index: 10; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; 
+    display: flex; align-items: center; justify-content: center;
 }
 .btn-icon:active { transform: scale(0.9); }
 .btn-rules { right: 15px; }
-.btn-lobby-back { top: 15px; left: 15px; position: absolute; }
-.btn-game-leave { top: 15px; right: 15px; position: absolute; background: #d90429; color: white; border-color: white; z-index: 20; }
+
+/* Кнопка выхода из игры (в углу) */
+.btn-game-leave { 
+    position: absolute; top: 10px; left: 10px; 
+    background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); 
+    z-index: 20; 
+}
+
+/* Группа кнопок в лобби (рядом) */
+.lobby-btns-row {
+    display: flex; gap: 10px; width: 100%;
+}
 
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.2rem; text-align: center; outline: none; font-weight: 600; }
@@ -138,7 +144,12 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .rank-sub { font-size: 0.7rem; color: var(--accent); margin-left: 5px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
 
 .game-layout { padding: 10px; }
-.rivals-bar-container { background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; margin-bottom: 10px; overflow: visible; }
+.rivals-bar-container { 
+    background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; 
+    margin-bottom: 10px; overflow: visible; 
+    /* Отступ сверху, чтобы кнопка выхода не перекрывала */
+    margin-top: 40px; 
+}
 .rivals-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; padding-top: 40px; margin-top: -40px; }
 
 .player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; box-shadow: 0 4px 0 rgba(0,0,0,0.2); z-index: 1; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
