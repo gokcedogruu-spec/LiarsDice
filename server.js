@@ -19,7 +19,7 @@ const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 app.get('/', (req, res) => { res.sendFile(path.join(publicPath, 'index.html')); });
 
-// --- 2. DATA & RANKS ---
+// --- 2. DATA ---
 const RANKS = [
     { name: "Салага", min: 0, level: 0 },
     { name: "Юнга", min: 500, level: 1 },
@@ -49,7 +49,6 @@ function getUserData(userId) {
 function syncUserData(tgUser, savedData) {
     const userId = tgUser.id;
     let user = userDB.get(userId);
-    
     if (!user) {
         user = { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
@@ -62,7 +61,6 @@ function syncUserData(tgUser, savedData) {
         user.name = tgUser.first_name;
         user.username = tgUser.username ? tgUser.username.toLowerCase() : null;
     }
-
     if (savedData) {
         if (typeof savedData.xp === 'number') user.xp = Math.max(user.xp, savedData.xp);
         if (typeof savedData.coins === 'number') user.coins = savedData.coins;
@@ -75,7 +73,6 @@ function syncUserData(tgUser, savedData) {
         }
         if (savedData.equipped) user.equipped = { ...user.equipped, ...savedData.equipped };
     }
-    
     if (!user.inventory.includes('bg_default')) user.inventory.push('bg_default');
     userDB.set(userId, user);
     return user;
@@ -97,7 +94,7 @@ function getRankInfo(xp, streak) {
     return { current, next };
 }
 
-function updateUserXP(userId, type, difficulty = null) {
+function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, winnerPotMultiplier = 0) {
     if (typeof userId === 'string' && userId.startsWith('bot')) return null;
     const user = getUserData(userId);
     const currentRank = getRankInfo(user.xp, user.streak).current;
@@ -105,11 +102,19 @@ function updateUserXP(userId, type, difficulty = null) {
     if (type === 'win_game') {
         user.matches++; user.wins++; user.streak++;
         user.xp += 65; user.coins += 50;
+        // BET WINNINGS
+        if(winnerPotMultiplier > 0) {
+            user.coins += (betCoins * winnerPotMultiplier);
+            user.xp += (betXp * winnerPotMultiplier);
+        }
     } 
     else if (type === 'lose_game') {
         user.matches++; user.streak = 0;
         if (currentRank.penalty) user.xp -= currentRank.penalty;
         user.coins += 10;
+        // BET LOSSES
+        user.coins -= betCoins;
+        user.xp -= betXp;
     }
     else if (type === 'win_pve') {
         user.matches++;
@@ -121,6 +126,7 @@ function updateUserXP(userId, type, difficulty = null) {
     }
 
     if (user.xp < 0) user.xp = 0;
+    if (user.coins < 0) user.coins = 0;
     userDB.set(userId, user);
     return user;
 }
@@ -177,7 +183,6 @@ function resolveBackground(room) {
         const rInfo = getRankInfo(uData.xp, uData.streak);
         return { bg: uData.equipped.bg || 'bg_default', rankLevel: rInfo.current.level, streak: uData.streak };
     }).filter(c => c.bg !== 'bg_default');
-    
     if (candidates.length === 0) return 'bg_default';
     candidates.sort((a, b) => {
         if (b.rankLevel !== a.rankLevel) return b.rankLevel - a.rankLevel;
@@ -189,7 +194,6 @@ function resolveBackground(room) {
 function broadcastGameState(room) {
     const now = Date.now();
     const remaining = Math.max(0, room.turnDeadline - now);
-    
     const playersData = room.players.map((p, i) => {
         let availableSkills = [];
         if (!p.isBot && p.tgId && p.diceCount > 0) {
@@ -197,19 +201,16 @@ function broadcastGameState(room) {
             const rankInfo = getRankInfo(uData.xp, uData.streak);
             const lvl = rankInfo.current.level;
             const used = p.skillsUsed || [];
-            
             if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); 
             if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); 
             if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); 
         }
-
         return { 
             name: p.name, rank: p.rank, diceCount: p.diceCount, 
             isTurn: i === room.currentTurn, isEliminated: p.diceCount === 0, 
             id: p.id, equipped: p.equipped, availableSkills: availableSkills
         };
     });
-
     io.to(room.id).emit('gameState', {
         players: playersData, currentBid: room.currentBid, 
         totalDuration: room.turnDuration, remainingTime: remaining,
@@ -286,9 +287,12 @@ function makeBidInternal(room, player, quantity, faceValue) {
 }
 
 function checkEliminationAndContinue(room, loser, killer) {
+    const betCoins = room.config.betCoins || 0;
+    const betXp = room.config.betXp || 0;
+
     if (loser.diceCount === 0) {
         if (!loser.isBot && loser.tgId) {
-            const d = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
+            const d = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0);
             if(d) pushProfileUpdate(loser.tgId);
         }
         io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
@@ -301,7 +305,9 @@ function checkEliminationAndContinue(room, loser, killer) {
         if (!winner.isBot && winner.tgId) {
             const type = room.isPvE ? 'win_pve' : 'win_game';
             const diff = room.isPvE ? room.config.difficulty : null;
-            updateUserXP(winner.tgId, type, diff);
+            // Winner gets (Players - 1) bets. He keeps his own bet (logic wise, he just gains others).
+            const multiplier = room.players.length - 1;
+            updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier);
             pushProfileUpdate(winner.tgId);
         }
         io.to(room.id).emit('gameOver', { winner: winner.name });
@@ -427,7 +433,8 @@ function handlePlayerDisconnect(socketId, room) {
     if (room.status === 'PLAYING') {
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал!`, type: 'error' });
         player.diceCount = 0; 
-        if (!player.isBot && player.tgId) updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game');
+        // Lose bet if disconnect during game
+        if (!player.isBot && player.tgId) updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
         
         room.players.splice(i, 1);
         if (i === room.currentTurn) {
@@ -439,7 +446,14 @@ function handlePlayerDisconnect(socketId, room) {
         if (active.length === 1) {
             const winner = active[0]; room.status = 'FINISHED';
             if (room.timerId) clearTimeout(room.timerId);
-            if (!winner.isBot && winner.tgId) updateUserXP(winner.tgId, room.isPvE ? 'win_pve' : 'win_game');
+            if (!winner.isBot && winner.tgId) {
+                // Only rank rewards here, bet handled in loop or simpler logic
+                // Re-using check logic to distribute pot
+                const type = room.isPvE ? 'win_pve' : 'win_game';
+                const diff = room.isPvE ? room.config.difficulty : null;
+                const multiplier = room.config.players ? room.config.players - 1 : 1; // Approx
+                updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
+            }
             io.to(room.id).emit('gameOver', { winner: winner.name });
         } else broadcastGameState(room);
     } else {
@@ -518,16 +532,7 @@ if (bot) {
         }
         if (fromId !== ADMIN_ID) return;
         const args = text.split(' '); const cmd = args[0].toLowerCase();
-        
-        // Helper to refresh user even if in room
-        const refreshUser = (uid) => {
-            pushProfileUpdate(uid);
-            const socketId = findSocketIdByUserId(uid);
-            if(socketId) {
-                const room = getRoomBySocketId(socketId);
-                if(room) broadcastGameState(room); // Update room UI immediately
-            }
-        };
+        const refreshUser = (uid) => { pushProfileUpdate(uid); const socketId = findSocketIdByUserId(uid); if (socketId) { const room = getRoomBySocketId(socketId); if (room) broadcastGameState(room); } };
 
         if (cmd === '/me') {
             const user = userDB.get(ADMIN_ID); if (!user) return bot.sendMessage(chatId, "Enter game first");
@@ -550,11 +555,11 @@ if (bot) {
             bot.sendMessage(chatId, "Rich");
         }
         else if (cmd === '/win') {
-            const socketId = findSocketIdByUserId(ADMIN_ID); if(!socketId) return;
-            const room = getRoomBySocketId(socketId); if(!room) return;
-            room.players.forEach(p => { if(p.tgId !== ADMIN_ID) p.diceCount = 0; });
+            const socketId = findSocketIdByUserId(ADMIN_ID); if(!socketId) return bot.sendMessage(chatId, "You are not in a room");
+            const room = getRoomBySocketId(socketId); if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "Not active");
+            room.players.forEach(p => { if (p.tgId !== ADMIN_ID) p.diceCount = 0; });
             checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null);
-            bot.sendMessage(chatId, "Win");
+            bot.sendMessage(chatId, "🏆 Auto-Win");
         }
     });
 }
@@ -606,6 +611,13 @@ io.on('connection', (socket) => {
         const old = getRoomBySocketId(socket.id); if (old) handlePlayerDisconnect(socket.id, old);
         if (!tgUser) return;
         const userId = tgUser.id; const uData = getUserData(userId); const rInfo = getRankInfo(uData.xp, uData.streak);
+        
+        // --- CHECK RESOURCES FOR BETTING ---
+        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) {
+            socket.emit('errorMsg', 'NO_FUNDS'); // Specific error code
+            return;
+        }
+
         let room; let isCreator = false;
         if (mode === 'pve') {
             const newId = 'CPU_' + Math.random().toString(36).substring(2,6);
@@ -616,7 +628,15 @@ io.on('connection', (socket) => {
             for(let i=0; i<options.players-1; i++) { room.players.push({ id: 'bot_' + Math.random(), name: `${botNames[i%botNames.length]} (Бот)`, rank: options.difficulty === 'pirate' ? 'Капитан' : 'Матрос', dice: [], diceCount: room.config.dice, ready: true, isCreator: false, isBot: true, equipped: { frame: 'frame_default' } }); }
             socket.join(newId); startNewRound(room, true); return;
         }
-        if (roomId) { room = rooms.get(roomId); if (!room || room.status !== 'LOBBY' || room.players.length >= room.config.players) { socket.emit('errorMsg', 'Ошибка входа'); return; } }
+        if (roomId) { 
+            room = rooms.get(roomId); 
+            if (!room || room.status !== 'LOBBY' || room.players.length >= room.config.players) { socket.emit('errorMsg', 'Ошибка входа'); return; } 
+            // CHECK BET REQUIREMENTS FOR JOINER
+            if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) {
+                socket.emit('errorMsg', 'NO_FUNDS');
+                return;
+            }
+        }
         else { const newId = generateRoomId(); const st = options || { dice: 5, players: 10, time: 30 }; room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: st, isPvE: false }; rooms.set(newId, room); roomId = newId; isCreator = true; }
         room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: false, isCreator: isCreator, equipped: uData.equipped });
         socket.join(roomId); broadcastRoomUpdate(room);
