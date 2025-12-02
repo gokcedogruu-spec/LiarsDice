@@ -11,8 +11,8 @@ let state = {
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30,
     rules: { jokers: false, spot: false, strict: false },
-    // Bets: 0 means disabled
-    bets: { coins: 0, xp: 0 },
+    // Current room bets (stored locally to calc loss)
+    currentRoomBets: { coins: 0, xp: 0 },
     pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
     coins: 0, inventory: [], equipped: {}
 };
@@ -260,7 +260,7 @@ bindClick('btn-start-pve', () => {
     });
 });
 
-// --- SETTINGS (BET LOGIC ADDED) ---
+// --- SETTINGS & BETS ---
 bindClick('btn-to-create', () => showScreen('create-settings'));
 bindClick('btn-back-home', () => showScreen('home'));
 
@@ -294,13 +294,12 @@ window.adjSetting = (type, delta) => {
 bindClick('btn-confirm-create', () => {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     
-    // Prepare Bet Options
+    // Get bet values
     const betCoins = document.getElementById('btn-bet-coins').classList.contains('active') ? COIN_STEPS[document.getElementById('range-bet-coins').value] : 0;
     const betXp = document.getElementById('btn-bet-xp').classList.contains('active') ? XP_STEPS[document.getElementById('range-bet-xp').value] : 0;
 
-    // Validation locally
+    // Local validation
     if(betCoins > state.coins) {
-        // Show custom alert
         document.getElementById('modal-res-alert').classList.add('active');
         return;
     }
@@ -323,7 +322,7 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- BET UI LOGIC ---
+// --- BET UI ---
 window.toggleBetType = (type) => {
     const btn = document.getElementById(`btn-bet-${type}`);
     const box = document.getElementById(`bet-${type}-box`);
@@ -339,7 +338,7 @@ window.toggleBetType = (type) => {
 };
 
 window.updateBetVal = (type) => {
-    const slider = document.getElementById(`range-${type}`);
+    const slider = document.getElementById(`range-bet-${type}`);
     const disp = document.getElementById(`val-bet-${type}`);
     const val = parseInt(slider.value);
     if(type === 'coins') disp.textContent = COIN_STEPS[val];
@@ -511,7 +510,7 @@ window.closeSkillAlert = () => {
     document.getElementById('modal-skill-alert').classList.remove('active');
 };
 
-// --- ERROR MSG HANDLING (RESOURCE CHECK) ---
+// --- ERROR MSG ---
 socket.on('errorMsg', (msg) => {
     if (msg === 'NO_FUNDS') {
         document.getElementById('modal-res-alert').classList.add('active');
@@ -528,7 +527,9 @@ socket.on('roomUpdate', (room) => {
         if (room.config) {
             document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
             
-            // RENDER BETS
+            // Store for later logic
+            state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp };
+
             let betStr = '';
             if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `;
             if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`;
@@ -615,7 +616,7 @@ socket.on('gameState', (gs) => {
         me.availableSkills.forEach(skill => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
-            // ИСПОЛЬЗУЕМ setAttribute для 100% срабатывания
+            // FIXED CLICK HANDLER
             btn.setAttribute('onclick', `useSkill('${skill}')`);
             
             if(skill === 'ears') btn.innerHTML = 'Слух';
@@ -642,9 +643,44 @@ socket.on('gameState', (gs) => {
     }
 });
 
+window.useSkill = (skillType) => {
+    socket.emit('useSkill', skillType);
+};
+
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
+
 socket.on('gameOver', (data) => {
-    showScreen('result'); document.getElementById('winner-name').textContent = data.winner;
+    showScreen('result'); 
+    document.getElementById('winner-name').textContent = data.winner;
+    
+    // CALCULATE WIN/LOSS TEXT
+    const isWinner = (data.winner === state.username);
+    const profitEl = document.getElementById('result-profit');
+    
+    // We assume server sends 'potCoins' and 'potXp' if player won (total gain)
+    // But if lost, we just show the bet amount as lost.
+    // HOWEVER, server just sends winner name. Let's use local 'state.currentRoomBets'
+    
+    if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) {
+        if (isWinner) {
+            // Approx win calculation (assuming server added it correctly)
+            // For display purposes, we can say "WON THE POT"
+            let txt = 'Куш сорван! ';
+            if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins * 2}💰 `; // Rough estimate for 1v1
+            if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp * 2}⭐`;
+            profitEl.textContent = txt;
+            profitEl.style.color = '#06d6a0';
+        } else {
+            let txt = 'Потеряно: ';
+            if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `;
+            if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`;
+            profitEl.textContent = txt;
+            profitEl.style.color = '#ef233c';
+        }
+    } else {
+        profitEl.textContent = '';
+    }
+
     if(tg) tg.HapticFeedback.notificationOccurred('success');
 });
 
