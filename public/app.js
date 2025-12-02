@@ -115,10 +115,17 @@ socket.on('profileUpdate', (data) => {
     if (data.rankName === 'Легенда морей') rankIcon = '🔱';
     const badge = document.getElementById('rank-badge'); if(badge) badge.textContent = rankIcon;
 
+    // --- НОВЫЙ РАСЧЕТ ПОЛОСКИ ОПЫТА ---
     const next = (data.nextRankXP === 'MAX') ? data.xp : data.nextRankXP;
+    const currentMin = data.currentRankMin || 0;
     let pct = 0;
-    if (next > 0) {
-        pct = (data.xp / next) * 100;
+    
+    if (data.nextRankXP === 'MAX') {
+        pct = 100;
+    } else {
+        const totalRange = next - currentMin;
+        const progress = data.xp - currentMin;
+        if (totalRange > 0) pct = (progress / totalRange) * 100;
     }
     pct = Math.min(100, Math.max(0, pct));
     
@@ -346,38 +353,19 @@ socket.on('showPlayerStats', (data) => {
     invGrid.innerHTML = '';
     
     if (data.inventory && data.inventory.length > 0) {
-        // ГРУППИРОВКА ПО КАТЕГОРИЯМ
-        const categories = {
-            'skins': '🎲 Кости',
-            'frames': '🖼️ Рамки',
-            'bg': '🌄 Фоны'
-        };
-
+        const categories = { 'skins': '🎲 Кости', 'frames': '🖼️ Рамки', 'bg': '🌄 Фоны' };
         for (const [type, label] of Object.entries(categories)) {
             const items = data.inventory.filter(id => ITEMS_META[id] && ITEMS_META[id].type === type);
-            
             if (items.length > 0) {
-                // Заголовок категории
                 const header = document.createElement('div');
-                header.className = 'inv-category-title';
-                header.textContent = label;
-                invGrid.appendChild(header);
-
+                header.className = 'inv-category-title'; header.textContent = label; invGrid.appendChild(header);
                 items.forEach(itemId => {
                     const meta = ITEMS_META[itemId];
                     let preview = '';
                     if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId}" style="font-size:0.8rem">?</div>`;
                     else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
                     else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
-                    
-                    // Просто HTML строка
-                    const itemHTML = `
-                        <div class="inv-item">
-                            ${preview}
-                            <span>${meta.name}</span>
-                        </div>
-                    `;
-                    invGrid.insertAdjacentHTML('beforeend', itemHTML);
+                    invGrid.insertAdjacentHTML('beforeend', `<div class="inv-item">${preview}<span>${meta.name}</span></div>`);
                 });
             }
         }
@@ -449,6 +437,12 @@ socket.on('emoteReceived', (data) => {
         setTimeout(() => b.remove(), 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
     }
+});
+
+// --- SKILL RESULT POPUP ---
+socket.on('skillResult', (data) => {
+    if(tg) tg.showAlert(`${data.title}\n${data.text}`);
+    else alert(`${data.title}\n${data.text}`);
 });
 
 socket.on('errorMsg', (msg) => tg ? tg.showAlert(msg) : alert(msg));
@@ -564,6 +558,12 @@ socket.on('gameState', (gs) => {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
 });
+
+window.useSkill = (skillType) => {
+    if(confirm('Использовать навык? Это можно сделать 1 раз за игру.')) {
+        socket.emit('useSkill', skillType);
+    }
+};
 
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
 socket.on('gameOver', (data) => {
