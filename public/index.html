@@ -145,6 +145,26 @@
                     <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
                     <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
                 </div>
+
+                <!-- БЛОК СТАВОК -->
+                <div class="setting-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    <label>СТАВКИ</label>
+                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                        <button id="btn-bet-coins" class="btn-time" onclick="toggleBetType('coins')">💰 Песо</button>
+                        <button id="btn-bet-xp" class="btn-time" onclick="toggleBetType('xp')">⭐ Служба</button>
+                    </div>
+                    
+                    <div id="bet-coins-box" class="bet-selector hidden">
+                        <div class="bet-label">Ставка песо: <span id="val-bet-coins" style="color:gold">0</span></div>
+                        <input type="range" id="range-bet-coins" min="0" max="8" step="1" value="0" oninput="updateBetVal('coins')">
+                    </div>
+                    
+                    <div id="bet-xp-box" class="bet-selector hidden">
+                        <div class="bet-label">Ставка лет: <span id="val-bet-xp" style="color:cyan">0</span></div>
+                        <input type="range" id="range-bet-xp" min="0" max="6" step="1" value="0" oninput="updateBetVal('xp')">
+                    </div>
+                </div>
+
                 <button id="btn-confirm-create" class="btn btn-green" style="margin-top: 20px;">СОЗДАТЬ</button>
                 <button id="btn-back-home" class="btn btn-gray">НАЗАД</button>
             </div>
@@ -152,7 +172,6 @@
 
         <!-- 6. LOBBY -->
         <div id="screen-lobby" class="screen">
-            <!-- ИСПРАВЛЕНО: Кнопка "Назад" теперь внизу, чтобы не лезла на код -->
             <div class="header slide-down">
                 <div class="room-code-card" id="share-btn">
                     <div class="code-label">КОД КОМНАТЫ</div>
@@ -160,14 +179,13 @@
                     <div class="code-hint">Нажми, чтобы скопировать</div>
                 </div>
                 <div class="rules-tag" id="lobby-rules">...</div>
+                <div class="bets-tag" id="lobby-bets"></div> <!-- ТЕГ СТАВОК -->
             </div>
             <div class="card flex-grow slide-up">
                 <h3 class="card-header">КОМАНДА</h3>
                 <div id="lobby-players" class="player-list-scroll"></div>
             </div>
-            
             <div class="bottom-controls pop-in">
-                <!-- Два действия рядом: Выйти и Готов -->
                 <div class="lobby-btns-row">
                     <button class="btn btn-red" onclick="leaveLobby()" style="flex: 1;">ВЫЙТИ</button>
                     <button id="btn-ready" class="btn btn-blue" style="flex: 2;">Я ГОТОВ</button>
@@ -178,7 +196,6 @@
 
         <!-- 7. GAME -->
         <div id="screen-game" class="screen game-layout">
-            <!-- ИСПРАВЛЕНО: Кнопка выхода в углу, с отступом для контента -->
             <button class="btn-mini btn-game-leave" onclick="leaveGame()">✕</button>
 
             <div class="rivals-bar-container">
@@ -297,6 +314,12 @@
                 </div>
 
                 <div class="rules-section">
+                    <h3>💰 Ставки</h3>
+                    <p>В режиме PVP можно ставить <b>Песо</b> и <b>Годы службы</b>.</p>
+                    <p>Проигравшие теряют ставку. Победитель забирает <b>ВСЕ</b> ставки со стола.</p>
+                </div>
+
+                <div class="rules-section">
                     <h3>⚔️ Режимы</h3>
                     <p><b>🃏 Джокеры:</b> Единицы (1) считаются за любой номинал.</p>
                     <p><b>🔒 Строго:</b> Повышать можно ТОЛЬКО количество кубов.</p>
@@ -323,6 +346,16 @@
                 <h2 class="modal-title" style="font-size:1.4rem; margin-bottom:10px;">НАВЫК</h2>
                 <p id="skill-alert-text" style="font-size:1.1rem; font-weight:bold; color:white; margin-bottom:20px;"></p>
                 <button class="btn btn-blue" onclick="closeSkillAlert()">ПОНЯЛ</button>
+            </div>
+        </div>
+
+        <!-- 12. RESOURCE ALERT MODAL (НОВОЕ) -->
+        <div id="modal-res-alert" class="modal-overlay" onclick="closeResAlert()">
+            <div class="modal-content pop-in" style="max-width: 280px; padding-top:20px;">
+                <div style="font-size:3rem; margin-bottom:10px;">🚫</div>
+                <h2 class="modal-title" style="font-size:1.4rem; margin-bottom:10px; color:#ef233c;">НИЩЕТА</h2>
+                <p id="res-alert-text" style="font-size:1rem; color:white; margin-bottom:20px;">Не хватает ресурсов для ставки!</p>
+                <button class="btn btn-red" onclick="closeResAlert()">НАЗАД</button>
             </div>
         </div>
 
