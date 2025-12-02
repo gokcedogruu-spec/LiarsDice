@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
-// --- 1. НАСТРОЙКА СТАТИЧЕСКИХ ФАЙЛОВ (ВАЖНО) ---
+// --- 1. НАСТРОЙКА СТАТИЧЕСКИХ ФАЙЛОВ ---
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
@@ -28,9 +28,9 @@ const RANKS = [
     { name: "Юнга", min: 500, level: 1 },
     { name: "Матрос", min: 1500, level: 2 },
     { name: "Старший матрос", min: 5000, level: 3 },
-    { name: "Боцман", min: 10000, level: 4 },
-    { name: "Первый помощник", min: 25000, penalty: 30, level: 5 },
-    { name: "Капитан", min: 50000, penalty: 60, level: 6 },
+    { name: "Боцман", min: 10000, level: 4 }, // Уши
+    { name: "Первый помощник", min: 25000, penalty: 30, level: 5 }, // Кубик
+    { name: "Капитан", min: 50000, penalty: 60, level: 6 }, // Килл
     { name: "Легенда морей", min: 75000, reqStreak: 100, penalty: 100, level: 7 }
 ];
 
@@ -129,11 +129,16 @@ function updateUserXP(userId, type, difficulty = null) {
 }
 
 function findUserIdByUsername(input) {
-    const target = input.toLowerCase().replace('@', '');
+    if (!input) return null;
+    const target = input.toLowerCase().replace('@', '').trim();
+    
+    // 1. Поиск по ID (если введено число)
     if (/^\d+$/.test(target)) {
         const idNum = parseInt(target);
         if (userDB.has(idNum)) return idNum;
     }
+    
+    // 2. Поиск по username
     for (const [uid, uData] of userDB.entries()) {
         if (uData.username === target) return uid;
     }
@@ -161,7 +166,7 @@ function pushProfileUpdate(userId) {
     }
 }
 
-// --- 3. ФУНКЦИИ ИГРЫ (ОБЪЯВЛЕНЫ ДО ИСПОЛЬЗОВАНИЯ) ---
+// --- 3. ФУНКЦИИ ИГРЫ ---
 
 function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
@@ -200,9 +205,10 @@ function broadcastGameState(room) {
             const lvl = rankInfo.current.level;
             const used = p.skillsUsed || [];
             
-            if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); 
-            if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); 
-            if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); 
+            // Проверяем уровни для навыков
+            if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); // Боцман (4)
+            if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); // Помощник (5)
+            if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); // Капитан (6)
         }
 
         return { 
@@ -496,6 +502,8 @@ function handleSkill(socket, skillType) {
     const rankInfo = getRankInfo(user.xp, user.streak);
     const level = rankInfo.current.level;
 
+    console.log(`[SKILL] User: ${player.name}, RankLvl: ${level}, Skill: ${skillType}`);
+
     try {
         if (skillType === 'ears') {
             if (level < 4) return socket.emit('errorMsg', 'Нужен ранг Боцман');
@@ -551,7 +559,7 @@ function handleSkill(socket, skillType) {
     }
 }
 
-// --- 4. BOT COMMANDS ---
+// --- 4. BOT COMMANDS (ADMIN) ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 if (bot) {
     bot.on('message', (msg) => {
@@ -573,27 +581,47 @@ if (bot) {
         const args = text.split(' ');
         const cmd = args[0].toLowerCase();
 
+        // /setxp @user 1000
         if (cmd === '/setxp') {
-            if (args.length < 3) return bot.sendMessage(chatId, "Usage: /setxp @user 1000");
-            const uid = findUserIdByUsername(args[1]); if (!uid) return bot.sendMessage(chatId, "User not found");
-            const user = userDB.get(uid); user.xp = parseInt(args[2]);
+            if (args.length < 3) return bot.sendMessage(chatId, "Fail. Use: /setxp @user 1000");
+            const uid = findUserIdByUsername(args[1]); 
+            if (!uid) return bot.sendMessage(chatId, "User not found inside DB");
+            
+            const user = userDB.get(uid); 
+            user.xp = parseInt(args[2]);
             if (user.xp >= 75000) user.streak = 100;
-            userDB.set(uid, user); pushProfileUpdate(uid);
-            bot.sendMessage(chatId, `✅ XP Set: ${user.xp}`);
+            userDB.set(uid, user); 
+            pushProfileUpdate(uid);
+            bot.sendMessage(chatId, `✅ Set XP: ${user.xp} for ${user.name}`);
+            console.log(`[ADMIN] XP changed for ${uid}`);
         }
-        else if (cmd === '/setcoins') {
-            if (args.length < 3) return;
-            const uid = findUserIdByUsername(args[1]); if (!uid) return;
-            const user = userDB.get(uid); user.coins = parseInt(args[2]);
-            userDB.set(uid, user); pushProfileUpdate(uid);
-            bot.sendMessage(chatId, `✅ Coins Set: ${user.coins}`);
-        }
+        // /rich @user
         else if (cmd === '/rich') {
             if (args.length < 2) return;
-            const uid = findUserIdByUsername(args[1]); if (!uid) return;
-            const user = userDB.get(uid); user.coins = 1000000;
-            userDB.set(uid, user); pushProfileUpdate(uid);
-            bot.sendMessage(chatId, `🤑 Rich: ${user.name}`);
+            const uid = findUserIdByUsername(args[1]); 
+            if (!uid) return bot.sendMessage(chatId, "User not found");
+            
+            const user = userDB.get(uid); 
+            user.coins = 1000000;
+            userDB.set(uid, user); 
+            pushProfileUpdate(uid);
+            bot.sendMessage(chatId, `🤑 Made ${user.name} rich`);
+        }
+        // /win (for Admin only in active game)
+        else if (cmd === '/win') {
+            const socketId = findSocketIdByUserId(ADMIN_ID);
+            if (!socketId) return bot.sendMessage(chatId, "You are not in a room");
+            
+            const room = getRoomBySocketId(socketId);
+            if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "Not playing");
+            
+            // Kill everyone except me
+            room.players.forEach(p => {
+                if (p.tgId !== ADMIN_ID) p.diceCount = 0;
+            });
+            // Check win triggers end
+            checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null);
+            bot.sendMessage(chatId, "🏆 Auto-Win triggered");
         }
         else if (cmd === '/unlockall') {
             if (args.length < 2) return;
@@ -606,17 +634,6 @@ if (bot) {
             ];
             userDB.set(uid, user); pushProfileUpdate(uid);
             bot.sendMessage(chatId, "Unlocked all items");
-        }
-        else if (cmd === '/reset') {
-            if (args.length < 2) return;
-            const uid = findUserIdByUsername(args[1]); if (!uid) return;
-            const user = userDB.get(uid);
-            user.xp = 0; user.coins = 0; user.wins = 0; user.matches = 0; user.streak = 0;
-            user.inventory = ['skin_white', 'bg_default', 'frame_default'];
-            user.equipped = { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default' };
-            userDB.set(uid, user);
-            pushProfileUpdate(uid);
-            bot.sendMessage(chatId, `♻️ Reset: ${user.name}`);
         }
     });
 }
