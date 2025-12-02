@@ -152,8 +152,7 @@
 
         <!-- 6. LOBBY -->
         <div id="screen-lobby" class="screen">
-            <button class="btn-mini btn-lobby-back" onclick="leaveLobby()">←</button>
-            
+            <!-- ИСПРАВЛЕНО: Кнопка "Назад" теперь внизу, чтобы не лезла на код -->
             <div class="header slide-down">
                 <div class="room-code-card" id="share-btn">
                     <div class="code-label">КОД КОМНАТЫ</div>
@@ -166,14 +165,20 @@
                 <h3 class="card-header">КОМАНДА</h3>
                 <div id="lobby-players" class="player-list-scroll"></div>
             </div>
+            
             <div class="bottom-controls pop-in">
-                <button id="btn-ready" class="btn btn-blue">Я ГОТОВ</button>
-                <button id="btn-start-game" class="btn btn-green" style="display:none;">ПОГНАЛИ!</button>
+                <!-- Два действия рядом: Выйти и Готов -->
+                <div class="lobby-btns-row">
+                    <button class="btn btn-red" onclick="leaveLobby()" style="flex: 1;">ВЫЙТИ</button>
+                    <button id="btn-ready" class="btn btn-blue" style="flex: 2;">Я ГОТОВ</button>
+                </div>
+                <button id="btn-start-game" class="btn btn-green" style="display:none; margin-top:10px;">ПОГНАЛИ!</button>
             </div>
         </div>
 
         <!-- 7. GAME -->
         <div id="screen-game" class="screen game-layout">
+            <!-- ИСПРАВЛЕНО: Кнопка выхода в углу, с отступом для контента -->
             <button class="btn-mini btn-game-leave" onclick="leaveGame()">✕</button>
 
             <div class="rivals-bar-container">
@@ -311,7 +316,7 @@
             </div>
         </div>
 
-        <!-- 11. SKILL ALERT MODAL (НОВОЕ) -->
+        <!-- 11. SKILL ALERT MODAL -->
         <div id="modal-skill-alert" class="modal-overlay" onclick="closeSkillAlert()">
             <div class="modal-content pop-in" style="max-width: 280px; padding-top:40px;">
                 <div class="skill-alert-icon" id="skill-alert-title"></div>
