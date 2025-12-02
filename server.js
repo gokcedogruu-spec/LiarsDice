@@ -19,7 +19,7 @@ const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 app.get('/', (req, res) => { res.sendFile(path.join(publicPath, 'index.html')); });
 
-// --- 2. DATA ---
+// --- 2. DATA & RANKS ---
 const RANKS = [
     { name: "Салага", min: 0, level: 0 },
     { name: "Юнга", min: 500, level: 1 },
@@ -49,6 +49,7 @@ function getUserData(userId) {
 function syncUserData(tgUser, savedData) {
     const userId = tgUser.id;
     let user = userDB.get(userId);
+    
     if (!user) {
         user = { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
@@ -61,6 +62,7 @@ function syncUserData(tgUser, savedData) {
         user.name = tgUser.first_name;
         user.username = tgUser.username ? tgUser.username.toLowerCase() : null;
     }
+
     if (savedData) {
         if (typeof savedData.xp === 'number') user.xp = Math.max(user.xp, savedData.xp);
         if (typeof savedData.coins === 'number') user.coins = savedData.coins;
@@ -73,6 +75,7 @@ function syncUserData(tgUser, savedData) {
         }
         if (savedData.equipped) user.equipped = { ...user.equipped, ...savedData.equipped };
     }
+    
     if (!user.inventory.includes('bg_default')) user.inventory.push('bg_default');
     userDB.set(userId, user);
     return user;
@@ -186,6 +189,7 @@ function resolveBackground(room) {
 function broadcastGameState(room) {
     const now = Date.now();
     const remaining = Math.max(0, room.turnDeadline - now);
+    
     const playersData = room.players.map((p, i) => {
         let availableSkills = [];
         if (!p.isBot && p.tgId && p.diceCount > 0) {
@@ -193,16 +197,19 @@ function broadcastGameState(room) {
             const rankInfo = getRankInfo(uData.xp, uData.streak);
             const lvl = rankInfo.current.level;
             const used = p.skillsUsed || [];
+            
             if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); 
             if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); 
             if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); 
         }
+
         return { 
             name: p.name, rank: p.rank, diceCount: p.diceCount, 
             isTurn: i === room.currentTurn, isEliminated: p.diceCount === 0, 
             id: p.id, equipped: p.equipped, availableSkills: availableSkills
         };
     });
+
     io.to(room.id).emit('gameState', {
         players: playersData, currentBid: room.currentBid, 
         totalDuration: room.turnDuration, remainingTime: remaining,
@@ -454,6 +461,8 @@ function handleSkill(socket, skillType) {
     const rankInfo = getRankInfo(user.xp, user.streak);
     const level = rankInfo.current.level;
 
+    console.log(`[SKILL] Player ${player.name} tries ${skillType}. Level: ${level}`);
+
     try {
         if (skillType === 'ears') {
             if (level < 4) return socket.emit('errorMsg', 'Нужен ранг Боцман');
@@ -464,7 +473,6 @@ function handleSkill(socket, skillType) {
                 const bid = room.currentBid; let total = 0;
                 room.players.forEach(p => { p.dice.forEach(d => { if (d === bid.faceValue || (room.config.jokers && d===1 && bid.faceValue!==1)) total++; }) });
                 const isLying = total < bid.quantity;
-                // ОТПРАВЛЯЕМ ЧИСТЫЙ ТЕКСТ БЕЗ ЭМОДЗИ
                 socket.emit('skillResult', { type: 'ears', text: isLying ? "Он ВРЁТ!" : "Похоже на правду..." });
             } else socket.emit('skillResult', { type: 'ears', text: "Ничего не слышно..." });
             if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('ears'); broadcastGameState(room);
@@ -510,23 +518,48 @@ if (bot) {
         }
         if (fromId !== ADMIN_ID) return;
         const args = text.split(' '); const cmd = args[0].toLowerCase();
-        const refreshUser = (uid) => { pushProfileUpdate(uid); const socketId = findSocketIdByUserId(uid); if (socketId) { const room = getRoomBySocketId(socketId); if (room) broadcastGameState(room); } };
+        
+        // Helper to refresh user even if in room
+        const refreshUser = (uid) => {
+            pushProfileUpdate(uid);
+            const socketId = findSocketIdByUserId(uid);
+            if(socketId) {
+                const room = getRoomBySocketId(socketId);
+                if(room) broadcastGameState(room); // Update room UI immediately
+            }
+        };
 
         if (cmd === '/me') {
-            const user = userDB.get(ADMIN_ID); if (!user) return;
+            const user = userDB.get(ADMIN_ID); if (!user) return bot.sendMessage(chatId, "Enter game first");
             if (args[1] === 'rich') { user.coins = 1000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "Rich"); }
             if (args[1] === 'xp') { user.xp = parseInt(args[2] || 0); userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `XP: ${user.xp}`); }
         }
+        else if (cmd === '/setxp') {
+            if (args.length < 3) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid); user.xp = parseInt(args[2]);
+            if(user.xp>=75000) user.streak=100;
+            userDB.set(uid, user); refreshUser(uid);
+            bot.sendMessage(chatId, `XP ${user.xp}`);
+        }
+        else if (cmd === '/rich') {
+            if (args.length < 2) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid); user.coins = 1000000;
+            userDB.set(uid, user); refreshUser(uid);
+            bot.sendMessage(chatId, "Rich");
+        }
         else if (cmd === '/win') {
-            const socketId = findSocketIdByUserId(ADMIN_ID); if (!socketId) return bot.sendMessage(chatId, "No socket");
-            const room = getRoomBySocketId(socketId); if (!room) return bot.sendMessage(chatId, "No room");
-            room.players.forEach(p => { if (p.tgId !== ADMIN_ID) p.diceCount = 0; });
-            checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null); bot.sendMessage(chatId, "Win");
+            const socketId = findSocketIdByUserId(ADMIN_ID); if(!socketId) return;
+            const room = getRoomBySocketId(socketId); if(!room) return;
+            room.players.forEach(p => { if(p.tgId !== ADMIN_ID) p.diceCount = 0; });
+            checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null);
+            bot.sendMessage(chatId, "Win");
         }
     });
 }
 
-// --- 5. SOCKETS ---
+// --- 5. SOCKET LISTENERS ---
 io.on('connection', (socket) => {
     socket.on('login', ({ tgUser, savedData }) => {
         if (!tgUser) return;
