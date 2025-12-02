@@ -30,8 +30,7 @@
 
         <!-- 2. HOME -->
         <div id="screen-home" class="screen center-content">
-            <!-- Кнопка правил -->
-            <button class="btn-rules" onclick="openRules()">?</button>
+            <button class="btn-icon btn-rules" onclick="openRules()">?</button>
 
             <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             
@@ -63,9 +62,9 @@
             <h2 class="title-text">ЛАВКА</h2>
             <div class="shop-balance">💰 <span id="shop-coins">0</span></div>
             <div class="shop-tabs">
-                <button id="tab-skins" class="tab-btn active" onclick="filterShop('skins')">КОСТИ</button>
-                <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">РАМКИ</button>
-                <button id="tab-bg" class="tab-btn" onclick="filterShop('bg')">ФОНЫ</button>
+                <button id="tab-skins" class="tab-btn active" onclick="filterShop('skins')">Кости</button>
+                <button id="tab-frames" class="tab-btn" onclick="filterShop('frames')">Рамки</button>
+                <button id="tab-bg" class="tab-btn" onclick="filterShop('bg')">Палуба</button>
             </div>
             <div class="shop-grid" id="shop-items"></div>
             <button id="btn-shop-back" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
@@ -153,6 +152,8 @@
 
         <!-- 6. LOBBY -->
         <div id="screen-lobby" class="screen">
+            <button class="btn-mini btn-lobby-back" onclick="leaveLobby()">←</button>
+            
             <div class="header slide-down">
                 <div class="room-code-card" id="share-btn">
                     <div class="code-label">КОД КОМНАТЫ</div>
@@ -173,6 +174,8 @@
 
         <!-- 7. GAME -->
         <div id="screen-game" class="screen game-layout">
+            <button class="btn-mini btn-game-leave" onclick="leaveGame()">✕</button>
+
             <div class="rivals-bar-container">
                 <div id="players-bar" class="rivals-row"></div>
             </div>
@@ -275,7 +278,7 @@
             </div>
         </div>
 
-        <!-- 10. RULES MODAL (НОВОЕ) -->
+        <!-- 10. RULES MODAL -->
         <div id="modal-rules" class="modal-overlay" onclick="closeRules(event)">
             <div class="modal-content pop-in scrollable-content">
                 <button class="btn-close" onclick="closeRules(null)">✕</button>
@@ -305,6 +308,16 @@
                 <div class="rules-footer">
                     by ZMSS Games. Все права защищены.
                 </div>
+            </div>
+        </div>
+
+        <!-- 11. SKILL ALERT MODAL (НОВОЕ) -->
+        <div id="modal-skill-alert" class="modal-overlay" onclick="closeSkillAlert()">
+            <div class="modal-content pop-in" style="max-width: 280px; padding-top:40px;">
+                <div class="skill-alert-icon" id="skill-alert-title"></div>
+                <h2 class="modal-title" style="font-size:1.4rem; margin-bottom:10px;">НАВЫК</h2>
+                <p id="skill-alert-text" style="font-size:1.1rem; font-weight:bold; color:white; margin-bottom:20px;"></p>
+                <button class="btn btn-blue" onclick="closeSkillAlert()">ПОНЯЛ</button>
             </div>
         </div>
 
