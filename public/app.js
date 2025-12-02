@@ -11,7 +11,6 @@ let state = {
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30,
     rules: { jokers: false, spot: false, strict: false },
-    // Current room bets (stored locally to calc loss)
     currentRoomBets: { coins: 0, xp: 0 },
     pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
     coins: 0, inventory: [], equipped: {}
@@ -294,12 +293,11 @@ window.adjSetting = (type, delta) => {
 bindClick('btn-confirm-create', () => {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     
-    // Get bet values
-    const betCoins = document.getElementById('btn-bet-coins').classList.contains('active') ? COIN_STEPS[document.getElementById('range-bet-coins').value] : 0;
-    const betXp = document.getElementById('btn-bet-xp').classList.contains('active') ? XP_STEPS[document.getElementById('range-bet-xp').value] : 0;
+    // DIRECTLY GET VALUES FROM SLIDERS
+    const betCoins = COIN_STEPS[document.getElementById('range-bet-coins').value];
+    const betXp = XP_STEPS[document.getElementById('range-bet-xp').value];
 
-    // Local validation
-    if(betCoins > state.coins) {
+    if((betCoins > 0 && betCoins > state.coins) || (betXp > 0 && betXp > state.xp)) {
         document.getElementById('modal-res-alert').classList.add('active');
         return;
     }
@@ -322,21 +320,7 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- BET UI ---
-window.toggleBetType = (type) => {
-    const btn = document.getElementById(`btn-bet-${type}`);
-    const box = document.getElementById(`bet-${type}-box`);
-    const isActive = btn.classList.contains('active');
-    
-    if(isActive) {
-        btn.classList.remove('active');
-        box.classList.add('hidden');
-    } else {
-        btn.classList.add('active');
-        box.classList.remove('hidden');
-    }
-};
-
+// --- BET SLIDERS ---
 window.updateBetVal = (type) => {
     const slider = document.getElementById(`range-bet-${type}`);
     const disp = document.getElementById(`val-bet-${type}`);
@@ -527,7 +511,6 @@ socket.on('roomUpdate', (room) => {
         if (room.config) {
             document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
             
-            // Store for later logic
             state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp };
 
             let betStr = '';
@@ -653,25 +636,21 @@ socket.on('gameOver', (data) => {
     showScreen('result'); 
     document.getElementById('winner-name').textContent = data.winner;
     
-    // CALCULATE WIN/LOSS TEXT
+    // SHOW WIN/LOSS
     const isWinner = (data.winner === state.username);
     const profitEl = document.getElementById('result-profit');
     
-    // We assume server sends 'potCoins' and 'potXp' if player won (total gain)
-    // But if lost, we just show the bet amount as lost.
-    // HOWEVER, server just sends winner name. Let's use local 'state.currentRoomBets'
-    
     if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) {
         if (isWinner) {
-            // Approx win calculation (assuming server added it correctly)
-            // For display purposes, we can say "WON THE POT"
-            let txt = 'Куш сорван! ';
-            if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins * 2}💰 `; // Rough estimate for 1v1
-            if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp * 2}⭐`;
+            // APPROXIMATE POT (We don't know exact multiplier here without complex sync, so showing base gain)
+            // For better UX, we just say "YOU WON THE POT"
+            let txt = 'КУШ СОРВАН! ';
+            if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `;
+            if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
             profitEl.style.color = '#06d6a0';
         } else {
-            let txt = 'Потеряно: ';
+            let txt = 'ПОТЕРЯНО: ';
             if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `;
             if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
