@@ -146,22 +146,22 @@
                     <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
                 </div>
 
-                <!-- БЛОК СТАВОК -->
+                <!-- БЛОК СТАВОК (ИСПРАВЛЕННЫЙ) -->
                 <div class="setting-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                     <label>СТАВКИ</label>
                     <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
                         <button id="btn-bet-coins" class="btn-time" onclick="toggleBetType('coins')">💰 Песо</button>
-                        <button id="btn-bet-xp" class="btn-time" onclick="toggleBetType('xp')">⭐ Служба</button>
+                        <button id="btn-bet-xp" class="btn-time" onclick="toggleBetType('xp')">⭐ Годы службы</button>
                     </div>
                     
                     <div id="bet-coins-box" class="bet-selector hidden">
-                        <div class="bet-label">Ставка песо: <span id="val-bet-coins" style="color:gold">0</span></div>
-                        <input type="range" id="range-bet-coins" min="0" max="8" step="1" value="0" oninput="updateBetVal('coins')">
+                        <div class="bet-label">Песо: <span id="val-bet-coins" style="color:gold">0</span></div>
+                        <input type="range" id="range-bet-coins" min="0" max="9" step="1" value="0" oninput="updateBetVal('coins')">
                     </div>
                     
                     <div id="bet-xp-box" class="bet-selector hidden">
-                        <div class="bet-label">Ставка лет: <span id="val-bet-xp" style="color:cyan">0</span></div>
-                        <input type="range" id="range-bet-xp" min="0" max="6" step="1" value="0" oninput="updateBetVal('xp')">
+                        <div class="bet-label">Лет: <span id="val-bet-xp" style="color:cyan">0</span></div>
+                        <input type="range" id="range-bet-xp" min="0" max="7" step="1" value="0" oninput="updateBetVal('xp')">
                     </div>
                 </div>
 
@@ -179,7 +179,7 @@
                     <div class="code-hint">Нажми, чтобы скопировать</div>
                 </div>
                 <div class="rules-tag" id="lobby-rules">...</div>
-                <div class="bets-tag" id="lobby-bets"></div> <!-- ТЕГ СТАВОК -->
+                <div class="bets-tag" id="lobby-bets"></div>
             </div>
             <div class="card flex-grow slide-up">
                 <h3 class="card-header">КОМАНДА</h3>
@@ -260,6 +260,7 @@
                     <div class="trophy-icon">🏆</div>
                     <h2 id="winner-name" class="winner-name">...</h2>
                     <p class="winner-sub">Победитель</p>
+                    <div id="result-profit" style="margin-top:10px; font-weight:bold; font-size:1rem;"></div>
                 </div>
             </div>
             <div class="slide-up-delay">
@@ -349,7 +350,7 @@
             </div>
         </div>
 
-        <!-- 12. RESOURCE ALERT MODAL (НОВОЕ) -->
+        <!-- 12. RESOURCE ALERT MODAL -->
         <div id="modal-res-alert" class="modal-overlay" onclick="closeResAlert()">
             <div class="modal-content pop-in" style="max-width: 280px; padding-top:20px;">
                 <div style="font-size:3rem; margin-bottom:10px;">🚫</div>
