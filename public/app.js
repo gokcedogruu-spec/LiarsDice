@@ -388,7 +388,7 @@ window.closeRules = (e) => {
     }
 };
 
-// --- LEAVE GAME LOGIC (FIXED) ---
+// --- LEAVE GAME LOGIC ---
 window.leaveLobby = () => {
     socket.emit('leaveRoom');
     setTimeout(() => location.reload(), 100);
@@ -448,7 +448,13 @@ socket.on('emoteReceived', (data) => {
     }
 });
 
-// --- SKILL POPUP (FIXED ICON LOGIC) ---
+// --- SKILL EXECUTION (FIXED) ---
+window.useSkill = (skillType) => {
+    // Убрали confirm, добавили лог
+    console.log("Using skill:", skillType);
+    socket.emit('useSkill', skillType);
+};
+
 socket.on('skillResult', (data) => {
     const modal = document.getElementById('modal-skill-alert');
     const iconEl = document.getElementById('skill-alert-title');
@@ -554,7 +560,8 @@ socket.on('gameState', (gs) => {
         me.availableSkills.forEach(skill => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
-            btn.onclick = () => useSkill(skill);
+            // ИСПОЛЬЗУЕМ setAttribute для 100% срабатывания
+            btn.setAttribute('onclick', `useSkill('${skill}')`);
             
             if(skill === 'ears') btn.innerHTML = 'Слух';
             if(skill === 'lucky') btn.innerHTML = '+1 Куб';
