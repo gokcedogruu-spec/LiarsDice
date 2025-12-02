@@ -101,10 +101,14 @@
                     </div>
                 </div>
 
-                <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button id="btn-rule-jokers-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
-                    <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
-                    <button id="btn-rule-strict-pve" class="btn-time" onclick="toggleRule('strict', true)">🔒 Строго</button>
+                <!-- ГРУППА РЕЖИМОВ ДЛЯ PVE -->
+                <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    <label>РЕЖИМЫ</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-rule-jokers-pve" class="btn-time" onclick="toggleRule('jokers', true)">🃏 Джокеры</button>
+                        <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
+                        <button id="btn-rule-strict-pve" class="btn-time" onclick="toggleRule('strict', true)">🔒 Строго</button>
+                    </div>
                 </div>
 
                 <button id="btn-start-pve" class="btn btn-red" style="margin-top: 20px;">В БОЙ!</button>
@@ -140,27 +144,28 @@
                         <button class="btn-time" onclick="setTime(60)">60с</button>
                     </div>
                 </div>
-                <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button id="btn-rule-jokers" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
-                    <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
-                    <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
+
+                <!-- ГРУППА РЕЖИМОВ (СГРУППИРОВАНО) -->
+                <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    <label>РЕЖИМЫ</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-rule-jokers" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
+                        <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
+                        <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
+                    </div>
                 </div>
 
-                <!-- БЛОК СТАВОК (ИСПРАВЛЕННЫЙ) -->
-                <div class="setting-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                <!-- БЛОК СТАВОК (УБРАНЫ КНОПКИ АКТИВАЦИИ) -->
+                <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                     <label>СТАВКИ</label>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
-                        <button id="btn-bet-coins" class="btn-time" onclick="toggleBetType('coins')">💰 Песо</button>
-                        <button id="btn-bet-xp" class="btn-time" onclick="toggleBetType('xp')">⭐ Годы службы</button>
-                    </div>
                     
-                    <div id="bet-coins-box" class="bet-selector hidden">
-                        <div class="bet-label">Песо: <span id="val-bet-coins" style="color:gold">0</span></div>
+                    <div class="bet-selector">
+                        <div class="bet-label">💰 Песо: <span id="val-bet-coins" style="color:gold">0</span></div>
                         <input type="range" id="range-bet-coins" min="0" max="9" step="1" value="0" oninput="updateBetVal('coins')">
                     </div>
                     
-                    <div id="bet-xp-box" class="bet-selector hidden">
-                        <div class="bet-label">Лет: <span id="val-bet-xp" style="color:cyan">0</span></div>
+                    <div class="bet-selector">
+                        <div class="bet-label">⭐ Годы службы: <span id="val-bet-xp" style="color:cyan">0</span></div>
                         <input type="range" id="range-bet-xp" min="0" max="7" step="1" value="0" oninput="updateBetVal('xp')">
                     </div>
                 </div>
