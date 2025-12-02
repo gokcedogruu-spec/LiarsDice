@@ -388,16 +388,16 @@ window.closeRules = (e) => {
     }
 };
 
-// --- LEAVE GAME LOGIC ---
+// --- LEAVE GAME LOGIC (FIXED) ---
 window.leaveLobby = () => {
-    socket.emit('disconnect'); // Force simple disconnect logic
-    location.reload();
+    socket.emit('leaveRoom');
+    setTimeout(() => location.reload(), 100);
 };
 
 window.leaveGame = () => {
     if(confirm("Сдаться и покинуть игру? Вы потеряете все.")) {
-        socket.emit('disconnect');
-        location.reload();
+        socket.emit('leaveRoom');
+        setTimeout(() => location.reload(), 100);
     }
 };
 
@@ -448,10 +448,17 @@ socket.on('emoteReceived', (data) => {
     }
 });
 
-// --- SKILL POPUP (CUSTOM HTML) ---
+// --- SKILL POPUP (FIXED ICON LOGIC) ---
 socket.on('skillResult', (data) => {
     const modal = document.getElementById('modal-skill-alert');
-    document.getElementById('skill-alert-title').textContent = data.title.split(' ')[0]; // Emoji icon
+    const iconEl = document.getElementById('skill-alert-title');
+    
+    let icon = '⚡';
+    if (data.type === 'ears') icon = '👂';
+    else if (data.type === 'lucky') icon = '🎲';
+    else if (data.type === 'kill') icon = '🔫';
+    
+    iconEl.textContent = icon;
     document.getElementById('skill-alert-text').textContent = data.text;
     modal.classList.add('active');
 });
