@@ -115,14 +115,11 @@ socket.on('profileUpdate', (data) => {
     if (data.rankName === 'Легенда морей') rankIcon = '🔱';
     const badge = document.getElementById('rank-badge'); if(badge) badge.textContent = rankIcon;
 
-    // --- НОВЫЙ РАСЧЕТ ПОЛОСКИ ОПЫТА ---
     const next = (data.nextRankXP === 'MAX') ? data.xp : data.nextRankXP;
-    const currentMin = data.currentRankMin || 0;
     let pct = 0;
-    
-    if (data.nextRankXP === 'MAX') {
-        pct = 100;
-    } else {
+    const currentMin = data.currentRankMin || 0;
+    if (data.nextRankXP === 'MAX') { pct = 100; } 
+    else {
         const totalRange = next - currentMin;
         const progress = data.xp - currentMin;
         if (totalRange > 0) pct = (progress / totalRange) * 100;
@@ -179,11 +176,11 @@ const ITEMS_META = {
     'frame_captain': { name: 'Капитанская', price: 10000, type: 'frames' },
 
     'bg_default': { name: 'Стандарт', price: 0, type: 'bg' },
-    'bg_lvl1':    { name: 'Каюта фрегата', price: 150000, type: 'bg' },
-    'bg_lvl2':    { name: 'Каюта Летучего Голландца', price: 150000, type: 'bg' },
-    'bg_lvl3':    { name: 'Каюта Черной Жемчужины', price: 150000, type: 'bg' },
-    'bg_lvl4':    { name: 'Каюта старой шлюпки', price: 150000, type: 'bg' },
-    'bg_lvl5':    { name: 'Каюта корабля-призрака', price: 500000, type: 'bg' }
+    'bg_lvl1':    { name: 'Палуба фрегата', price: 150000, type: 'bg' },
+    'bg_lvl2':    { name: 'Палуба Летучего Голландца', price: 150000, type: 'bg' },
+    'bg_lvl3':    { name: 'Палуба Черной Жемчужины', price: 150000, type: 'bg' },
+    'bg_lvl4':    { name: 'Палуба старой шлюпки', price: 150000, type: 'bg' },
+    'bg_lvl5':    { name: 'Палуба корабля-призрака', price: 500000, type: 'bg' }
 };
 
 let currentShopTab = 'skins'; 
@@ -353,7 +350,7 @@ socket.on('showPlayerStats', (data) => {
     invGrid.innerHTML = '';
     
     if (data.inventory && data.inventory.length > 0) {
-        const categories = { 'skins': '🎲 Кости', 'frames': '🖼️ Рамки', 'bg': '🌄 Фоны' };
+        const categories = { 'skins': 'Кости', 'frames': 'Рамки', 'bg': 'Палуба' };
         for (const [type, label] of Object.entries(categories)) {
             const items = data.inventory.filter(id => ITEMS_META[id] && ITEMS_META[id].type === type);
             if (items.length > 0) {
@@ -391,6 +388,18 @@ window.closeRules = (e) => {
     }
 };
 
+// --- LEAVE GAME LOGIC ---
+window.leaveLobby = () => {
+    socket.emit('disconnect'); // Force simple disconnect logic
+    location.reload();
+};
+
+window.leaveGame = () => {
+    if(confirm("Сдаться и покинуть игру? Вы потеряете все.")) {
+        socket.emit('disconnect');
+        location.reload();
+    }
+};
 
 // --- GAME ---
 bindClick('btn-join-room', () => {
@@ -439,11 +448,16 @@ socket.on('emoteReceived', (data) => {
     }
 });
 
-// --- SKILL RESULT POPUP ---
+// --- SKILL POPUP (CUSTOM HTML) ---
 socket.on('skillResult', (data) => {
-    if(tg) tg.showAlert(`${data.title}\n${data.text}`);
-    else alert(`${data.title}\n${data.text}`);
+    const modal = document.getElementById('modal-skill-alert');
+    document.getElementById('skill-alert-title').textContent = data.title.split(' ')[0]; // Emoji icon
+    document.getElementById('skill-alert-text').textContent = data.text;
+    modal.classList.add('active');
 });
+window.closeSkillAlert = () => {
+    document.getElementById('modal-skill-alert').classList.remove('active');
+};
 
 socket.on('errorMsg', (msg) => tg ? tg.showAlert(msg) : alert(msg));
 socket.on('roomUpdate', (room) => {
@@ -535,9 +549,9 @@ socket.on('gameState', (gs) => {
             btn.className = `btn-skill skill-${skill}`;
             btn.onclick = () => useSkill(skill);
             
-            if(skill === 'ears') btn.innerHTML = '👂 Слух';
-            if(skill === 'lucky') btn.innerHTML = '🎲 +1 Куб';
-            if(skill === 'kill') btn.innerHTML = '🔫 Выстрел';
+            if(skill === 'ears') btn.innerHTML = 'Слух';
+            if(skill === 'lucky') btn.innerHTML = '+1 Куб';
+            if(skill === 'kill') btn.innerHTML = 'Выстрел';
             
             skillsDiv.appendChild(btn);
         });
@@ -558,12 +572,6 @@ socket.on('gameState', (gs) => {
         startVisualTimer(gs.remainingTime, gs.totalDuration);
     }
 });
-
-window.useSkill = (skillType) => {
-    if(confirm('Использовать навык? Это можно сделать 1 раз за игру.')) {
-        socket.emit('useSkill', skillType);
-    }
-};
 
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
 socket.on('gameOver', (data) => {
