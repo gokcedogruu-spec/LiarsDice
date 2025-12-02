@@ -11,9 +11,14 @@ let state = {
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30,
     rules: { jokers: false, spot: false, strict: false },
+    // Bets: 0 means disabled
+    bets: { coins: 0, xp: 0 },
     pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
     coins: 0, inventory: [], equipped: {}
 };
+
+const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
+const XP_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000];
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
@@ -255,7 +260,7 @@ bindClick('btn-start-pve', () => {
     });
 });
 
-// --- SETTINGS ---
+// --- SETTINGS (BET LOGIC ADDED) ---
 bindClick('btn-to-create', () => showScreen('create-settings'));
 bindClick('btn-back-home', () => showScreen('home'));
 
@@ -288,11 +293,24 @@ window.adjSetting = (type, delta) => {
 
 bindClick('btn-confirm-create', () => {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
+    
+    // Prepare Bet Options
+    const betCoins = document.getElementById('btn-bet-coins').classList.contains('active') ? COIN_STEPS[document.getElementById('range-bet-coins').value] : 0;
+    const betXp = document.getElementById('btn-bet-xp').classList.contains('active') ? XP_STEPS[document.getElementById('range-bet-xp').value] : 0;
+
+    // Validation locally
+    if(betCoins > state.coins) {
+        // Show custom alert
+        document.getElementById('modal-res-alert').classList.add('active');
+        return;
+    }
+
     socket.emit('joinOrCreateRoom', { 
         roomId: null, tgUser: userPayload, 
         options: { 
             dice: state.createDice, players: state.createPlayers, time: state.createTime,
-            jokers: state.rules.jokers, spot: state.rules.spot, strict: state.rules.strict
+            jokers: state.rules.jokers, spot: state.rules.spot, strict: state.rules.strict,
+            betCoins: betCoins, betXp: betXp
         } 
     });
 });
@@ -303,6 +321,33 @@ window.toggleRule = (rule, isPve = false) => {
     const id = isPve ? (rule==='jokers'?'btn-rule-jokers-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-jokers':`btn-rule-${rule}`);
     const btn = document.getElementById(id);
     if(btn) btn.classList.toggle('active', target[rule]);
+};
+
+// --- BET UI LOGIC ---
+window.toggleBetType = (type) => {
+    const btn = document.getElementById(`btn-bet-${type}`);
+    const box = document.getElementById(`bet-${type}-box`);
+    const isActive = btn.classList.contains('active');
+    
+    if(isActive) {
+        btn.classList.remove('active');
+        box.classList.add('hidden');
+    } else {
+        btn.classList.add('active');
+        box.classList.remove('hidden');
+    }
+};
+
+window.updateBetVal = (type) => {
+    const slider = document.getElementById(`range-${type}`);
+    const disp = document.getElementById(`val-bet-${type}`);
+    const val = parseInt(slider.value);
+    if(type === 'coins') disp.textContent = COIN_STEPS[val];
+    else disp.textContent = XP_STEPS[val];
+};
+
+window.closeResAlert = () => {
+    document.getElementById('modal-res-alert').classList.remove('active');
 };
 
 // --- PLAYER STATS MODAL ---
@@ -448,13 +493,7 @@ socket.on('emoteReceived', (data) => {
     }
 });
 
-// --- SKILL EXECUTION (FIXED) ---
-window.useSkill = (skillType) => {
-    // Убрали confirm, добавили лог
-    console.log("Using skill:", skillType);
-    socket.emit('useSkill', skillType);
-};
-
+// --- SKILL POPUP ---
 socket.on('skillResult', (data) => {
     const modal = document.getElementById('modal-skill-alert');
     const iconEl = document.getElementById('skill-alert-title');
@@ -472,13 +511,29 @@ window.closeSkillAlert = () => {
     document.getElementById('modal-skill-alert').classList.remove('active');
 };
 
-socket.on('errorMsg', (msg) => tg ? tg.showAlert(msg) : alert(msg));
+// --- ERROR MSG HANDLING (RESOURCE CHECK) ---
+socket.on('errorMsg', (msg) => {
+    if (msg === 'NO_FUNDS') {
+        document.getElementById('modal-res-alert').classList.add('active');
+    } else {
+        tg ? tg.showAlert(msg) : alert(msg);
+    }
+});
+
 socket.on('roomUpdate', (room) => {
     state.roomId = room.roomId;
     if (room.status === 'LOBBY') {
         showScreen('lobby');
         document.getElementById('lobby-room-id').textContent = room.roomId;
-        if (room.config) document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
+        if (room.config) {
+            document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
+            
+            // RENDER BETS
+            let betStr = '';
+            if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `;
+            if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`;
+            document.getElementById('lobby-bets').textContent = betStr;
+        }
         const list = document.getElementById('lobby-players'); list.innerHTML = '';
         room.players.forEach(p => {
             list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')">
