@@ -40,21 +40,19 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* --- ЛОГОТИП (ОБНОВЛЕНО) --- */
+/* ЛОГОТИП */
 .game-logo {
     width: 100%;
-    max-width: 420px; /* Было 280px -> Увеличено */
+    max-width: 420px; 
     height: auto;
     margin-bottom: 20px;
-    /* Улучшенная читаемость: жесткая тень + мягкое свечение */
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
     transition: transform 0.3s;
 }
-/* Анимация парения */
 .float-anim { animation: floatLogo 3s ease-in-out infinite; }
 @keyframes floatLogo {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); } /* Чуть выше амплитуда */
+    50% { transform: translateY(-15px); }
 }
 
 .title-text {
@@ -75,16 +73,20 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-mini { width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--surface); color: white; font-size: 1.5rem; font-weight: 800; box-shadow: 0 4px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(4px); box-shadow: none; }
 
-.btn-rules {
-    position: absolute; top: 15px; right: 15px;
+/* КНОПКИ НАВИГАЦИИ (ПРАВЫЙ/ЛЕВЫЙ ВЕРХНИЙ УГОЛ) */
+.btn-icon {
+    position: absolute; top: 15px;
     width: 40px; height: 40px;
     background: var(--surface); color: var(--accent);
     border: 2px solid var(--accent); border-radius: 50%;
     font-size: 1.5rem; font-weight: 800; cursor: pointer;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    z-index: 10;
+    z-index: 10; display: flex; align-items: center; justify-content: center;
 }
-.btn-rules:active { transform: scale(0.9); }
+.btn-icon:active { transform: scale(0.9); }
+.btn-rules { right: 15px; }
+.btn-lobby-back { top: 15px; left: 15px; position: absolute; }
+.btn-game-leave { top: 15px; right: 15px; position: absolute; background: #d90429; color: white; border-color: white; z-index: 20; }
 
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.2rem; text-align: center; outline: none; font-weight: 600; }
@@ -238,16 +240,4 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .rules-section p { font-size: 0.9rem; line-height: 1.4; margin-bottom: 8px; color: rgba(255,255,255,0.9); }
 .rules-section b { color: var(--accent); }
 .rules-footer { text-align: center; font-size: 0.7rem; opacity: 0.5; margin-top: 20px; font-weight: 600; }
-
-/* --- ЗАГОЛОВОК КАТЕГОРИИ В ИНВЕНТАРЕ --- */
-.inv-category-title {
-    grid-column: 1 / -1; /* Растянуть на всю ширину грида */
-    font-size: 0.8rem;
-    color: var(--accent);
-    margin-top: 10px;
-    margin-bottom: 5px;
-    text-align: left;
-    font-weight: 800;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    text-shadow: 1px 1px 0 black;
-}
+.inv-category-title { grid-column: 1 / -1; font-size: 0.8rem; color: var(--accent); margin-top: 10px; margin-bottom: 5px; text-align: left; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); text-shadow: 1px 1px 0 black; }
