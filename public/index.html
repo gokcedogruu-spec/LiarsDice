@@ -101,7 +101,6 @@
                     </div>
                 </div>
 
-                <!-- ГРУППА РЕЖИМОВ ДЛЯ PVE -->
                 <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                     <label>РЕЖИМЫ</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -145,7 +144,6 @@
                     </div>
                 </div>
 
-                <!-- ГРУППА РЕЖИМОВ (СГРУППИРОВАНО) -->
                 <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                     <label>РЕЖИМЫ</label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -155,15 +153,12 @@
                     </div>
                 </div>
 
-                <!-- БЛОК СТАВОК (УБРАНЫ КНОПКИ АКТИВАЦИИ) -->
                 <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                     <label>СТАВКИ</label>
-                    
                     <div class="bet-selector">
                         <div class="bet-label">💰 Песо: <span id="val-bet-coins" style="color:gold">0</span></div>
                         <input type="range" id="range-bet-coins" min="0" max="9" step="1" value="0" oninput="updateBetVal('coins')">
                     </div>
-                    
                     <div class="bet-selector">
                         <div class="bet-label">⭐ Годы службы: <span id="val-bet-xp" style="color:cyan">0</span></div>
                         <input type="range" id="range-bet-xp" min="0" max="7" step="1" value="0" oninput="updateBetVal('xp')">
@@ -192,7 +187,7 @@
             </div>
             <div class="bottom-controls pop-in">
                 <div class="lobby-btns-row">
-                    <button class="btn btn-red" onclick="leaveLobby()" style="flex: 1;">ВЫЙТИ</button>
+                    <button class="btn btn-red" onclick="leaveLobby()" style="flex: 1;">НАЗАД</button>
                     <button id="btn-ready" class="btn btn-blue" style="flex: 2;">Я ГОТОВ</button>
                 </div>
                 <button id="btn-start-game" class="btn btn-green" style="display:none; margin-top:10px;">ПОГНАЛИ!</button>
@@ -217,12 +212,13 @@
                 <div id="game-log" class="game-log-box"></div>
             </div>
             <div class="my-controls-area slide-up">
+                <!-- КАРТИНКИ ЭМОЦИЙ -->
                 <div class="emotes-bar">
-                    <button onclick="sendEmote('😂')">😂</button>
-                    <button onclick="sendEmote('😡')">😡</button>
-                    <button onclick="sendEmote('🤔')">🤔</button>
-                    <button onclick="sendEmote('😮')">😮</button>
-                    <button onclick="sendEmote('🤡')">🤡</button>
+                    <button onclick="sendEmote('dead')"><img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_dead.png" alt="dead"></button>
+                    <button onclick="sendEmote('angry')"><img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_angry.png" alt="angry"></button>
+                    <button onclick="sendEmote('skeptic')"><img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_skeptic.png" alt="skeptic"></button>
+                    <button onclick="sendEmote('panic')"><img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_panic.png" alt="panic"></button>
+                    <button onclick="sendEmote('bully')"><img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_bully.png" alt="bully"></button>
                 </div>
 
                 <div class="my-dice-panel">
