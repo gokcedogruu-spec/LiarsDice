@@ -430,29 +430,19 @@ function handlePlayerDisconnect(socketId, room) {
     const wasCreator = player.isCreator;
     
     if (room.status === 'PLAYING') {
-        io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал!`, type: 'error' });
-        player.diceCount = 0; 
-        if (!player.isBot && player.tgId) updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
+        // UPDATED: Don't kick immediately. Just notify.
+        io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' });
         
-        room.players.splice(i, 1);
-        if (i === room.currentTurn) {
-            if (room.currentTurn >= room.players.length) room.currentTurn = 0;
-            resetTurnTimer(room);
-        } else if (i < room.currentTurn) room.currentTurn--;
+        // We DO NOT splice the player here.
+        // If they are active, the turn timer will eventually kick them via handleTimeout.
+        // If they reconnect, we will re-assign their socket ID in 'login'.
         
-        const active = room.players.filter(p => p.diceCount > 0);
-        if (active.length === 1) {
-            const winner = active[0]; room.status = 'FINISHED';
-            if (room.timerId) clearTimeout(room.timerId);
-            if (!winner.isBot && winner.tgId) {
-                const type = room.isPvE ? 'win_pve' : 'win_game';
-                const diff = room.isPvE ? room.config.difficulty : null;
-                const multiplier = room.players.length; 
-                updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
-            }
-            io.to(room.id).emit('gameOver', { winner: winner.name });
-        } else broadcastGameState(room);
+        // Only if active players count drops to 1 do we end, 
+        // but since we don't remove them from array, active count stays same for now.
+        // The logic relies on handleTimeout to clean up zombies.
     } else {
+        // LOBBY or FINISHED -> Remove immediately
+        io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} ушел!`, type: 'error' });
         room.players.splice(i, 1);
         if (room.players.filter(p => !p.isBot).length === 0) { if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id); }
         else { if (wasCreator && room.players[0]) room.players[0].isCreator = true; broadcastRoomUpdate(room); }
@@ -597,6 +587,52 @@ io.on('connection', (socket) => {
         const rank = getRankInfo(data.xp, data.streak);
         socket.tgUserId = tgUser.id;
         socket.emit('profileUpdate', { ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX' });
+
+        // --- RECONNECTION LOGIC ---
+        // Check if this user is already in a playing room with an old socket ID
+        for (const [roomId, room] of rooms) {
+            if (room.status === 'PLAYING') {
+                const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
+                if (existingPlayer) {
+                    // Found them! Update their socket ID
+                    existingPlayer.id = socket.id;
+                    socket.join(roomId);
+                    
+                    // Send them the game state immediately
+                    if(existingPlayer.diceCount > 0) socket.emit('yourDice', existingPlayer.dice);
+                    
+                    // Calculate current timing for correct client sync
+                    const now = Date.now();
+                    const remaining = Math.max(0, room.turnDeadline - now);
+                    const playersData = room.players.map((p, i) => {
+                        let availableSkills = [];
+                        if (!p.isBot && p.tgId && p.diceCount > 0) {
+                            const uData = getUserData(p.tgId);
+                            const rankInfo = getRankInfo(uData.xp, uData.streak);
+                            const lvl = rankInfo.current.level;
+                            const used = p.skillsUsed || [];
+                            if (lvl >= 4 && !used.includes('ears')) availableSkills.push('ears'); 
+                            if (lvl >= 5 && !used.includes('lucky')) availableSkills.push('lucky'); 
+                            if (lvl >= 6 && !used.includes('kill')) availableSkills.push('kill'); 
+                        }
+                        return { 
+                            name: p.name, rank: p.rank, diceCount: p.diceCount, 
+                            isTurn: i === room.currentTurn, isEliminated: p.diceCount === 0, 
+                            id: p.id, equipped: p.equipped, availableSkills: availableSkills
+                        };
+                    });
+
+                    socket.emit('gameState', {
+                        players: playersData, currentBid: room.currentBid, 
+                        totalDuration: room.turnDuration, remainingTime: remaining,
+                        activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict },
+                        activeBackground: room.activeBackground
+                    });
+                    
+                    socket.emit('gameEvent', { text: '🔄 Вы вернулись в игру!', type: 'info' });
+                }
+            }
+        }
     });
     socket.on('leaveRoom', () => { const r = getRoomBySocketId(socket.id); if(r) handlePlayerDisconnect(socket.id, r); });
     socket.on('shopBuy', (itemId) => { 
