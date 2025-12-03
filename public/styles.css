@@ -3,6 +3,7 @@
   --surface: #3d405b; 
   --primary: #ef233c; --secondary: #8d99ae; --accent: #ffb703; 
   --success: #06d6a0; --blue: #118ab2; --text: #edf2f4;
+  
   --font: 'Shantell Sans', sans-serif;
   --radius: 20px;
   --shadow-card: 0px 8px 20px rgba(0,0,0,0.5);
@@ -20,6 +21,7 @@ body {
   transition: background-image 0.3s ease;
 }
 
+/* ФОНЫ */
 body.bg_default { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
 body.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
 body.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
@@ -32,14 +34,29 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .screen.active { display: flex; }
 .center-content { justify-content: center; align-items: center; }
 
-.loader { border: 8px solid rgba(255,255,255,0.1); border-left-color: var(--accent); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
+.loader {
+  border: 8px solid rgba(255,255,255,0.1); border-left-color: var(--accent);
+  border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite;
+}
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-.game-logo { width: 100%; max-width: 420px; height: auto; margin-bottom: 20px; filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6)); transition: transform 0.3s; }
+/* ЛОГОТИП */
+.game-logo {
+    width: 100%; max-width: 420px; height: auto; margin-bottom: 20px;
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
+    transition: transform 0.3s;
+}
 .float-anim { animation: floatLogo 3s ease-in-out infinite; }
-@keyframes floatLogo { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+@keyframes floatLogo {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
 
-.title-text { font-family: var(--font); font-size: 2rem; color: var(--accent); text-align: center; text-shadow: 2px 2px 0 #d90429; margin-bottom: 20px; font-weight: 800; }
+.title-text {
+    font-family: var(--font); font-size: 2rem; color: var(--accent); 
+    text-align: center; text-shadow: 2px 2px 0 #d90429; margin-bottom: 20px; font-weight: 800;
+}
+
 .subtitle { font-family: var(--font); font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 
 .btn { width: 100%; padding: 12px; border: none; border-radius: var(--radius); font-family: var(--font); font-size: 1.2rem; font-weight: 700; cursor: pointer; margin-top: 10px; transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); }
@@ -56,7 +73,6 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-icon { position: absolute; top: 15px; width: 40px; height: 40px; background: var(--surface); color: var(--accent); border: 2px solid var(--accent); border-radius: 50%; font-size: 1.5rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; display: flex; align-items: center; justify-content: center; }
 .btn-icon:active { transform: scale(0.9); }
 .btn-rules { right: 15px; }
-.btn-lobby-back { top: 15px; left: 15px; position: absolute; }
 .btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
 .lobby-btns-row { display: flex; gap: 10px; width: 100%; }
 
@@ -128,7 +144,7 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); }
 
 .inv-preview.player-chip { min-width: auto; max-width: none; width: 40px; height: 40px; padding: 0; }
-.emote-bubble { position: fixed; font-size: 2.5rem; animation: floatUp 2s ease-out forwards; pointer-events: none; z-index: 9999; text-shadow: 0 2px 5px rgba(0,0,0,0.5); transform: translateX(-50%); }
+.emote-bubble-img { position: fixed; width: 80px; height: 80px; animation: floatUp 2s ease-out forwards; pointer-events: none; z-index: 9999; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); transform: translateX(-50%); object-fit: contain; }
 .table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
 .timer-capsule { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; width: 80%; margin-bottom: 15px; }
 .timer-track { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
@@ -140,7 +156,8 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--text); text-shadow: 1px 1px 0 black; text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
 .my-controls-area { width: 100%; }
 .emotes-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
-.emotes-bar button { background: none; border: none; font-size: 1.8rem; cursor: pointer; transition: transform 0.1s; padding: 0; }
+.emotes-bar button { background: none; border: none; cursor: pointer; transition: transform 0.1s; padding: 0; }
+.emotes-bar button img { width: 45px; height: 45px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
 .emotes-bar button:active { transform: scale(1.2); }
 .my-dice-panel { text-align: center; margin-bottom: 10px; }
 .panel-label { font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; text-shadow: 1px 1px 0 black; }
@@ -197,19 +214,4 @@ input[type="text"] { width: 100%; padding: 15px; border-radius: 15px; border: no
 .inv-item { background: rgba(0,0,0,0.4); border-radius: 10px; padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); }
 .inv-item span { font-size: 0.6rem; margin-top: 4px; opacity: 0.9; line-height: 1; color: white; text-shadow: 1px 1px 0 black; }
 .inv-preview { width: 30px; height: 30px; border-radius: 6px; }
-.clickable-card { cursor: pointer; transition: transform 0.2s; }
-.clickable-card:active { transform: scale(0.98); }
-
-.modal-title { font-size: 1.8rem; color: var(--accent); margin-bottom: 15px; text-transform: uppercase; font-weight: 800; text-shadow: 2px 2px 0 #d90429; }
-.scrollable-content { max-height: 80vh; overflow-y: auto; text-align: left; }
-.rules-section { margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 16px; }
-.rules-section h3 { color: var(--secondary); font-size: 1.1rem; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
-.rules-section p { font-size: 0.9rem; line-height: 1.4; margin-bottom: 8px; color: rgba(255,255,255,0.9); }
-.rules-section b { color: var(--accent); }
-.rules-footer { text-align: center; font-size: 0.7rem; opacity: 0.5; margin-top: 20px; font-weight: 600; }
-.inv-category-title { grid-column: 1 / -1; font-size: 0.8rem; color: var(--accent); margin-top: 10px; margin-bottom: 5px; text-align: left; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); text-shadow: 1px 1px 0 black; }
-
-/* STYLES FOR BET SELECTORS */
-.bet-selector { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; margin-top: 8px; }
-.bet-label { font-weight: bold; font-size: 0.9rem; }
-input[type="range"] { flex: 1; margin-left: 15px; }
+.clickable-card 
