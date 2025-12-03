@@ -293,7 +293,7 @@ window.adjSetting = (type, delta) => {
 bindClick('btn-confirm-create', () => {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     
-    // DIRECTLY GET VALUES FROM SLIDERS
+    // Get bet values directly
     const betCoins = COIN_STEPS[document.getElementById('range-bet-coins').value];
     const betXp = XP_STEPS[document.getElementById('range-bet-xp').value];
 
@@ -642,15 +642,14 @@ socket.on('gameOver', (data) => {
     
     if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) {
         if (isWinner) {
-            // APPROXIMATE POT (We don't know exact multiplier here without complex sync, so showing base gain)
-            // For better UX, we just say "YOU WON THE POT"
-            let txt = 'КУШ СОРВАН! ';
+            // Estimate winnings visually
+            let txt = 'Выигрыш: ';
             if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `;
             if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
             profitEl.style.color = '#06d6a0';
         } else {
-            let txt = 'ПОТЕРЯНО: ';
+            let txt = 'Потеряно: ';
             if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `;
             if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
