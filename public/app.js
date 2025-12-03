@@ -17,7 +17,7 @@ let state = {
 };
 
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
-const XP_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000];
+const XP_STEPS = [0, 100, 250, 500, 1000];
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
@@ -82,7 +82,7 @@ function loginSuccess() {
     }
 }
 
-// Helper to get image URL by rank name
+// HELPER: GET RANK IMAGE
 function getRankImage(rankName) {
     const base = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
     if (rankName === 'Салага') return base + 'lvl1_salaga.png';
@@ -94,6 +94,13 @@ function getRankImage(rankName) {
     if (rankName === 'Капитан') return base + 'lvl6_captain.png';
     if (rankName === 'Легенда морей') return base + 'lvl7_goldencaptain.png';
     return base + 'lvl1_salaga.png';
+}
+
+// HELPER: GET DICE HTML (IMAGE)
+function getDiceHtml(faceValue) {
+    // Currently forcing default skin per request
+    const url = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/dice${faceValue}.png`;
+    return `<img src="${url}" class="die" alt="${faceValue}">`;
 }
 
 socket.on('profileUpdate', (data) => {
@@ -123,7 +130,6 @@ socket.on('profileUpdate', (data) => {
         }
     }
 
-    // RANK IMAGE UPDATE
     const rankImg = document.getElementById('rank-badge-img');
     if(rankImg) rankImg.src = getRankImage(data.rankName);
 
@@ -449,7 +455,8 @@ bindClick('btn-start-game', () => socket.emit('startGame'));
 
 window.adjBid = (type, delta) => {
     if (type === 'qty') { state.bidQty = Math.max(1, state.bidQty + delta); document.getElementById('display-qty').textContent = state.bidQty; }
-    else { state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta)); document.getElementById('display-val').textContent = state.bidVal; }
+    else { state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta)); updateInputs(); }
+    updateInputs();
 };
 bindClick('btn-make-bid', () => socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal }));
 bindClick('btn-call-bluff', () => socket.emit('callBluff'));
@@ -466,7 +473,7 @@ socket.on('emoteReceived', (data) => {
         img.className = 'emote-bubble-img';
         img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`;
         el.appendChild(img);
-        setTimeout(() => { if(img.parentNode) img.remove(); }, 3000); // 3000ms sync with CSS
+        setTimeout(() => { if(img.parentNode) img.remove(); }, 3000);
         if(tg) tg.HapticFeedback.selectionChanged();
     }
 });
@@ -528,7 +535,8 @@ socket.on('gameEvent', (evt) => {
 });
 socket.on('yourDice', (dice) => {
     const skin = state.equipped.skin || 'skin_white';
-    document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin}">${d}</div>`).join('');
+    // Using IMAGE dices
+    document.getElementById('my-dice').innerHTML = dice.map(d => getDiceHtml(d)).join('');
 });
 
 socket.on('gameState', (gs) => {
@@ -555,7 +563,8 @@ socket.on('gameState', (gs) => {
 
     const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
-        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
+        // RENDER IMAGE BID
+        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${getDiceHtml(gs.currentBid.faceValue)}</span></div>`;
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
         const me = gs.players.find(p => p.id === socket.id);
@@ -650,7 +659,10 @@ socket.on('gameOver', (data) => {
     if(tg) tg.HapticFeedback.notificationOccurred('success');
 });
 
-function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
+function updateInputs() { 
+    document.getElementById('display-qty').textContent = state.bidQty; 
+    document.getElementById('display-val').innerHTML = getDiceHtml(state.bidVal); // Show image in controls
+}
 
 function startVisualTimer(remaining, total) {
     if (state.timerFrame) cancelAnimationFrame(state.timerFrame);
