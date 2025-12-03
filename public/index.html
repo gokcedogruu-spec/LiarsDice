@@ -35,9 +35,11 @@
             <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             
             <div class="profile-card pop-in clickable-card" onclick="requestMyStats()">
+                <!-- ИКОНКА РАНГА (ТЕПЕРЬ КАРТИНКА) -->
                 <div class="rank-icon-box">
-                    <div id="rank-badge" class="rank-emoji">🧹</div>
+                    <img id="rank-badge-img" src="" alt="Rank" class="rank-img">
                 </div>
+                
                 <h2 id="user-display">...</h2>
                 <div class="rank-label" id="rank-display">...</div>
                 <div class="coins-row">💰 <span id="user-coins">0</span></div>
@@ -209,7 +211,6 @@
                 <div id="game-log" class="game-log-box"></div>
             </div>
             <div class="my-controls-area slide-up">
-                <!-- КАРТИНКИ ЭМОЦИЙ -->
                 <div class="emotes-bar">
                     <button onclick="sendEmote('dead')"><img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_dead.png" alt="dead"></button>
                     <button onclick="sendEmote('angry')"><img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_angry.png" alt="angry"></button>
@@ -267,13 +268,13 @@
             </div>
         </div>
 
-        <!-- 9. PLAYER INFO MODAL -->
+        <!-- 9. PLAYER INFO MODAL (ОБНОВЛЕН) -->
         <div id="modal-player" class="modal-overlay" onclick="closePlayerModal(event)">
             <div class="modal-content pop-in">
                 <button class="btn-close" onclick="closePlayerModal(null)">✕</button>
                 <div class="modal-header">
                     <div class="rank-icon-box small">
-                        <div id="info-rank-badge" class="rank-emoji">😎</div>
+                        <img id="info-rank-img" src="" alt="Rank" class="rank-img">
                     </div>
                     <h2 id="info-name">Имя Игрока</h2>
                     <div id="info-rank-name" class="rank-label">Ранг</div>
