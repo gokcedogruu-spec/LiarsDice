@@ -293,7 +293,6 @@ window.adjSetting = (type, delta) => {
 bindClick('btn-confirm-create', () => {
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
     
-    // Get bet values directly
     const betCoins = COIN_STEPS[document.getElementById('range-bet-coins').value];
     const betXp = XP_STEPS[document.getElementById('range-bet-xp').value];
 
@@ -320,7 +319,6 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
-// --- BET SLIDERS ---
 window.updateBetVal = (type) => {
     const slider = document.getElementById(`range-bet-${type}`);
     const disp = document.getElementById(`val-bet-${type}`);
@@ -462,16 +460,13 @@ window.sendEmote = (e) => { socket.emit('sendEmote', e); };
 socket.on('emoteReceived', (data) => {
     const el = document.querySelector(`.player-chip[data-id='${data.id}']`);
     if (el) {
-        const b = document.createElement('div');
-        b.className = 'emote-bubble';
-        b.textContent = data.emoji;
+        // ИСПРАВЛЕННАЯ ЛОГИКА ДОБАВЛЕНИЯ КАРТИНКИ (ВНУТРЬ ЭЛЕМЕНТА)
+        const img = document.createElement('img');
+        img.className = 'emote-bubble-img';
+        img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`;
         
-        const rect = el.getBoundingClientRect();
-        b.style.left = (rect.left + rect.width / 2) + 'px';
-        b.style.top = (rect.top - 20) + 'px';
-        
-        document.body.appendChild(b);
-        setTimeout(() => b.remove(), 2000);
+        el.appendChild(img); // Добавляем внутрь, чтобы работало position:absolute
+        setTimeout(() => { if(img.parentNode) img.remove(); }, 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
     }
 });
@@ -494,7 +489,6 @@ window.closeSkillAlert = () => {
     document.getElementById('modal-skill-alert').classList.remove('active');
 };
 
-// --- ERROR MSG ---
 socket.on('errorMsg', (msg) => {
     if (msg === 'NO_FUNDS') {
         document.getElementById('modal-res-alert').classList.add('active');
@@ -636,20 +630,18 @@ socket.on('gameOver', (data) => {
     showScreen('result'); 
     document.getElementById('winner-name').textContent = data.winner;
     
-    // SHOW WIN/LOSS
     const isWinner = (data.winner === state.username);
     const profitEl = document.getElementById('result-profit');
     
     if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) {
         if (isWinner) {
-            // Estimate winnings visually
-            let txt = 'Выигрыш: ';
+            let txt = 'КУШ СОРВАН! ';
             if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `;
             if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
             profitEl.style.color = '#06d6a0';
         } else {
-            let txt = 'Потеряно: ';
+            let txt = 'ПОТЕРЯНО: ';
             if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `;
             if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
