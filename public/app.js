@@ -86,9 +86,7 @@ function loginSuccess() {
 function getRankImage(rankName) {
     const base = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
     if (rankName === 'Салага') return base + 'lvl1_salaga.png';
-    if (rankName === 'Юнга') return base + 'lvl1_salaga.png'; // Fallback or same img if needed? Using salaga for now or add new
-    // Actually, let's map strictly to provided links:
-    if (rankName === 'Салага' || rankName === 'Юнга') return base + 'lvl1_salaga.png'; // Assuming start ranks share
+    if (rankName === 'Юнга') return base + 'lvl1_salaga.png'; 
     if (rankName === 'Матрос') return base + 'lvl2_moryak.png';
     if (rankName === 'Старший матрос') return base + 'lvl3_starmoryak.png';
     if (rankName === 'Боцман') return base + 'lvl4_bocman.png';
@@ -468,7 +466,7 @@ socket.on('emoteReceived', (data) => {
         img.className = 'emote-bubble-img';
         img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`;
         el.appendChild(img);
-        setTimeout(() => { if(img.parentNode) img.remove(); }, 2000);
+        setTimeout(() => { if(img.parentNode) img.remove(); }, 3000); // 3000ms sync with CSS
         if(tg) tg.HapticFeedback.selectionChanged();
     }
 });
@@ -477,12 +475,10 @@ socket.on('emoteReceived', (data) => {
 socket.on('skillResult', (data) => {
     const modal = document.getElementById('modal-skill-alert');
     const iconEl = document.getElementById('skill-alert-title');
-    
     let icon = '⚡';
     if (data.type === 'ears') icon = '👂';
     else if (data.type === 'lucky') icon = '🎲';
     else if (data.type === 'kill') icon = '🔫';
-    
     iconEl.textContent = icon;
     document.getElementById('skill-alert-text').textContent = data.text;
     modal.classList.add('active');
@@ -594,7 +590,6 @@ socket.on('gameState', (gs) => {
         me.availableSkills.forEach(skill => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
-            // FIXED CLICK HANDLER
             btn.setAttribute('onclick', `useSkill('${skill}')`);
             
             if(skill === 'ears') btn.innerHTML = 'Слух';
