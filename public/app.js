@@ -17,7 +17,7 @@ let state = {
 };
 
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
-const XP_STEPS = [0, 100, 250, 500, 1000];
+const XP_STEPS = [0, 100, 250, 500, 1000]; // FIXED MAX
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
@@ -98,8 +98,7 @@ function getRankImage(rankName) {
 
 // HELPER: GET DICE HTML (IMAGE)
 function getDiceHtml(faceValue) {
-    // Currently forcing default skin per request
-    const url = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/dice${faceValue}.png`;
+    const url = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice${faceValue}.png`;
     return `<img src="${url}" class="die" alt="${faceValue}">`;
 }
 
@@ -223,7 +222,18 @@ function renderShop() {
         if (equipped) btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
         else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
         else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
-        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><h4>${meta.name}</h4>${btnHTML}</div>`;
+        
+        let preview = '';
+        if (meta.type === 'skins') {
+            const url = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice6.png`; 
+            preview = `<img src="${url}" class="inv-preview die">`;
+        } else if (meta.type === 'frames') {
+            preview = `<div class="inv-preview player-chip ${id}" style="width:30px; height:30px;"></div>`;
+        } else if (meta.type === 'bg') {
+            preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
+        }
+
+        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><h4>${meta.name}</h4>${preview} ${btnHTML}</div>`;
     }
 }
 
@@ -393,7 +403,10 @@ socket.on('showPlayerStats', (data) => {
                 items.forEach(itemId => {
                     const meta = ITEMS_META[itemId];
                     let preview = '';
-                    if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId}" style="font-size:0.8rem">?</div>`;
+                    if (meta.type === 'skins') {
+                        const url = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice6.png`; 
+                        preview = `<img src="${url}" class="inv-preview die">`;
+                    }
                     else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
                     else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
                     invGrid.insertAdjacentHTML('beforeend', `<div class="inv-item">${preview}<span>${meta.name}</span></div>`);
@@ -535,7 +548,6 @@ socket.on('gameEvent', (evt) => {
 });
 socket.on('yourDice', (dice) => {
     const skin = state.equipped.skin || 'skin_white';
-    // Using IMAGE dices
     document.getElementById('my-dice').innerHTML = dice.map(d => getDiceHtml(d)).join('');
 });
 
@@ -564,7 +576,7 @@ socket.on('gameState', (gs) => {
     const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
         // RENDER IMAGE BID
-        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${getDiceHtml(gs.currentBid.faceValue)}</span></div>`;
+        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${getDiceHtml(gs.currentBid.faceValue).replace('class="die"', 'style="width:50px;height:50px;"')}</span></div>`;
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
         const me = gs.players.find(p => p.id === socket.id);
@@ -625,10 +637,6 @@ socket.on('gameState', (gs) => {
     }
 });
 
-window.useSkill = (skillType) => {
-    socket.emit('useSkill', skillType);
-};
-
 socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
 
 socket.on('gameOver', (data) => {
@@ -661,7 +669,9 @@ socket.on('gameOver', (data) => {
 
 function updateInputs() { 
     document.getElementById('display-qty').textContent = state.bidQty; 
-    document.getElementById('display-val').innerHTML = getDiceHtml(state.bidVal); // Show image in controls
+    // Use helper for dice image
+    const imgHtml = getDiceHtml(state.bidVal).replace('class="die"', 'style="width:100%;height:100%;"');
+    document.getElementById('display-val').innerHTML = imgHtml; 
 }
 
 function startVisualTimer(remaining, total) {
