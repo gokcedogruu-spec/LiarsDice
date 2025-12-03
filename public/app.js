@@ -82,6 +82,22 @@ function loginSuccess() {
     }
 }
 
+// Helper to get image URL by rank name
+function getRankImage(rankName) {
+    const base = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
+    if (rankName === 'Салага') return base + 'lvl1_salaga.png';
+    if (rankName === 'Юнга') return base + 'lvl1_salaga.png'; // Fallback or same img if needed? Using salaga for now or add new
+    // Actually, let's map strictly to provided links:
+    if (rankName === 'Салага' || rankName === 'Юнга') return base + 'lvl1_salaga.png'; // Assuming start ranks share
+    if (rankName === 'Матрос') return base + 'lvl2_moryak.png';
+    if (rankName === 'Старший матрос') return base + 'lvl3_starmoryak.png';
+    if (rankName === 'Боцман') return base + 'lvl4_bocman.png';
+    if (rankName === 'Первый помощник') return base + 'lvl5_perpomos.png';
+    if (rankName === 'Капитан') return base + 'lvl6_captain.png';
+    if (rankName === 'Легенда морей') return base + 'lvl7_goldencaptain.png';
+    return base + 'lvl1_salaga.png';
+}
+
 socket.on('profileUpdate', (data) => {
     if(document.getElementById('screen-loading')?.classList.contains('active') || 
        document.getElementById('screen-login')?.classList.contains('active')) {
@@ -109,15 +125,9 @@ socket.on('profileUpdate', (data) => {
         }
     }
 
-    let rankIcon = '🧹';
-    if (data.rankName === 'Юнга') rankIcon = '⚓';
-    if (data.rankName === 'Матрос') rankIcon = '🌊';
-    if (data.rankName === 'Старший матрос') rankIcon = '🎖️';
-    if (data.rankName === 'Боцман') rankIcon = '💪';
-    if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
-    if (data.rankName === 'Капитан') rankIcon = '☠️';
-    if (data.rankName === 'Легенда морей') rankIcon = '🔱';
-    const badge = document.getElementById('rank-badge'); if(badge) badge.textContent = rankIcon;
+    // RANK IMAGE UPDATE
+    const rankImg = document.getElementById('rank-badge-img');
+    if(rankImg) rankImg.src = getRankImage(data.rankName);
 
     const next = (data.nextRankXP === 'MAX') ? data.xp : data.nextRankXP;
     let pct = 0;
@@ -363,15 +373,8 @@ socket.on('showPlayerStats', (data) => {
     const wr = data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0;
     document.getElementById('info-wr').textContent = wr + '%';
 
-    let rankIcon = '🧹';
-    if (data.rankName === 'Юнга') rankIcon = '⚓';
-    if (data.rankName === 'Матрос') rankIcon = '🌊';
-    if (data.rankName === 'Старший матрос') rankIcon = '🎖️';
-    if (data.rankName === 'Боцман') rankIcon = '💪';
-    if (data.rankName === 'Первый помощник') rankIcon = '⚔️';
-    if (data.rankName === 'Капитан') rankIcon = '☠️';
-    if (data.rankName === 'Легенда морей') rankIcon = '🔱';
-    document.getElementById('info-rank-badge').textContent = rankIcon;
+    const rankImg = document.getElementById('info-rank-img');
+    if(rankImg) rankImg.src = getRankImage(data.rankName);
 
     const invGrid = document.getElementById('info-inventory');
     invGrid.innerHTML = '';
@@ -474,10 +477,12 @@ socket.on('emoteReceived', (data) => {
 socket.on('skillResult', (data) => {
     const modal = document.getElementById('modal-skill-alert');
     const iconEl = document.getElementById('skill-alert-title');
+    
     let icon = '⚡';
     if (data.type === 'ears') icon = '👂';
     else if (data.type === 'lucky') icon = '🎲';
     else if (data.type === 'kill') icon = '🔫';
+    
     iconEl.textContent = icon;
     document.getElementById('skill-alert-text').textContent = data.text;
     modal.classList.add('active');
@@ -589,6 +594,7 @@ socket.on('gameState', (gs) => {
         me.availableSkills.forEach(skill => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
+            // FIXED CLICK HANDLER
             btn.setAttribute('onclick', `useSkill('${skill}')`);
             
             if(skill === 'ears') btn.innerHTML = 'Слух';
