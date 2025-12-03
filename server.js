@@ -183,6 +183,7 @@ function resolveBackground(room) {
         const rInfo = getRankInfo(uData.xp, uData.streak);
         return { bg: uData.equipped.bg || 'bg_default', rankLevel: rInfo.current.level, streak: uData.streak };
     }).filter(c => c.bg !== 'bg_default');
+    
     if (candidates.length === 0) return 'bg_default';
     candidates.sort((a, b) => {
         if (b.rankLevel !== a.rankLevel) return b.rankLevel - a.rankLevel;
@@ -305,7 +306,6 @@ function checkEliminationAndContinue(room, loser, killer) {
         if (!winner.isBot && winner.tgId) {
             const type = room.isPvE ? 'win_pve' : 'win_game';
             const diff = room.isPvE ? room.config.difficulty : null;
-            // Winner gets (Players - 1) bets. He keeps his own bet (logic wise, he just gains others).
             const multiplier = room.players.length - 1;
             updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier);
             pushProfileUpdate(winner.tgId);
@@ -433,7 +433,6 @@ function handlePlayerDisconnect(socketId, room) {
     if (room.status === 'PLAYING') {
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал!`, type: 'error' });
         player.diceCount = 0; 
-        // Lose bet if disconnect during game
         if (!player.isBot && player.tgId) updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
         
         room.players.splice(i, 1);
@@ -447,12 +446,11 @@ function handlePlayerDisconnect(socketId, room) {
             const winner = active[0]; room.status = 'FINISHED';
             if (room.timerId) clearTimeout(room.timerId);
             if (!winner.isBot && winner.tgId) {
-                // Only rank rewards here, bet handled in loop or simpler logic
-                // Re-using check logic to distribute pot
                 const type = room.isPvE ? 'win_pve' : 'win_game';
                 const diff = room.isPvE ? room.config.difficulty : null;
-                const multiplier = room.config.players ? room.config.players - 1 : 1; // Approx
+                const multiplier = room.players.length - 1;
                 updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
+                pushProfileUpdate(winner.tgId);
             }
             io.to(room.id).emit('gameOver', { winner: winner.name });
         } else broadcastGameState(room);
@@ -612,11 +610,7 @@ io.on('connection', (socket) => {
         if (!tgUser) return;
         const userId = tgUser.id; const uData = getUserData(userId); const rInfo = getRankInfo(uData.xp, uData.streak);
         
-        // --- CHECK RESOURCES FOR BETTING ---
-        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) {
-            socket.emit('errorMsg', 'NO_FUNDS'); // Specific error code
-            return;
-        }
+        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
 
         let room; let isCreator = false;
         if (mode === 'pve') {
@@ -631,27 +625,7 @@ io.on('connection', (socket) => {
         if (roomId) { 
             room = rooms.get(roomId); 
             if (!room || room.status !== 'LOBBY' || room.players.length >= room.config.players) { socket.emit('errorMsg', 'Ошибка входа'); return; } 
-            // CHECK BET REQUIREMENTS FOR JOINER
-            if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) {
-                socket.emit('errorMsg', 'NO_FUNDS');
-                return;
-            }
+            if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
         }
         else { const newId = generateRoomId(); const st = options || { dice: 5, players: 10, time: 30 }; room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: st, isPvE: false }; rooms.set(newId, room); roomId = newId; isCreator = true; }
-        room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: false, isCreator: isCreator, equipped: uData.equipped });
-        socket.join(roomId); broadcastRoomUpdate(room);
-    });
-    socket.on('setReady', (isReady) => { const r = getRoomBySocketId(socket.id); if (r?.status === 'LOBBY') { const p = r.players.find(x => x.id === socket.id); if (p) { p.ready = isReady; broadcastRoomUpdate(r); } } });
-    socket.on('startGame', () => { const r = getRoomBySocketId(socket.id); if (r) { const p = r.players.find(x => x.id === socket.id); if (p?.isCreator && r.players.length >= 2 && r.players.every(x => x.ready)) startNewRound(r, true); } });
-    socket.on('makeBid', ({ quantity, faceValue }) => { const r = getRoomBySocketId(socket.id); if (!r || r.status !== 'PLAYING' || r.players[r.currentTurn].id !== socket.id) return; makeBidInternal(r, r.players[r.currentTurn], parseInt(quantity), parseInt(faceValue)); });
-    socket.on('callBluff', () => handleCall(socket, 'bluff'));
-    socket.on('callSpot', () => handleCall(socket, 'spot'));
-    socket.on('requestRestart', () => { const r = getRoomBySocketId(socket.id); if (r?.status === 'FINISHED') { r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); }); if (r.isPvE) { r.status = 'PLAYING'; r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; startNewRound(r, true); } else { r.status = 'LOBBY'; r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; broadcastRoomUpdate(r); } } });
-    socket.on('disconnect', () => { const r = getRoomBySocketId(socket.id); if (r) handlePlayerDisconnect(socket.id, r); });
-});
-
-const PING_INTERVAL = 10 * 60 * 1000;
-const MY_URL = 'https://liarsdicezmss.onrender.com';
-setInterval(() => { https.get(MY_URL, (res) => {}).on('error', (err) => {}); }, PING_INTERVAL);
-
-server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+        room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, 
