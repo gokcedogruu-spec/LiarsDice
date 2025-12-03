@@ -319,6 +319,7 @@ window.toggleRule = (rule, isPve = false) => {
     if(btn) btn.classList.toggle('active', target[rule]);
 };
 
+// --- BET SLIDERS ---
 window.updateBetVal = (type) => {
     const slider = document.getElementById(`range-bet-${type}`);
     const disp = document.getElementById(`val-bet-${type}`);
@@ -460,12 +461,10 @@ window.sendEmote = (e) => { socket.emit('sendEmote', e); };
 socket.on('emoteReceived', (data) => {
     const el = document.querySelector(`.player-chip[data-id='${data.id}']`);
     if (el) {
-        // ИСПРАВЛЕННАЯ ЛОГИКА ДОБАВЛЕНИЯ КАРТИНКИ (ВНУТРЬ ЭЛЕМЕНТА)
         const img = document.createElement('img');
         img.className = 'emote-bubble-img';
         img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`;
-        
-        el.appendChild(img); // Добавляем внутрь, чтобы работало position:absolute
+        el.appendChild(img);
         setTimeout(() => { if(img.parentNode) img.remove(); }, 2000);
         if(tg) tg.HapticFeedback.selectionChanged();
     }
@@ -475,12 +474,10 @@ socket.on('emoteReceived', (data) => {
 socket.on('skillResult', (data) => {
     const modal = document.getElementById('modal-skill-alert');
     const iconEl = document.getElementById('skill-alert-title');
-    
     let icon = '⚡';
     if (data.type === 'ears') icon = '👂';
     else if (data.type === 'lucky') icon = '🎲';
     else if (data.type === 'kill') icon = '🔫';
-    
     iconEl.textContent = icon;
     document.getElementById('skill-alert-text').textContent = data.text;
     modal.classList.add('active');
@@ -489,6 +486,7 @@ window.closeSkillAlert = () => {
     document.getElementById('modal-skill-alert').classList.remove('active');
 };
 
+// --- ERROR MSG ---
 socket.on('errorMsg', (msg) => {
     if (msg === 'NO_FUNDS') {
         document.getElementById('modal-res-alert').classList.add('active');
@@ -504,9 +502,7 @@ socket.on('roomUpdate', (room) => {
         document.getElementById('lobby-room-id').textContent = room.roomId;
         if (room.config) {
             document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
-            
             state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp };
-
             let betStr = '';
             if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `;
             if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`;
@@ -593,7 +589,6 @@ socket.on('gameState', (gs) => {
         me.availableSkills.forEach(skill => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
-            // FIXED CLICK HANDLER
             btn.setAttribute('onclick', `useSkill('${skill}')`);
             
             if(skill === 'ears') btn.innerHTML = 'Слух';
@@ -635,13 +630,13 @@ socket.on('gameOver', (data) => {
     
     if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) {
         if (isWinner) {
-            let txt = 'КУШ СОРВАН! ';
+            let txt = 'Выигрыш: ';
             if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `;
             if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
             profitEl.style.color = '#06d6a0';
         } else {
-            let txt = 'ПОТЕРЯНО: ';
+            let txt = 'Потеряно: ';
             if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `;
             if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`;
             profitEl.textContent = txt;
