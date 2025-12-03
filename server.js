@@ -305,7 +305,7 @@ function checkEliminationAndContinue(room, loser, killer) {
         if (!winner.isBot && winner.tgId) {
             const type = room.isPvE ? 'win_pve' : 'win_game';
             const diff = room.isPvE ? room.config.difficulty : null;
-            const multiplier = room.players.length - 1; // Winner takes others bets
+            const multiplier = room.players.length - 1; 
             updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier);
             pushProfileUpdate(winner.tgId);
         }
@@ -432,7 +432,6 @@ function handlePlayerDisconnect(socketId, room) {
     if (room.status === 'PLAYING') {
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сбежал!`, type: 'error' });
         player.diceCount = 0; 
-        // Lose bet if disconnect during game
         if (!player.isBot && player.tgId) updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
         
         room.players.splice(i, 1);
@@ -448,9 +447,6 @@ function handlePlayerDisconnect(socketId, room) {
             if (!winner.isBot && winner.tgId) {
                 const type = room.isPvE ? 'win_pve' : 'win_game';
                 const diff = room.isPvE ? room.config.difficulty : null;
-                // Winner takes remaining players bets (approx calculation)
-                // Logic: winner gets pot = (bet * (total_players_at_start - 1))
-                // We approximate by current players count
                 const multiplier = room.players.length; 
                 updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
             }
