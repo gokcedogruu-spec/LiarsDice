@@ -237,3 +237,6 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .bet-selector { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; margin-top: 8px; }
 .bet-label { font-weight: bold; font-size: 0.9rem; min-width: 120px; }
 input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
+
+#sys-input { width: 100%; padding: 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; text-align: center; font-weight: 800; font-size: 1.2rem; outline: none; }
+#sys-input:focus { border-color: var(--accent); }
