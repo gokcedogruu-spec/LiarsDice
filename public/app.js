@@ -1,8 +1,6 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
     console.error("Error: " + message);
-    // Можно раскомментировать для дебага, но лучше не пугать игрока системными алертами
-    // uiAlert("Произошла ошибка! Перезагрузите игру.");
 };
 
 const socket = io();
@@ -447,7 +445,8 @@ socket.on('showPlayerStats', (data) => {
                 items.forEach(itemId => {
                     const meta = ITEMS_META[itemId];
                     let preview = '';
-                    if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId}" style="font-size:0.8rem">?</div>`;
+                    // --- UPDATED PREVIEW ---
+                    if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId} face-6" style="width:30px;height:30px;"></div>`;
                     else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
                     else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
                     invGrid.insertAdjacentHTML('beforeend', `<div class="inv-item">${preview}<span>${meta.name}</span></div>`);
@@ -591,9 +590,11 @@ socket.on('gameEvent', (evt) => {
     if(log) log.innerHTML = `<div>${evt.text}</div>`;
     if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning');
 });
+// --- UPDATED DICE RENDER ---
 socket.on('yourDice', (dice) => {
     const skin = state.equipped.skin || 'skin_white';
-    document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin}">${d}</div>`).join('');
+    // Теперь мы добавляем класс face-X вместо текста
+    document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join('');
 });
 
 socket.on('gameState', (gs) => {
