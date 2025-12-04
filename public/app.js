@@ -79,7 +79,7 @@ const XP_STEPS = [0, 100, 250, 500, 1000];
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
-const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop'];
+const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin'];
 
 function showScreen(name) {
     screens.forEach(s => {
@@ -140,18 +140,61 @@ function loginSuccess() {
     }
 }
 
-// Helper to get image URL by rank name
-function getRankImage(rankName) {
-    const base = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
-    if (rankName === 'Салага') return base + 'lvl1_salaga.png';
-    if (rankName === 'Юнга') return base + 'lvl1_yunga.png';
-    if (rankName === 'Матрос') return base + 'lvl2_moryak.png';
-    if (rankName === 'Старший матрос') return base + 'lvl3_starmoryak.png';
-    if (rankName === 'Боцман') return base + 'lvl4_bocman.png';
-    if (rankName === 'Первый помощник') return base + 'lvl5_perpomos.png';
-    if (rankName === 'Капитан') return base + 'lvl6_captain.png';
-    if (rankName === 'Легенда морей') return base + 'lvl7_goldencaptain.png';
-    return base + 'lvl1_salaga.png';
+// --- HATS DATA ---
+const HATS_META = {
+    // RARE
+    'hat_fallen': { name: 'Шляпа падшей легенды', price: 1000000, rarity: 'rare' },
+    'hat_rich': { name: 'Шляпа богатого капитана', price: 1000000, rarity: 'rare' },
+    'hat_underwater': { name: 'Шляпа измученного капитана', price: 1000000, rarity: 'rare' },
+    'hat_voodoo': { name: 'Шляпа знатока вуду', price: 1000000, rarity: 'rare' },
+    // LEGENDARY
+    'hat_king_voodoo': { name: 'Шляпа короля вуду', price: 10000000, rarity: 'legendary' },
+    'hat_cursed': { name: 'Шляпа проклятого капитана', price: 10000000, rarity: 'legendary' },
+    'hat_flame': { name: 'Шляпа обожжённого капитана', price: 10000000, rarity: 'legendary' },
+    'hat_frozen': { name: 'Шляпа замерзшего капитана', price: 10000000, rarity: 'legendary' },
+    'hat_ghost': { name: 'Шляпа потустороннего капитана', price: 10000000, rarity: 'legendary' },
+    // MYTHICAL
+    'hat_lava': { name: 'Шляпа плавающего по лаве', price: 100000000, rarity: 'mythical' },
+    'hat_deadlycursed': { name: 'Шляпа коммодора флотилии теней', price: 100000000, rarity: 'mythical' },
+    'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' }
+};
+
+// Get Image URL (Standard Rank or Hat)
+function getRankImage(rankName, hatId = null) {
+    const baseHat = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/hats/';
+    
+    // If Hat is equipped, override rank image
+    if (hatId && HATS_META[hatId]) {
+        const rarity = HATS_META[hatId].rarity;
+        // Convert ID to filename style logic if needed, or just map
+        // Mapping IDs to filenames based on user list:
+        const map = {
+            'hat_fallen': 'common/lvl7_fallen.png',
+            'hat_rich': 'common/lvl7_richcaptain.png',
+            'hat_underwater': 'common/lvl7_underwaterclassic.png',
+            'hat_voodoo': 'common/lvl7_vodoo.png',
+            'hat_king_voodoo': 'legendary/lvl7_king_voodoo.png',
+            'hat_cursed': 'legendary/lvl8_cursed.png',
+            'hat_flame': 'legendary/lvl8_flame.png',
+            'hat_frozen': 'legendary/lvl8_frozen.png',
+            'hat_ghost': 'legendary/lvl8_ghost.png',
+            'hat_lava': 'mythical/lvl9_cursedflame.png',
+            'hat_deadlycursed': 'mythical/lvl9_deadlycursed.png',
+            'hat_antarctica': 'mythical/lvl9_kingofantarctica.png'
+        };
+        if(map[hatId]) return baseHat + map[hatId];
+    }
+
+    const baseRank = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
+    if (rankName === 'Салага') return baseRank + 'lvl1_salaga.png';
+    if (rankName === 'Юнга') return baseRank + 'lvl1_yunga.png';
+    if (rankName === 'Матрос') return baseRank + 'lvl2_moryak.png';
+    if (rankName === 'Старший матрос') return baseRank + 'lvl3_starmoryak.png';
+    if (rankName === 'Боцман') return baseRank + 'lvl4_bocman.png';
+    if (rankName === 'Первый помощник') return baseRank + 'lvl5_perpomos.png';
+    if (rankName === 'Капитан') return baseRank + 'lvl6_captain.png';
+    if (rankName === 'Легенда морей') return baseRank + 'lvl7_goldencaptain.png';
+    return baseRank + 'lvl1_salaga.png';
 }
 
 socket.on('profileUpdate', (data) => {
@@ -169,6 +212,14 @@ socket.on('profileUpdate', (data) => {
     state.inventory = data.inventory || [];
     state.equipped = data.equipped || {};
 
+    // --- SHOW/HIDE CABIN BUTTON ---
+    const btnCabin = document.getElementById('btn-to-cabin');
+    if (data.rankLevel >= 6) { // 6 = Captain
+        btnCabin.style.display = 'block';
+    } else {
+        btnCabin.style.display = 'none';
+    }
+
     if (!document.getElementById('screen-game').classList.contains('active')) {
         document.body.className = data.equipped.bg || 'bg_default';
     }
@@ -181,9 +232,17 @@ socket.on('profileUpdate', (data) => {
         }
     }
 
-    // RANK IMAGE UPDATE
+    // RANK/HAT IMAGE UPDATE
     const rankImg = document.getElementById('rank-badge-img');
-    if(rankImg) rankImg.src = getRankImage(data.rankName);
+    if(rankImg) {
+        rankImg.src = getRankImage(data.rankName, data.equipped.hat);
+        // Apply pulse if mythical/legendary hat
+        rankImg.className = 'rank-img';
+        if (data.equipped.hat && HATS_META[data.equipped.hat]) {
+            const r = HATS_META[data.equipped.hat].rarity;
+            if (r === 'legendary' || r === 'mythical') rankImg.classList.add('pulse-mythic');
+        }
+    }
 
     const next = (data.nextRankXP === 'MAX') ? data.xp : data.nextRankXP;
     let pct = 0;
@@ -219,9 +278,13 @@ socket.on('profileUpdate', (data) => {
         document.getElementById('shop-coins').textContent = state.coins;
         renderShop();
     }
+    if (document.getElementById('screen-cabin').classList.contains('active')) {
+        document.getElementById('cabin-coins').textContent = state.coins;
+        renderCabin();
+    }
 });
 
-// --- SHOP ---
+// --- SHOP (STANDARD) ---
 const ITEMS_META = {
     'skin_white': { name: 'Классика', price: 0, type: 'skins' },
     'skin_red':   { name: 'Рубин', price: 200, type: 'skins' },
@@ -292,6 +355,52 @@ window.buyItem = (id, price) => {
     else uiAlert("Не хватает монет!", "УПС...");
 };
 window.equipItem = (id) => socket.emit('shopEquip', id);
+
+// --- CABIN (HATS) ---
+bindClick('btn-to-cabin', () => {
+    showScreen('cabin');
+    document.getElementById('cabin-coins').textContent = state.coins;
+    renderCabin();
+});
+bindClick('btn-cabin-back', () => showScreen('home'));
+
+function renderCabin() {
+    const grid = document.getElementById('cabin-items');
+    if(!grid) return;
+    grid.innerHTML = '';
+
+    const rarityOrder = ['rare', 'legendary', 'mythical'];
+    
+    // Sort by rarity price
+    const sortedHats = Object.entries(HATS_META).sort((a,b) => a[1].price - b[1].price);
+
+    sortedHats.forEach(([id, meta]) => {
+        const owned = state.inventory.includes(id);
+        const equipped = state.equipped.hat === id;
+        const cssClass = `rarity-${meta.rarity}`;
+        
+        let imgUrl = getRankImage(null, id); // Trick to get URL from id
+        
+        let btnHTML = '';
+        if (equipped) btnHTML = `<button class="shop-btn equipped" onclick="equipHat(null)">СНЯТЬ</button>`;
+        else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipHat('${id}')">НАДЕТЬ</button>`;
+        else btnHTML = `<button class="shop-btn buy" onclick="buyHat('${id}', ${meta.price})">КУПИТЬ (${meta.price.toLocaleString()})</button>`;
+
+        grid.innerHTML += `
+            <div class="shop-item ${owned ? 'owned' : ''} ${cssClass}">
+                <img src="${imgUrl}" style="width:60px; height:60px; object-fit:contain; margin-bottom:5px;" class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}">
+                <h4 style="font-size:0.8rem;">${meta.name}</h4>
+                ${btnHTML}
+            </div>`;
+    });
+}
+
+window.buyHat = (id, price) => {
+    if (state.coins >= price) socket.emit('hatBuy', id);
+    else uiAlert("Не хватает золота!", "УПС...");
+};
+window.equipHat = (id) => socket.emit('hatEquip', id);
+
 
 // --- PVE ---
 bindClick('btn-to-pve', () => showScreen('pve-settings'));
@@ -429,26 +538,43 @@ socket.on('showPlayerStats', (data) => {
     const wr = data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0;
     document.getElementById('info-wr').textContent = wr + '%';
 
+    // HAT or RANK
     const rankImg = document.getElementById('info-rank-img');
-    if(rankImg) rankImg.src = getRankImage(data.rankName);
+    if(rankImg) rankImg.src = getRankImage(data.rankName, data.equipped?.hat);
 
     const invGrid = document.getElementById('info-inventory');
     invGrid.innerHTML = '';
     
+    const categories = { 'hats': 'Шляпы', 'skins': 'Кости', 'frames': 'Рамки', 'bg': 'Палуба' };
+    
+    // Helper to check type
+    const getType = (id) => {
+        if(HATS_META[id]) return 'hats';
+        if(ITEMS_META[id]) return ITEMS_META[id].type;
+        return null;
+    };
+
     if (data.inventory && data.inventory.length > 0) {
-        const categories = { 'skins': 'Кости', 'frames': 'Рамки', 'bg': 'Палуба' };
-        for (const [type, label] of Object.entries(categories)) {
-            const items = data.inventory.filter(id => ITEMS_META[id] && ITEMS_META[id].type === type);
+        for (const [catKey, label] of Object.entries(categories)) {
+            const items = data.inventory.filter(id => getType(id) === catKey);
             if (items.length > 0) {
                 const header = document.createElement('div');
                 header.className = 'inv-category-title'; header.textContent = label; invGrid.appendChild(header);
                 items.forEach(itemId => {
-                    const meta = ITEMS_META[itemId];
+                    let name = '???';
                     let preview = '';
-                    if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId} face-6" style="width:30px;height:30px;"></div>`;
-                    else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
-                    else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
-                    invGrid.insertAdjacentHTML('beforeend', `<div class="inv-item">${preview}<span>${meta.name}</span></div>`);
+                    if (catKey === 'hats') {
+                        name = HATS_META[itemId].name;
+                        const url = getRankImage(null, itemId);
+                        preview = `<img src="${url}" style="width:30px;height:30px;object-fit:contain;">`;
+                    } else {
+                        const meta = ITEMS_META[itemId];
+                        name = meta.name;
+                        if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId} face-6" style="width:30px;height:30px;"></div>`;
+                        else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
+                        else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
+                    }
+                    invGrid.insertAdjacentHTML('beforeend', `<div class="inv-item">${preview}<span>${name}</span></div>`);
                 });
             }
         }
@@ -595,7 +721,6 @@ socket.on('yourDice', (dice) => {
     document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join('');
 });
 
-// --- UPDATED GAME STATE (Smart Update to keep emotes + 3D Bid Die) ---
 socket.on('gameState', (gs) => {
     showScreen('game');
     document.body.className = gs.activeBackground || 'bg_default';
@@ -678,7 +803,7 @@ socket.on('gameState', (gs) => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
             btn.setAttribute('onclick', `useSkill('${skill}')`);
-            // UPDATED: REMOVED TEXT INSERTION HERE
+            // No text inside
             skillsDiv.appendChild(btn);
         });
         document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
