@@ -53,6 +53,8 @@
                 <button id="btn-to-create" class="btn btn-orange pulse-btn">СОЗДАТЬ ИГРУ</button>
                 <button id="btn-to-pve" class="btn btn-red">ИГРАТЬ С БОТОМ</button>
                 <button id="btn-join-room" class="btn btn-blue">ПРИСОЕДИНИТЬСЯ</button>
+                <!-- NEW CABIN BUTTON (Hidden by default) -->
+                <button id="btn-to-cabin" class="btn btn-purple" style="display:none; margin-top: 8px;">КАЮТА</button>
                 <button id="btn-shop" class="btn btn-green" style="margin-top: 8px;">ЛАВКА</button>
             </div>
         </div>
@@ -68,6 +70,14 @@
             </div>
             <div class="shop-grid" id="shop-items"></div>
             <button id="btn-shop-back" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
+        </div>
+
+        <!-- NEW: CABIN SCREEN -->
+        <div id="screen-cabin" class="screen center-content">
+            <h2 class="title-text" style="color: #9d4edd;">КАЮТА</h2>
+            <div class="shop-balance">💰 <span id="cabin-coins">0</span></div>
+            <div class="shop-grid" id="cabin-items"></div>
+            <button id="btn-cabin-back" class="btn btn-gray" style="margin-top: 20px;">НАЗАД</button>
         </div>
 
         <!-- 4. PVE SETTINGS -->
@@ -138,15 +148,6 @@
                         <button class="btn-time active" onclick="setTime(30)">30с</button>
                         <button class="btn-time" onclick="setTime(45)">45с</button>
                         <button class="btn-time" onclick="setTime(60)">60с</button>
-                    </div>
-                </div>
-
-                <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                    <label>РЕЖИМЫ</label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button id="btn-rule-jokers" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
-                        <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
-                        <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
                     </div>
                 </div>
 
