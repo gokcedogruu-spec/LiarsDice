@@ -33,22 +33,20 @@ const RANKS = [
 ];
 
 const HATS = {
-    // RARE (1M) - Req: Level 6 (Captain)
+    // RARE (1M)
     'hat_fallen': { price: 1000000, level: 6 },
     'hat_rich': { price: 1000000, level: 6 },
     'hat_underwater': { price: 1000000, level: 6 },
     'hat_voodoo': { price: 1000000, level: 6 },
-    
-    // LEGENDARY (10M) - Req: Level 6 (Captain)
+    // LEGENDARY (10M)
     'hat_king_voodoo': { price: 10000000, level: 6 },
     'hat_cursed': { price: 10000000, level: 6 },
     'hat_flame': { price: 10000000, level: 6 },
     'hat_frozen': { price: 10000000, level: 6 },
     'hat_ghost': { price: 10000000, level: 6 },
-
-    // MYTHICAL (100M) - Req: Level 7 (Legend)
+    // MYTHICAL (100M)
     'hat_lava': { price: 100000000, level: 7 },
-    'hat_shadow': { price: 100000000, level: 7 },
+    'hat_deadlycursed': { price: 100000000, level: 7 },
     'hat_antarctica': { price: 100000000, level: 7 }
 };
 
@@ -147,10 +145,8 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
     if (user.xp < 0) user.xp = 0;
     if (user.coins < 0) user.coins = 0;
 
-    // CHECK HAT REQUIREMENTS AFTER XP CHANGE
     const newRankInfo = getRankInfo(user.xp, user.streak);
     if (user.equipped.hat && newRankInfo.current.level < 6) {
-        // Lost Captain status -> Unequip hat
         user.equipped.hat = null;
     }
 
@@ -187,8 +183,9 @@ function pushProfileUpdate(userId) {
     if (socketId) {
         const user = userDB.get(userId);
         const rInfo = getRankInfo(user.xp, user.streak);
+        // FIX: Added || 'MAX' here to fix empty bar issue
         io.to(socketId).emit('profileUpdate', { 
-            ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min, rankLevel: rInfo.current.level 
+            ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min || 'MAX', rankLevel: rInfo.current.level 
         });
     }
 }
