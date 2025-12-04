@@ -42,16 +42,17 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* ЛОГОТИП */
+/* ЛОГОТИП (Уменьшены отступы, чтобы поднять контент) */
 .game-logo {
-    width: 100%; max-width: 380px; height: auto; margin-bottom: 10px; /* Чуть меньше отступ */
+    width: 100%; max-width: 350px; height: auto; 
+    margin-bottom: 5px; 
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
     transition: transform 0.3s;
 }
 .float-anim { animation: floatLogo 3s ease-in-out infinite; }
 @keyframes floatLogo {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
+    50% { transform: translateY(-10px); }
 }
 
 .title-text {
@@ -59,7 +60,6 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
     text-align: center; text-shadow: 2px 2px 0 #d90429; margin-bottom: 20px; font-weight: 800;
 }
 
-/* Улучшенная читаемость заголовка Каюты */
 .title-text-cabin {
     font-family: var(--font); font-size: 2.2rem; color: var(--purple);
     text-align: center; margin-bottom: 20px; font-weight: 900;
@@ -76,12 +76,14 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 /* КНОПКИ (ОБЩИЕ) */
 .btn { 
     width: 100%; 
-    padding: 10px; 
+    padding: 12px; 
     border: none; border-radius: var(--radius); 
     font-family: var(--font); 
     font-size: 1rem; 
-    font-weight: 700; cursor: pointer; margin-top: 0; /* Убрал авто-отступ */
+    font-weight: 800; cursor: pointer; margin-top: 0; 
     transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); 
+    min-height: 48px; /* Фиксированная минимальная высота для всех кнопок */
+    display: flex; align-items: center; justify-content: center;
 }
 .btn:active { transform: translateY(4px); box-shadow: none !important; }
 
@@ -93,21 +95,28 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-gray { background: var(--surface); color: var(--secondary); box-shadow: 0 4px 0 #2b2d42; }
 .btn-purple { background: var(--purple); color: white; box-shadow: 0 4px 0 #5a189a; }
 
-/* --- МЕНЮ ГЛАВНОГО ЭКРАНА (КОМПАКТНАЯ СЕТКА) --- */
+/* Отступ для кнопки НАЗАД в меню настроек, чтобы не слипалась */
+#btn-pve-back, #btn-back-home, #btn-shop-back, #btn-cabin-back {
+    margin-top: 15px !important; 
+}
+
+/* --- МЕНЮ ГЛАВНОГО ЭКРАНА (СЕТКА) --- */
 .menu-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Две колонки */
-    gap: 8px;
+    grid-template-columns: 1fr 1fr; /* Две равные колонки */
+    gap: 10px;
     width: 100%;
-    max-width: 320px;
-    margin-top: 15px;
+    max-width: 340px;
+    margin-top: 10px;
 }
-/* Кнопки на всю ширину */
-#btn-to-create, #btn-to-pve {
-    grid-column: span 2;
-}
-/* Кнопки в половину ширины (Join, Cabin, Shop) встанут автоматически в сетку */
 
+/* Кнопки на всю ширину */
+#btn-to-create, #btn-to-pve, #btn-join-room {
+    grid-column: span 2; 
+}
+
+/* Кнопки в полширины (Каюта и Лавка) встают автоматически.
+   Если Каюта display:none, Лавка растянется через JS. */
 
 .btn-mini { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--surface); color: white; font-size: 1.2rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(3px); box-shadow: none; }
@@ -117,12 +126,32 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-rules { right: 15px; }
 .btn-lobby-back { top: 15px; left: 15px; position: absolute; }
 .btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
-.lobby-btns-row { display: flex; gap: 10px; width: 100%; }
+
+/* Кнопки в лобби (внизу) */
+.lobby-btns-row { 
+    display: flex; gap: 10px; width: 100%; 
+    margin-top: 15px; /* Отступ от списка игроков */
+}
 
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.1rem; text-align: center; outline: none; font-weight: 600; }
 
-.profile-card { background: var(--surface); border-radius: 24px; padding: 15px; width: 100%; max-width: 280px; text-align: center; margin-bottom: 10px; margin-top: 20px; border: 3px solid var(--blue); box-shadow: var(--shadow-card); position: relative; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
+/* Профиль поднят выше (margin-top уменьшен с 20 до 0/5) */
+.profile-card { 
+    background: var(--surface); 
+    border-radius: 24px; 
+    padding: 15px; 
+    width: 100%; 
+    max-width: 280px; 
+    text-align: center; 
+    margin-bottom: 10px; 
+    margin-top: 5px; /* Поднято */
+    border: 3px solid var(--blue); 
+    box-shadow: var(--shadow-card); 
+    position: relative; 
+    background-size: cover; background-position: center; 
+    text-shadow: 1px 1px 2px black; 
+}
 .rank-icon-box { width: 120px; height: 120px; background: none; border: none; box-shadow: none; margin: -80px auto 0; display: flex; justify-content: center; align-items: center; z-index: 2; position: relative; }
 .rank-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); }
 .rank-label { background: var(--blue); color: white; display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
@@ -140,7 +169,7 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .shop-item { background: var(--surface); padding: 10px; border-radius: 16px; text-align: center; border: 2px solid rgba(255,255,255,0.1); }
 .shop-item h4 { font-size: 0.9rem; margin: 5px 0; }
 .shop-item.owned { border-color: var(--success); }
-.shop-btn { width: 100%; padding: 8px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+.shop-btn { width: 100%; padding: 8px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; min-height: auto; } /* Кнопки внутри магазина могут быть меньше */
 .shop-btn.buy { background: var(--accent); color: var(--bg-color); }
 .shop-btn.equip { background: var(--blue); color: white; }
 .shop-btn.equipped { background: var(--success); color: #2b2d42; }
@@ -281,7 +310,7 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .dice-face { font-size: 1rem; padding: 0 4px; border-radius: 4px; }
 
 .main-actions { display: flex; gap: 6px; }
-.main-actions button { margin: 0; padding: 6px 4px; font-size: 0.75rem; margin-top: 0; border-radius: 10px; }
+.main-actions button { margin: 0; padding: 6px 4px; font-size: 0.75rem; margin-top: 0; border-radius: 10px; min-height: auto; /* В игре кнопки могут быть меньше */ }
 
 #btn-call-spot.hidden-rule { display: none !important; }
 
