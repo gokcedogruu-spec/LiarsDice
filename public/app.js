@@ -144,7 +144,7 @@ function loginSuccess() {
 function getRankImage(rankName) {
     const base = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
     if (rankName === 'Салага') return base + 'lvl1_salaga.png';
-    if (rankName === 'Юнга') return base + 'lvl1_salaga.png'; 
+    if (rankName === 'Юнга') return base + 'lvl1_yunga.png'; // UPDATED URL
     if (rankName === 'Матрос') return base + 'lvl2_moryak.png';
     if (rankName === 'Старший матрос') return base + 'lvl3_starmoryak.png';
     if (rankName === 'Боцман') return base + 'lvl4_bocman.png';
@@ -445,7 +445,6 @@ socket.on('showPlayerStats', (data) => {
                 items.forEach(itemId => {
                     const meta = ITEMS_META[itemId];
                     let preview = '';
-                    // --- UPDATED PREVIEW ---
                     if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId} face-6" style="width:30px;height:30px;"></div>`;
                     else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`;
                     else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`;
@@ -530,7 +529,7 @@ socket.on('emoteReceived', (data) => {
         img.className = 'emote-bubble-img';
         img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`;
         el.appendChild(img);
-        setTimeout(() => { if(img.parentNode) img.remove(); }, 3000); // 3000ms sync with CSS
+        setTimeout(() => { if(img.parentNode) img.remove(); }, 3000); 
         if(tg) tg.HapticFeedback.selectionChanged();
     }
 });
@@ -590,16 +589,15 @@ socket.on('gameEvent', (evt) => {
     if(log) log.innerHTML = `<div>${evt.text}</div>`;
     if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning');
 });
-// --- UPDATED DICE RENDER ---
+
 socket.on('yourDice', (dice) => {
     const skin = state.equipped.skin || 'skin_white';
-    // Теперь мы добавляем класс face-X вместо текста
     document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join('');
 });
 
+// --- UPDATED GAME STATE (Smart Update to keep emotes) ---
 socket.on('gameState', (gs) => {
     showScreen('game');
-    
     document.body.className = gs.activeBackground || 'bg_default';
 
     let rulesText = '';
@@ -608,17 +606,54 @@ socket.on('gameState', (gs) => {
     if (gs.activeRules.strict) rulesText += '🔒 Строго';
     document.getElementById('active-rules-display').textContent = rulesText;
 
+    // SMART PLAYER UPDATE LOGIC
     const bar = document.getElementById('players-bar');
-    bar.innerHTML = gs.players.map(p => {
-        const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default';
-        return `
-        <div class="player-chip ${p.isTurn ? 'turn' : ''} ${p.isEliminated ? 'dead' : ''} ${frameClass}" data-id="${p.id}" onclick="requestPlayerStats('${p.id}')">
-            <b>${p.name}</b>
-            <span class="rank-game">${p.rank}</span>
-            <div class="dice-count">🎲 ${p.diceCount}</div>
-        </div>
-    `}).join('');
+    
+    // 1. Mark active players to identify who left
+    const activeIds = new Set(gs.players.map(p => p.id));
 
+    // 2. Update or Create players
+    gs.players.forEach(p => {
+        let chip = bar.querySelector(`.player-chip[data-id="${p.id}"]`);
+        
+        // Construct class string
+        const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default';
+        const turnClass = p.isTurn ? 'turn' : '';
+        const deadClass = p.isEliminated ? 'dead' : '';
+        const finalClass = `player-chip ${turnClass} ${deadClass} ${frameClass}`;
+
+        if (!chip) {
+            // Create new chip
+            chip = document.createElement('div');
+            chip.setAttribute('data-id', p.id);
+            chip.setAttribute('onclick', `requestPlayerStats('${p.id}')`);
+            bar.appendChild(chip);
+            
+            // Initial HTML structure
+            chip.innerHTML = `
+                <b>${p.name}</b>
+                <span class="rank-game">${p.rank}</span>
+                <div class="dice-count">🎲 ${p.diceCount}</div>
+            `;
+        }
+
+        // Update classes (preserves styles)
+        chip.className = finalClass;
+
+        // Update content (Safe way, preserves appended elements like emotes!)
+        chip.querySelector('b').textContent = p.name;
+        chip.querySelector('.rank-game').textContent = p.rank;
+        chip.querySelector('.dice-count').textContent = `🎲 ${p.diceCount}`;
+    });
+
+    // 3. Remove players who are no longer in the list
+    Array.from(bar.children).forEach(child => {
+        if (!activeIds.has(child.getAttribute('data-id'))) {
+            child.remove();
+        }
+    });
+
+    // --- Rest of GameState Logic ---
     const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
         bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
