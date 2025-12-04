@@ -75,7 +75,6 @@ let state = {
 };
 
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
-// UPDATED: XP Steps capped at 1000
 const XP_STEPS = [0, 100, 250, 500, 1000];
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
@@ -637,11 +636,9 @@ socket.on('gameState', (gs) => {
 
     const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
-        // FIND BIDDER SKIN
         const bidder = gs.players.find(p => p.id === gs.currentBid.playerId);
         const skin = bidder?.equipped?.skin || 'skin_white';
         
-        // UPDATED: RENDER 3D DIE IN BUBBLE
         bid.innerHTML = `
             <div class="bid-container">
                 <div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span></div>
@@ -681,9 +678,7 @@ socket.on('gameState', (gs) => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
             btn.setAttribute('onclick', `useSkill('${skill}')`);
-            if(skill === 'ears') btn.innerHTML = 'Слух';
-            if(skill === 'lucky') btn.innerHTML = '+1 Куб';
-            if(skill === 'kill') btn.innerHTML = 'Выстрел';
+            // UPDATED: REMOVED TEXT INSERTION HERE
             skillsDiv.appendChild(btn);
         });
         document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
