@@ -18,7 +18,6 @@ const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 app.get('/', (req, res) => { res.sendFile(path.join(publicPath, 'index.html')); });
-// Легкий маршрут для пинга
 app.get('/ping', (req, res) => { res.status(200).send('pong'); });
 
 // --- 2. DATA ---
@@ -33,6 +32,26 @@ const RANKS = [
     { name: "Легенда морей", min: 75000, reqStreak: 100, penalty: 100, level: 7 }
 ];
 
+const HATS = {
+    // RARE (1M) - Req: Level 6 (Captain)
+    'hat_fallen': { price: 1000000, level: 6 },
+    'hat_rich': { price: 1000000, level: 6 },
+    'hat_underwater': { price: 1000000, level: 6 },
+    'hat_voodoo': { price: 1000000, level: 6 },
+    
+    // LEGENDARY (10M) - Req: Level 6 (Captain)
+    'hat_king_voodoo': { price: 10000000, level: 6 },
+    'hat_cursed': { price: 10000000, level: 6 },
+    'hat_flame': { price: 10000000, level: 6 },
+    'hat_frozen': { price: 10000000, level: 6 },
+    'hat_ghost': { price: 10000000, level: 6 },
+
+    // MYTHICAL (100M) - Req: Level 7 (Legend)
+    'hat_lava': { price: 100000000, level: 7 },
+    'hat_shadow': { price: 100000000, level: 7 },
+    'hat_antarctica': { price: 100000000, level: 7 }
+};
+
 const userDB = new Map();
 const rooms = new Map();
 
@@ -42,7 +61,7 @@ function getUserData(userId) {
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
             name: 'Unknown', username: null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
-            equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default' }
+            equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null }
         });
     }
     return userDB.get(userId);
@@ -57,7 +76,7 @@ function syncUserData(tgUser, savedData) {
             name: tgUser.first_name, 
             username: tgUser.username ? tgUser.username.toLowerCase() : null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
-            equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default' }
+            equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null }
         };
     } else {
         user.name = tgUser.first_name;
@@ -99,12 +118,11 @@ function getRankInfo(xp, streak) {
 function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, winnerPotMultiplier = 0) {
     if (typeof userId === 'string' && userId.startsWith('bot')) return null;
     const user = getUserData(userId);
-    const currentRank = getRankInfo(user.xp, user.streak).current;
-
+    const currentRankInfo = getRankInfo(user.xp, user.streak);
+    
     if (type === 'win_game') {
         user.matches++; user.wins++; user.streak++;
         user.xp += 65; user.coins += 50;
-        // BET WINNINGS
         if(winnerPotMultiplier > 0) {
             user.coins += (betCoins * winnerPotMultiplier);
             user.xp += (betXp * winnerPotMultiplier);
@@ -112,9 +130,8 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
     } 
     else if (type === 'lose_game') {
         user.matches++; user.streak = 0;
-        if (currentRank.penalty) user.xp -= currentRank.penalty;
+        if (currentRankInfo.current.penalty) user.xp -= currentRankInfo.current.penalty;
         user.coins += 10;
-        // BET LOSSES
         user.coins -= betCoins;
         user.xp -= betXp;
     }
@@ -129,6 +146,14 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
 
     if (user.xp < 0) user.xp = 0;
     if (user.coins < 0) user.coins = 0;
+
+    // CHECK HAT REQUIREMENTS AFTER XP CHANGE
+    const newRankInfo = getRankInfo(user.xp, user.streak);
+    if (user.equipped.hat && newRankInfo.current.level < 6) {
+        // Lost Captain status -> Unequip hat
+        user.equipped.hat = null;
+    }
+
     userDB.set(userId, user);
     return user;
 }
@@ -163,7 +188,7 @@ function pushProfileUpdate(userId) {
         const user = userDB.get(userId);
         const rInfo = getRankInfo(user.xp, user.streak);
         io.to(socketId).emit('profileUpdate', { 
-            ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min 
+            ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min, rankLevel: rInfo.current.level 
         });
     }
 }
@@ -425,7 +450,6 @@ function resetTurnTimer(room) {
     }
 }
 
-// isVoluntary = true (нажал кнопку Выход), isVoluntary = false (пропал инет/закрыл вкладку)
 function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
     const i = room.players.findIndex(p => p.id === socketId);
     if (i === -1) return;
@@ -434,30 +458,20 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
     
     if (room.status === 'PLAYING') {
         if (isVoluntary) {
-            // Игрок сам решил выйти (даже если выбыл или еще играет) -> Удаляем полностью
             io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сдался и покинул стол!`, type: 'error' });
-            
-            // Если он был жив, засчитываем поражение
             if (player.diceCount > 0) {
                 player.diceCount = 0;
                 if (!player.isBot && player.tgId) {
                     updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
                 }
             }
-
-            // Удаляем из массива
             room.players.splice(i, 1);
-
-            // Корректируем ход
             if (i === room.currentTurn) {
-                // Если был его ход, передаем дальше
                 if (room.currentTurn >= room.players.length) room.currentTurn = 0;
                 resetTurnTimer(room);
             } else if (i < room.currentTurn) {
                 room.currentTurn--;
             }
-
-            // Проверяем, не закончилась ли игра
             const active = room.players.filter(p => p.diceCount > 0);
             if (active.length === 1) {
                 const winner = active[0]; room.status = 'FINISHED';
@@ -473,13 +487,9 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
                 broadcastGameState(room);
             }
         } else {
-            // Разрыв соединения (случайно) -> Оставляем "призраком", не удаляем
             io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' });
-            // Ничего не делаем с массивом. Если ход его, таймер тикает и выбьет его сам через handleTimeout.
-            // Если он вернется, сработает логика в socket.on('login').
         }
     } else {
-        // Лобби или Финиш -> Удаляем сразу
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} ушел!`, type: 'error' });
         room.players.splice(i, 1);
         if (room.players.filter(p => !p.isBot).length === 0) { if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id); }
@@ -560,8 +570,29 @@ if (bot) {
 
         if (cmd === '/me') {
             const user = userDB.get(ADMIN_ID); if (!user) return bot.sendMessage(chatId, "Enter game first");
-            if (args[1] === 'rich') { user.coins = 1000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "Rich"); }
+            if (args[1] === 'rich') { user.coins = 100000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "Rich"); }
             if (args[1] === 'xp') { user.xp = parseInt(args[2] || 0); userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `XP: ${user.xp}`); }
+        }
+        else if (cmd === '/givehat') {
+            // /givehat @username hat_id
+            if (args.length < 3) return bot.sendMessage(chatId, "/givehat @user hat_id");
+            const uid = findUserIdByUsername(args[1]); 
+            if (!uid) return bot.sendMessage(chatId, "User not found");
+            const user = userDB.get(uid);
+            const hatId = args[2];
+            if (!user.inventory.includes(hatId)) user.inventory.push(hatId);
+            userDB.set(uid, user); refreshUser(uid);
+            bot.sendMessage(chatId, `Gave ${hatId} to ${user.name}`);
+        }
+        else if (cmd === '/removehat') {
+            if (args.length < 3) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid);
+            const hatId = args[2];
+            user.inventory = user.inventory.filter(i => i !== hatId);
+            if (user.equipped.hat === hatId) user.equipped.hat = null;
+            userDB.set(uid, user); refreshUser(uid);
+            bot.sendMessage(chatId, `Removed ${hatId}`);
         }
         else if (cmd === '/setxp') {
             if (args.length < 3) return;
@@ -581,7 +612,7 @@ if (bot) {
         else if (cmd === '/rich') {
             if (args.length < 2) return;
             const uid = findUserIdByUsername(args[1]); if (!uid) return;
-            const user = userDB.get(uid); user.coins = 1000000;
+            const user = userDB.get(uid); user.coins = 100000000;
             userDB.set(uid, user); refreshUser(uid);
             bot.sendMessage(chatId, "Rich");
         }
@@ -596,10 +627,13 @@ if (bot) {
             if (args.length < 2) return;
             const uid = findUserIdByUsername(args[1]); if (!uid) return;
             const user = userDB.get(uid);
+            // Add all hats to unlock all
+            const allHats = Object.keys(HATS);
             user.inventory = [
                 'skin_white', 'skin_red', 'skin_gold', 'skin_black', 'skin_blue', 'skin_green', 'skin_purple', 'skin_cyber', 'skin_bone',
                 'bg_default', 'bg_lvl1', 'bg_lvl2', 'bg_lvl3', 'bg_lvl4', 'bg_lvl5',
-                'frame_default', 'frame_wood', 'frame_silver', 'frame_gold', 'frame_fire', 'frame_ice', 'frame_neon', 'frame_royal', 'frame_ghost', 'frame_kraken', 'frame_captain'
+                'frame_default', 'frame_wood', 'frame_silver', 'frame_gold', 'frame_fire', 'frame_ice', 'frame_neon', 'frame_royal', 'frame_ghost', 'frame_kraken', 'frame_captain',
+                ...allHats
             ];
             userDB.set(uid, user); refreshUser(uid);
             bot.sendMessage(chatId, "Unlocked all items");
@@ -610,7 +644,7 @@ if (bot) {
             const user = userDB.get(uid);
             user.xp = 0; user.coins = 0; user.wins = 0; user.matches = 0; user.streak = 0;
             user.inventory = ['skin_white', 'bg_default', 'frame_default'];
-            user.equipped = { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default' };
+            user.equipped = { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null };
             userDB.set(uid, user); refreshUser(uid);
             bot.sendMessage(chatId, `Reset: ${user.name}`);
         }
@@ -624,17 +658,17 @@ io.on('connection', (socket) => {
         const data = syncUserData(tgUser, savedData);
         const rank = getRankInfo(data.xp, data.streak);
         socket.tgUserId = tgUser.id;
-        socket.emit('profileUpdate', { ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX' });
+        socket.emit('profileUpdate', { 
+            ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level 
+        });
 
         // --- RECONNECTION LOGIC ---
         for (const [roomId, room] of rooms) {
             if (room.status === 'PLAYING') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
                 if (existingPlayer) {
-                    // Found them! Update their socket ID
                     existingPlayer.id = socket.id;
                     socket.join(roomId);
-                    
                     if(existingPlayer.diceCount > 0) socket.emit('yourDice', existingPlayer.dice);
                     
                     const now = Date.now();
@@ -663,14 +697,12 @@ io.on('connection', (socket) => {
                         activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict },
                         activeBackground: room.activeBackground
                     });
-                    
                     socket.emit('gameEvent', { text: '🔄 Вы вернулись в игру!', type: 'info' });
                 }
             }
         }
     });
     
-    // isVoluntary = true (добровольный выход)
     socket.on('leaveRoom', () => { const r = getRoomBySocketId(socket.id); if(r) handlePlayerDisconnect(socket.id, r, true); });
     
     socket.on('shopBuy', (itemId) => { 
@@ -681,10 +713,30 @@ io.on('connection', (socket) => {
         if (price && user.coins >= price && !user.inventory.includes(itemId)) {
             user.coins -= price; user.inventory.push(itemId); userDB.set(socket.tgUserId, user);
             const rank = getRankInfo(user.xp, user.streak);
-            socket.emit('profileUpdate', { ...user, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX' });
+            socket.emit('profileUpdate', { ...user, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level });
             socket.emit('gameEvent', { text: 'Покупка успешна!', type: 'info' });
         }
     });
+
+    socket.on('hatBuy', (hatId) => {
+        if (!socket.tgUserId) return;
+        const user = getUserData(socket.tgUserId);
+        const hat = HATS[hatId];
+        if (hat && user.coins >= hat.price && !user.inventory.includes(hatId)) {
+            const rInfo = getRankInfo(user.xp, user.streak);
+            if (rInfo.current.level < hat.level) {
+                socket.emit('errorMsg', 'Ранг слишком низок!'); return;
+            }
+            user.coins -= hat.price; 
+            user.inventory.push(hatId); 
+            userDB.set(socket.tgUserId, user);
+            socket.emit('profileUpdate', { ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min || 'MAX', rankLevel: rInfo.current.level });
+            socket.emit('gameEvent', { text: 'Шляпа куплена!', type: 'info' });
+        } else {
+            socket.emit('errorMsg', 'Ошибка покупки');
+        }
+    });
+
     socket.on('shopEquip', (itemId) => {
         if (!socket.tgUserId) return;
         const user = getUserData(socket.tgUserId);
@@ -694,24 +746,41 @@ io.on('connection', (socket) => {
             if (itemId.startsWith('frame_')) user.equipped.frame = itemId;
             userDB.set(socket.tgUserId, user);
             const rank = getRankInfo(user.xp, user.streak);
-            socket.emit('profileUpdate', { ...user, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX' });
+            socket.emit('profileUpdate', { ...user, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level });
             const room = getRoomBySocketId(socket.id); if(room) { const p = room.players.find(pl => pl.id === socket.id); if(p) { p.equipped = {...user.equipped}; if(room.status==='LOBBY') broadcastRoomUpdate(room); } }
         }
     });
+
+    socket.on('hatEquip', (hatId) => {
+        if (!socket.tgUserId) return;
+        const user = getUserData(socket.tgUserId);
+        if (hatId === null) {
+            user.equipped.hat = null; // Unequip
+        } else if (user.inventory.includes(hatId)) {
+            user.equipped.hat = hatId;
+        }
+        userDB.set(socket.tgUserId, user);
+        const rank = getRankInfo(user.xp, user.streak);
+        socket.emit('profileUpdate', { ...user, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level });
+        const room = getRoomBySocketId(socket.id); if(room) { const p = room.players.find(pl => pl.id === socket.id); if(p) { p.equipped = {...user.equipped}; if(room.status==='LOBBY') broadcastRoomUpdate(room); } }
+    });
+
     socket.on('sendEmote', (emoji) => { const room = getRoomBySocketId(socket.id); if(room) io.to(room.id).emit('emoteReceived', { id: socket.id, emoji: emoji }); });
     socket.on('useSkill', (skillType) => handleSkill(socket, skillType));
     socket.on('getPlayerStats', (targetId) => {
         let userData = null;
         if (targetId === 'me') { if (socket.tgUserId) userData = getUserData(socket.tgUserId); }
         else if (!targetId.startsWith('bot') && !targetId.startsWith('CPU')) { const room = getRoomBySocketId(socket.id); if(room) { const tp = room.players.find(p=>p.id===targetId); if(tp && tp.tgId) userData = getUserData(tp.tgId); } }
-        if (userData) { const rank = getRankInfo(userData.xp, userData.streak); socket.emit('showPlayerStats', { name: userData.name, rankName: rank.current.name, matches: userData.matches, wins: userData.wins, inventory: userData.inventory, equipped: userData.equipped }); }
+        if (userData) { 
+            const rank = getRankInfo(userData.xp, userData.streak); 
+            socket.emit('showPlayerStats', { name: userData.name, rankName: rank.current.name, matches: userData.matches, wins: userData.wins, inventory: userData.inventory, equipped: userData.equipped }); 
+        }
     });
     socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
-        const old = getRoomBySocketId(socket.id); if (old) handlePlayerDisconnect(socket.id, old, true); // Force leave old if joining new
+        const old = getRoomBySocketId(socket.id); if (old) handlePlayerDisconnect(socket.id, old, true);
         if (!tgUser) return;
         const userId = tgUser.id; const uData = getUserData(userId); const rInfo = getRankInfo(uData.xp, uData.streak);
         
-        // --- CHECK RESOURCES FOR BETTING ---
         if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) {
             socket.emit('errorMsg', 'NO_FUNDS'); 
             return;
@@ -730,7 +799,6 @@ io.on('connection', (socket) => {
         if (roomId) { 
             room = rooms.get(roomId); 
             if (!room || room.status !== 'LOBBY' || room.players.length >= room.config.players) { socket.emit('errorMsg', 'Ошибка входа'); return; } 
-            // CHECK BET REQUIREMENTS FOR JOINER
             if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) {
                 socket.emit('errorMsg', 'NO_FUNDS');
                 return;
@@ -746,20 +814,13 @@ io.on('connection', (socket) => {
     socket.on('callBluff', () => handleCall(socket, 'bluff'));
     socket.on('callSpot', () => handleCall(socket, 'spot'));
     socket.on('requestRestart', () => { const r = getRoomBySocketId(socket.id); if (r?.status === 'FINISHED') { r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); }); if (r.isPvE) { r.status = 'PLAYING'; r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; startNewRound(r, true); } else { r.status = 'LOBBY'; r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; broadcastRoomUpdate(r); } } });
-    
-    // isVoluntary = false (случайный разрыв)
     socket.on('disconnect', () => { const r = getRoomBySocketId(socket.id); if (r) handlePlayerDisconnect(socket.id, r, false); });
 });
 
-// Обновленный интервал пинга (14 минут) и URL с пингом
 const PING_INTERVAL = 14 * 60 * 1000;
 const MY_URL = 'https://liarsdicezmss.onrender.com/ping';
 setInterval(() => { 
-    https.get(MY_URL, (res) => {
-        // Просто пустой callback, главное чтобы запрос прошел
-    }).on('error', (err) => {
-        console.error("Ping error (sleeping?):", err.message);
-    }); 
+    https.get(MY_URL, (res) => {}).on('error', (err) => { console.error("Ping error:", err.message); }); 
 }, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
