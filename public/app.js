@@ -75,7 +75,8 @@ let state = {
 };
 
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
-const XP_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000];
+// UPDATED: XP Steps capped at 1000
+const XP_STEPS = [0, 100, 250, 500, 1000];
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
 
@@ -144,7 +145,7 @@ function loginSuccess() {
 function getRankImage(rankName) {
     const base = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
     if (rankName === 'Салага') return base + 'lvl1_salaga.png';
-    if (rankName === 'Юнга') return base + 'lvl1_yunga.png'; // UPDATED URL
+    if (rankName === 'Юнга') return base + 'lvl1_yunga.png';
     if (rankName === 'Матрос') return base + 'lvl2_moryak.png';
     if (rankName === 'Старший матрос') return base + 'lvl3_starmoryak.png';
     if (rankName === 'Боцман') return base + 'lvl4_bocman.png';
@@ -595,7 +596,7 @@ socket.on('yourDice', (dice) => {
     document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join('');
 });
 
-// --- UPDATED GAME STATE (Smart Update to keep emotes) ---
+// --- UPDATED GAME STATE (Smart Update to keep emotes + 3D Bid Die) ---
 socket.on('gameState', (gs) => {
     showScreen('game');
     document.body.className = gs.activeBackground || 'bg_default';
@@ -606,62 +607,51 @@ socket.on('gameState', (gs) => {
     if (gs.activeRules.strict) rulesText += '🔒 Строго';
     document.getElementById('active-rules-display').textContent = rulesText;
 
-    // SMART PLAYER UPDATE LOGIC
     const bar = document.getElementById('players-bar');
-    
-    // 1. Mark active players to identify who left
     const activeIds = new Set(gs.players.map(p => p.id));
 
-    // 2. Update or Create players
     gs.players.forEach(p => {
         let chip = bar.querySelector(`.player-chip[data-id="${p.id}"]`);
-        
-        // Construct class string
         const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default';
         const turnClass = p.isTurn ? 'turn' : '';
         const deadClass = p.isEliminated ? 'dead' : '';
         const finalClass = `player-chip ${turnClass} ${deadClass} ${frameClass}`;
 
         if (!chip) {
-            // Create new chip
             chip = document.createElement('div');
             chip.setAttribute('data-id', p.id);
             chip.setAttribute('onclick', `requestPlayerStats('${p.id}')`);
             bar.appendChild(chip);
-            
-            // Initial HTML structure
-            chip.innerHTML = `
-                <b>${p.name}</b>
-                <span class="rank-game">${p.rank}</span>
-                <div class="dice-count">🎲 ${p.diceCount}</div>
-            `;
+            chip.innerHTML = `<b>${p.name}</b><span class="rank-game">${p.rank}</span><div class="dice-count">🎲 ${p.diceCount}</div>`;
         }
 
-        // Update classes (preserves styles)
         chip.className = finalClass;
-
-        // Update content (Safe way, preserves appended elements like emotes!)
         chip.querySelector('b').textContent = p.name;
         chip.querySelector('.rank-game').textContent = p.rank;
         chip.querySelector('.dice-count').textContent = `🎲 ${p.diceCount}`;
     });
 
-    // 3. Remove players who are no longer in the list
     Array.from(bar.children).forEach(child => {
-        if (!activeIds.has(child.getAttribute('data-id'))) {
-            child.remove();
-        }
+        if (!activeIds.has(child.getAttribute('data-id'))) child.remove();
     });
 
-    // --- Rest of GameState Logic ---
     const bid = document.getElementById('current-bid-display');
     if (gs.currentBid) {
-        bid.innerHTML = `<div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span><span class="bid-face">${gs.currentBid.faceValue}</span></div>`;
+        // FIND BIDDER SKIN
+        const bidder = gs.players.find(p => p.id === gs.currentBid.playerId);
+        const skin = bidder?.equipped?.skin || 'skin_white';
+        
+        // UPDATED: RENDER 3D DIE IN BUBBLE
+        bid.innerHTML = `
+            <div class="bid-container">
+                <div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span></div>
+                <div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div>
+            </div>
+        `;
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs();
     } else {
         const me = gs.players.find(p => p.id === socket.id);
-        const myTurn = me?.isTurn;
-        if (myTurn) {
+        if (me?.isTurn) {
             bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`;
         } else {
             const turnPlayer = gs.players.find(p => p.isTurn);
@@ -687,19 +677,15 @@ socket.on('gameState', (gs) => {
     if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) {
         const skillsDiv = document.createElement('div');
         skillsDiv.className = 'skills-bar';
-        
         me.availableSkills.forEach(skill => {
             const btn = document.createElement('button');
             btn.className = `btn-skill skill-${skill}`;
             btn.setAttribute('onclick', `useSkill('${skill}')`);
-            
             if(skill === 'ears') btn.innerHTML = 'Слух';
             if(skill === 'lucky') btn.innerHTML = '+1 Куб';
             if(skill === 'kill') btn.innerHTML = 'Выстрел';
-            
             skillsDiv.appendChild(btn);
         });
-        
         document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
     }
 
