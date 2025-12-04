@@ -157,7 +157,6 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); }
 
 .inv-preview.player-chip { min-width: auto; max-width: none; width: 40px; height: 40px; padding: 0; }
-/* Updated Animation for smoother fade out */
 .emote-bubble-img { position: absolute; width: 100px; height: 100px; left: 50%; top: 50%; transform: translate(-50%, -50%); animation: emotePop 3s ease-out forwards; pointer-events: none; z-index: 9999; filter: drop-shadow(0 0 10px rgba(0,0,0,0.8)); object-fit: contain; }
 @keyframes emotePop { 
     0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 
@@ -303,3 +302,16 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 
 #sys-input { width: 100%; padding: 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; text-align: center; font-weight: 800; font-size: 1.2rem; outline: none; }
 #sys-input:focus { border-color: var(--accent); }
+
+/* --- СТИЛИ ДЛЯ ОТОБРАЖЕНИЯ 3D КУБИКА В ПУЗЫРЕ СТАВКИ --- */
+.bid-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.bid-die-icon {
+    width: 45px !important; /* Чуть крупнее для видимости */
+    height: 45px !important;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.6));
+}
