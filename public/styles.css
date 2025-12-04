@@ -3,6 +3,7 @@
   --surface: #3d405b; 
   --primary: #ef233c; --secondary: #8d99ae; --accent: #ffb703; 
   --success: #06d6a0; --blue: #118ab2; --text: #edf2f4;
+  --purple: #9d4edd; /* Для Каюты */
   
   --font: 'Shantell Sans', sans-serif;
   --radius: 20px;
@@ -78,6 +79,7 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-green { background: var(--success); color: #2b2d42; box-shadow: 0 4px 0 #04916c; }
 .btn-red { background: var(--primary); color: white; box-shadow: 0 4px 0 #d90429; }
 .btn-gray { background: var(--surface); color: var(--secondary); box-shadow: 0 4px 0 #2b2d42; }
+.btn-purple { background: var(--purple); color: white; box-shadow: 0 4px 0 #5a189a; } /* New Cabin Button */
 
 .btn-mini { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--surface); color: white; font-size: 1.2rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(3px); box-shadow: none; }
@@ -114,6 +116,19 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .shop-btn.buy { background: var(--accent); color: var(--bg-color); }
 .shop-btn.equip { background: var(--blue); color: white; }
 .shop-btn.equipped { background: var(--success); color: #2b2d42; }
+
+/* --- HATS RARITY STYLES --- */
+.shop-item.rarity-rare { border: 2px solid #4cc9f0; box-shadow: 0 0 10px rgba(76, 201, 240, 0.3); }
+.shop-item.rarity-legendary { border: 2px solid #ffb703; box-shadow: 0 0 15px rgba(255, 183, 3, 0.4); }
+.shop-item.rarity-mythical { border: 2px solid #f72585; box-shadow: 0 0 20px rgba(247, 37, 133, 0.6); }
+
+/* PULSE ANIMATION FOR MYTHIC/LEGENDARY */
+.pulse-mythic { animation: mythicPulse 2s infinite; }
+@keyframes mythicPulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.05); filter: brightness(1.3); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
 
 .setting-group { margin-bottom: 15px; }
 .setting-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: var(--secondary); font-weight: 700; }
