@@ -1,10 +1,70 @@
 // Глобальный перехватчик ошибок
 window.onerror = function(message, source, lineno, colno, error) {
-    // alert("Error: " + message); 
+    console.error("Error: " + message);
+    // Можно раскомментировать для дебага, но лучше не пугать игрока системными алертами
+    // uiAlert("Произошла ошибка! Перезагрузите игру.");
 };
 
 const socket = io();
 const tg = window.Telegram?.WebApp;
+
+// --- SYSTEM UI HELPERS (Custom Modals) ---
+const ui = {
+    modal: document.getElementById('modal-system'),
+    title: document.getElementById('sys-title'),
+    text: document.getElementById('sys-text'),
+    input: document.getElementById('sys-input'),
+    btns: document.getElementById('sys-btns'),
+
+    close: function() {
+        this.modal.classList.remove('active');
+    },
+
+    show: function(titleStr, textStr, hasInput = false, buttonsHTML = '') {
+        this.title.textContent = titleStr;
+        this.text.textContent = textStr;
+        if (hasInput) {
+            this.input.classList.remove('hidden');
+            this.input.value = '';
+            setTimeout(() => this.input.focus(), 100);
+        } else {
+            this.input.classList.add('hidden');
+        }
+        this.btns.innerHTML = buttonsHTML;
+        this.modal.classList.add('active');
+    }
+};
+
+// ALERT
+window.uiAlert = (text, title = "ВНИМАНИЕ") => {
+    ui.show(title, text, false, `<button class="btn btn-blue" onclick="ui.close()">ПОНЯЛ</button>`);
+    if(tg) tg.HapticFeedback.notificationOccurred('warning');
+};
+
+// CONFIRM (Callback on Yes)
+window.uiConfirm = (text, onYes) => {
+    ui.show("ПОДТВЕРДИТЕ", text, false, `
+        <button id="sys-btn-no" class="btn btn-gray">НЕТ</button>
+        <button id="sys-btn-yes" class="btn btn-red">ДА</button>
+    `);
+    document.getElementById('sys-btn-no').onclick = () => ui.close();
+    document.getElementById('sys-btn-yes').onclick = () => { ui.close(); onYes(); };
+    if(tg) tg.HapticFeedback.impactOccurred('medium');
+};
+
+// PROMPT (Callback on Submit with value)
+window.uiPrompt = (text, onSubmit) => {
+    ui.show("ВВОД", text, true, `
+        <button id="sys-btn-cancel" class="btn btn-gray">ОТМЕНА</button>
+        <button id="sys-btn-ok" class="btn btn-green">ОК</button>
+    `);
+    document.getElementById('sys-btn-cancel').onclick = () => ui.close();
+    document.getElementById('sys-btn-ok').onclick = () => {
+        const val = ui.input.value.trim();
+        if(val) { ui.close(); onSubmit(val); }
+    };
+};
+
 
 let state = {
     username: null, roomId: null,
@@ -231,7 +291,7 @@ bindClick('btn-shop-back', () => showScreen('home'));
 
 window.buyItem = (id, price) => {
     if (state.coins >= price) socket.emit('shopBuy', id);
-    else tg ? tg.showAlert("Не хватает монет!") : alert("Мало денег!");
+    else uiAlert("Не хватает монет!", "УПС...");
 };
 window.equipItem = (id) => socket.emit('shopEquip', id);
 
@@ -347,7 +407,7 @@ window.requestMyStats = () => {
 
 window.requestPlayerStats = (socketId) => {
     if (socketId && (socketId.toString().startsWith('bot') || socketId.toString().startsWith('CPU'))) {
-        if(tg) tg.showAlert("Это бот. У него нет души.");
+        uiAlert("Это бот. У него нет души.");
         return;
     }
     socket.emit('getPlayerStats', socketId);
@@ -423,21 +483,26 @@ window.leaveLobby = () => {
 };
 
 window.leaveGame = () => {
-    if(confirm("Сдаться и покинуть игру? Вы потеряете все.")) {
+    uiConfirm("Сдаться и покинуть игру? Вы потеряете ставку.", () => {
         socket.emit('leaveRoom');
         setTimeout(() => location.reload(), 100);
-    }
+    });
 };
 
 // --- GAME ---
 bindClick('btn-join-room', () => {
-    const code = prompt("Код:"); 
-    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
-    if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: userPayload });
+    uiPrompt("Введи код комнаты:", (code) => {
+        const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
+        if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: userPayload });
+    });
 });
 bindClick('share-btn', () => {
     const code = state.roomId;
-    navigator.clipboard.writeText(code).then(() => tg ? tg.showAlert('Скопировано!') : alert('Скопировано!')).catch(()=>prompt("Код:", code));
+    navigator.clipboard.writeText(code).then(() => uiAlert('Код скопирован!')).catch(() => {
+        // Fallback
+        uiPrompt("Код комнаты (скопируй вручную):", () => {});
+        document.getElementById('sys-input').value = code;
+    });
 });
 bindClick('btn-ready', function() {
     const isReady = this.textContent === "Я ГОТОВ";
@@ -492,7 +557,7 @@ socket.on('errorMsg', (msg) => {
     if (msg === 'NO_FUNDS') {
         document.getElementById('modal-res-alert').classList.add('active');
     } else {
-        tg ? tg.showAlert(msg) : alert(msg);
+        uiAlert(msg, "ОШИБКА");
     }
 });
 
@@ -620,7 +685,7 @@ window.useSkill = (skillType) => {
     socket.emit('useSkill', skillType);
 };
 
-socket.on('roundResult', (data) => tg ? tg.showAlert(data.message) : alert(data.message));
+socket.on('roundResult', (data) => uiAlert(data.message, "ИТОГ"));
 
 socket.on('gameOver', (data) => {
     showScreen('result'); 
