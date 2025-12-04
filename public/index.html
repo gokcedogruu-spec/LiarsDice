@@ -357,6 +357,42 @@
             </div>
         </div>
 
+        <!-- 13. GENERIC SYSTEM ALERT -->
+        <div id="modal-sys-alert" class="modal-overlay">
+            <div class="modal-content pop-in" style="max-width: 280px; padding-top:20px;">
+                <div style="font-size:3rem; margin-bottom:10px;">📜</div>
+                <h2 id="sys-alert-title" class="modal-title" style="font-size:1.4rem; margin-bottom:10px;">ВНИМАНИЕ</h2>
+                <p id="sys-alert-text" style="font-size:1.1rem; font-weight:bold; color:white; margin-bottom:20px;"></p>
+                <button id="sys-alert-btn" class="btn btn-blue">OK</button>
+            </div>
+        </div>
+
+        <!-- 14. GENERIC SYSTEM CONFIRM -->
+        <div id="modal-sys-confirm" class="modal-overlay">
+            <div class="modal-content pop-in" style="max-width: 280px; padding-top:20px;">
+                <div style="font-size:3rem; margin-bottom:10px;">☠️</div>
+                <h2 id="sys-confirm-title" class="modal-title" style="font-size:1.4rem; margin-bottom:10px;">РЕШАЙСЯ</h2>
+                <p id="sys-confirm-text" style="font-size:1.1rem; font-weight:bold; color:white; margin-bottom:20px;"></p>
+                <div style="display:flex; gap:10px;">
+                    <button id="sys-confirm-yes" class="btn btn-red">ДА</button>
+                    <button id="sys-confirm-no" class="btn btn-gray">НЕТ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 15. GENERIC SYSTEM PROMPT -->
+        <div id="modal-sys-prompt" class="modal-overlay">
+            <div class="modal-content pop-in" style="max-width: 280px; padding-top:20px;">
+                <div style="font-size:3rem; margin-bottom:10px;">🗝️</div>
+                <h2 id="sys-prompt-title" class="modal-title" style="font-size:1.4rem; margin-bottom:10px;">ВВОД</h2>
+                <input type="text" id="sys-prompt-input" class="sys-input" maxlength="10">
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button id="sys-prompt-ok" class="btn btn-green">OK</button>
+                    <button id="sys-prompt-cancel" class="btn btn-gray">ОТМЕНА</button>
+                </div>
+            </div>
+        </div>
+
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
