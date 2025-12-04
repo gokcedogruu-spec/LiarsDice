@@ -364,3 +364,23 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 
 .bid-container { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .bid-die-icon { width: 45px !important; height: 45px !important; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.6)); }
+
+/* --- ИСПРАВЛЕНИЯ (FIXES) --- */
+
+/* 1. Исправление наложения кнопок на экране результата */
+#screen-result .slide-up-delay {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;          /* Расстояние между кнопками */
+    width: 100%;
+    max-width: 300px;   /* Чтобы кнопки не были слишком широкими на ПК */
+    margin-top: 25px;   /* Отступ от карточки победителя */
+}
+
+/* 2. Исправление пустой шкалы опыта */
+/* У тебя в HTML есть div class="xp-bar", но нет стилей для него. 
+   Он имел высоту 0, поэтому шкалу не было видно. */
+.xp-bar {
+    width: 100%;
+    height: 100%;
+}
