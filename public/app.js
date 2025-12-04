@@ -150,7 +150,17 @@ socket.on('profileUpdate', (data) => {
     state.equipped = data.equipped || {};
 
     const btnCabin = document.getElementById('btn-to-cabin');
-    if (data.rankLevel >= 6) btnCabin.style.display = 'block'; else btnCabin.style.display = 'none';
+    const btnShop = document.getElementById('btn-shop');
+    
+    if (data.rankLevel >= 6) { 
+        btnCabin.style.display = 'block'; 
+        // Если Каюта видна, Лавка занимает 1 колонку (стандарт)
+        btnShop.style.gridColumn = 'auto';
+    } else {
+        btnCabin.style.display = 'none';
+        // Если Каюта скрыта, Лавка растягивается
+        btnShop.style.gridColumn = 'span 2';
+    }
 
     if (!document.getElementById('screen-game').classList.contains('active')) {
         document.body.className = data.equipped.bg || 'bg_default';
@@ -290,14 +300,11 @@ function renderCabin() {
     };
 
     for (const [rarityKey, label] of Object.entries(groups)) {
-        // Filter hats for this rarity
         const hatsInGroup = Object.entries(HATS_META).filter(([id, meta]) => meta.rarity === rarityKey);
         
         if (hatsInGroup.length > 0) {
-            // Add Header
             grid.innerHTML += `<div class="cabin-category-title">${label}</div>`;
             
-            // Add Items
             hatsInGroup.forEach(([id, meta]) => {
                 const owned = state.inventory.includes(id);
                 const equipped = state.equipped.hat === id;
