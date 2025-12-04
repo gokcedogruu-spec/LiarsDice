@@ -14,10 +14,12 @@ const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
-// --- 1. STATIC FILES ---
+// --- 1. STATIC FILES & PING ---
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 app.get('/', (req, res) => { res.sendFile(path.join(publicPath, 'index.html')); });
+// Легкий маршрут для пинга
+app.get('/ping', (req, res) => { res.status(200).send('pong'); });
 
 // --- 2. DATA ---
 const RANKS = [
@@ -423,25 +425,61 @@ function resetTurnTimer(room) {
     }
 }
 
-function handlePlayerDisconnect(socketId, room) {
+// isVoluntary = true (нажал кнопку Выход), isVoluntary = false (пропал инет/закрыл вкладку)
+function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
     const i = room.players.findIndex(p => p.id === socketId);
     if (i === -1) return;
     const player = room.players[i];
     const wasCreator = player.isCreator;
     
     if (room.status === 'PLAYING') {
-        // UPDATED: Don't kick immediately. Just notify.
-        io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' });
-        
-        // We DO NOT splice the player here.
-        // If they are active, the turn timer will eventually kick them via handleTimeout.
-        // If they reconnect, we will re-assign their socket ID in 'login'.
-        
-        // Only if active players count drops to 1 do we end, 
-        // but since we don't remove them from array, active count stays same for now.
-        // The logic relies on handleTimeout to clean up zombies.
+        if (isVoluntary) {
+            // Игрок сам решил выйти (даже если выбыл или еще играет) -> Удаляем полностью
+            io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сдался и покинул стол!`, type: 'error' });
+            
+            // Если он был жив, засчитываем поражение
+            if (player.diceCount > 0) {
+                player.diceCount = 0;
+                if (!player.isBot && player.tgId) {
+                    updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
+                }
+            }
+
+            // Удаляем из массива
+            room.players.splice(i, 1);
+
+            // Корректируем ход
+            if (i === room.currentTurn) {
+                // Если был его ход, передаем дальше
+                if (room.currentTurn >= room.players.length) room.currentTurn = 0;
+                resetTurnTimer(room);
+            } else if (i < room.currentTurn) {
+                room.currentTurn--;
+            }
+
+            // Проверяем, не закончилась ли игра
+            const active = room.players.filter(p => p.diceCount > 0);
+            if (active.length === 1) {
+                const winner = active[0]; room.status = 'FINISHED';
+                if (room.timerId) clearTimeout(room.timerId);
+                if (!winner.isBot && winner.tgId) {
+                    const type = room.isPvE ? 'win_pve' : 'win_game';
+                    const diff = room.isPvE ? room.config.difficulty : null;
+                    const multiplier = room.players.length; 
+                    updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
+                }
+                io.to(room.id).emit('gameOver', { winner: winner.name });
+            } else {
+                broadcastGameState(room);
+            }
+        } else {
+            // Разрыв соединения (случайно) -> Оставляем "призраком", не удаляем
+            io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' });
+            // Ничего не делаем с массивом. Если ход его, таймер тикает и выбьет его сам через handleTimeout.
+            // Если он вернется, сработает логика в socket.on('login').
+        }
     } else {
-        // LOBBY or FINISHED -> Remove immediately
+        // Лобби или Финиш -> Удаляем сразу
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} ушел!`, type: 'error' });
         room.players.splice(i, 1);
         if (room.players.filter(p => !p.isBot).length === 0) { if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id); }
@@ -589,7 +627,6 @@ io.on('connection', (socket) => {
         socket.emit('profileUpdate', { ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX' });
 
         // --- RECONNECTION LOGIC ---
-        // Check if this user is already in a playing room with an old socket ID
         for (const [roomId, room] of rooms) {
             if (room.status === 'PLAYING') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
@@ -598,10 +635,8 @@ io.on('connection', (socket) => {
                     existingPlayer.id = socket.id;
                     socket.join(roomId);
                     
-                    // Send them the game state immediately
                     if(existingPlayer.diceCount > 0) socket.emit('yourDice', existingPlayer.dice);
                     
-                    // Calculate current timing for correct client sync
                     const now = Date.now();
                     const remaining = Math.max(0, room.turnDeadline - now);
                     const playersData = room.players.map((p, i) => {
@@ -634,7 +669,10 @@ io.on('connection', (socket) => {
             }
         }
     });
-    socket.on('leaveRoom', () => { const r = getRoomBySocketId(socket.id); if(r) handlePlayerDisconnect(socket.id, r); });
+    
+    // isVoluntary = true (добровольный выход)
+    socket.on('leaveRoom', () => { const r = getRoomBySocketId(socket.id); if(r) handlePlayerDisconnect(socket.id, r, true); });
+    
     socket.on('shopBuy', (itemId) => { 
         if (!socket.tgUserId) return;
         const user = getUserData(socket.tgUserId);
@@ -669,13 +707,13 @@ io.on('connection', (socket) => {
         if (userData) { const rank = getRankInfo(userData.xp, userData.streak); socket.emit('showPlayerStats', { name: userData.name, rankName: rank.current.name, matches: userData.matches, wins: userData.wins, inventory: userData.inventory, equipped: userData.equipped }); }
     });
     socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
-        const old = getRoomBySocketId(socket.id); if (old) handlePlayerDisconnect(socket.id, old);
+        const old = getRoomBySocketId(socket.id); if (old) handlePlayerDisconnect(socket.id, old, true); // Force leave old if joining new
         if (!tgUser) return;
         const userId = tgUser.id; const uData = getUserData(userId); const rInfo = getRankInfo(uData.xp, uData.streak);
         
         // --- CHECK RESOURCES FOR BETTING ---
         if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) {
-            socket.emit('errorMsg', 'NO_FUNDS'); // Specific error code
+            socket.emit('errorMsg', 'NO_FUNDS'); 
             return;
         }
 
@@ -708,11 +746,20 @@ io.on('connection', (socket) => {
     socket.on('callBluff', () => handleCall(socket, 'bluff'));
     socket.on('callSpot', () => handleCall(socket, 'spot'));
     socket.on('requestRestart', () => { const r = getRoomBySocketId(socket.id); if (r?.status === 'FINISHED') { r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); }); if (r.isPvE) { r.status = 'PLAYING'; r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; startNewRound(r, true); } else { r.status = 'LOBBY'; r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; broadcastRoomUpdate(r); } } });
-    socket.on('disconnect', () => { const r = getRoomBySocketId(socket.id); if (r) handlePlayerDisconnect(socket.id, r); });
+    
+    // isVoluntary = false (случайный разрыв)
+    socket.on('disconnect', () => { const r = getRoomBySocketId(socket.id); if (r) handlePlayerDisconnect(socket.id, r, false); });
 });
 
-const PING_INTERVAL = 10 * 60 * 1000;
-const MY_URL = 'https://liarsdicezmss.onrender.com';
-setInterval(() => { https.get(MY_URL, (res) => {}).on('error', (err) => {}); }, PING_INTERVAL);
+// Обновленный интервал пинга (14 минут) и URL с пингом
+const PING_INTERVAL = 14 * 60 * 1000;
+const MY_URL = 'https://liarsdicezmss.onrender.com/ping';
+setInterval(() => { 
+    https.get(MY_URL, (res) => {
+        // Просто пустой callback, главное чтобы запрос прошел
+    }).on('error', (err) => {
+        console.error("Ping error (sleeping?):", err.message);
+    }); 
+}, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
