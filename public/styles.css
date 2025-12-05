@@ -23,13 +23,13 @@ body {
   transition: background-image 0.3s ease;
 }
 
-/* ФОНЫ */
-body.bg_default { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
-body.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
-body.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
-body.bg_lvl3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
-body.bg_lvl4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
-body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); }
+/* ФОНЫ (С ЗАТЕМНЕНИЕМ) */
+body.bg_default { background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
+body.bg_lvl1 { background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
+body.bg_lvl2 { background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
+body.bg_lvl3 { background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
+body.bg_lvl4 { background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
+body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); }
 
 #app { height: 100%; display: flex; flex-direction: column; }
 .screen { display: none; height: 100%; padding: 15px; flex-direction: column; }
@@ -42,7 +42,7 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* ЛОГОТИП (Уменьшены отступы, чтобы поднять контент) */
+/* ЛОГОТИП */
 .game-logo {
     width: 100%; max-width: 350px; height: auto; 
     margin-bottom: 5px; 
@@ -82,7 +82,7 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
     font-size: 1rem; 
     font-weight: 800; cursor: pointer; margin-top: 0; 
     transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); 
-    min-height: 48px; /* Фиксированная минимальная высота для всех кнопок */
+    min-height: 48px;
     display: flex; align-items: center; justify-content: center;
 }
 .btn:active { transform: translateY(4px); box-shadow: none !important; }
@@ -95,7 +95,6 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-gray { background: var(--surface); color: var(--secondary); box-shadow: 0 4px 0 #2b2d42; }
 .btn-purple { background: var(--purple); color: white; box-shadow: 0 4px 0 #5a189a; }
 
-/* Отступ для кнопки НАЗАД в меню настроек, чтобы не слипалась */
 #btn-pve-back, #btn-back-home, #btn-shop-back, #btn-cabin-back {
     margin-top: 15px !important; 
 }
@@ -103,20 +102,16 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 /* --- МЕНЮ ГЛАВНОГО ЭКРАНА (СЕТКА) --- */
 .menu-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Две равные колонки */
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
     width: 100%;
     max-width: 340px;
     margin-top: 10px;
 }
 
-/* Кнопки на всю ширину */
 #btn-to-create, #btn-to-pve, #btn-join-room {
     grid-column: span 2; 
 }
-
-/* Кнопки в полширины (Каюта и Лавка) встают автоматически.
-   Если Каюта display:none, Лавка растянется через JS. */
 
 .btn-mini { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--surface); color: white; font-size: 1.2rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(3px); box-shadow: none; }
@@ -127,39 +122,57 @@ body.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedog
 .btn-lobby-back { top: 15px; left: 15px; position: absolute; }
 .btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
 
-/* Кнопки в лобби (внизу) */
 .lobby-btns-row { 
     display: flex; gap: 10px; width: 100%; 
-    margin-top: 15px; /* Отступ от списка игроков */
+    margin-top: 15px;
 }
 
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.1rem; text-align: center; outline: none; font-weight: 600; }
 
-/* Профиль поднят выше (margin-top уменьшен с 20 до 0/5) */
+/* ПРОФИЛЬ (КОМПАКТНЫЙ) */
 .profile-card { 
     background: var(--surface); 
-    border-radius: 24px; 
-    padding: 15px; 
+    border-radius: 20px; 
+    padding: 10px;          
     width: 100%; 
-    max-width: 280px; 
+    max-width: 180px;       
     text-align: center; 
     margin-bottom: 10px; 
-    margin-top: 5px; /* Поднято */
-    border: 3px solid var(--blue); 
+    margin-top: 30px;       
+    border: 2px solid var(--blue); 
     box-shadow: var(--shadow-card); 
     position: relative; 
     background-size: cover; background-position: center; 
     text-shadow: 1px 1px 2px black; 
 }
-.rank-icon-box { width: 120px; height: 120px; background: none; border: none; box-shadow: none; margin: -80px auto 0; display: flex; justify-content: center; align-items: center; z-index: 2; position: relative; }
-.rank-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); }
-.rank-label { background: var(--blue); color: white; display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-.streak-label { color: var(--primary); font-weight: 800; margin-bottom: 5px; font-size: 0.8rem; text-shadow: 1px 1px 0 black; }
-.coins-row { font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 5px; text-shadow: 1px 1px 0 black; }
-.xp-track { background: rgba(0,0,0,0.6); height: 20px; border-radius: 10px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+
+.rank-icon-box { 
+    width: 75px; height: 75px; 
+    margin: -50px auto 0;      
+    display: flex; justify-content: center; align-items: center; 
+    z-index: 2; position: relative; 
+    overflow: visible; 
+}
+
+/* ШЛЯПЫ И СКЕЙЛ */
+.rank-img { 
+    width: 100%; height: 100%; object-fit: contain; 
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); 
+    transition: transform 0.3s ease;
+}
+.rank-img.hat-legendary { transform: scale(1.5) translateY(-5px); }
+.rank-img.hat-mythical { transform: scale(1.7) translateY(-8px); }
+
+.profile-card h2 { font-size: 1.1rem; margin: 5px 0 2px; }
+.rank-label { background: var(--blue); color: white; display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.65rem; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+.streak-label { color: var(--primary); font-weight: 800; margin-bottom: 4px; font-size: 0.7rem; text-shadow: 1px 1px 0 black; }
+.coins-row { font-size: 0.9rem; font-weight: bold; color: var(--accent); margin-bottom: 2px; text-shadow: 1px 1px 0 black; }
+.xp-track { background: rgba(0,0,0,0.6); height: 14px; border-radius: 7px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+/* ФИКС ШКАЛЫ ОПЫТА */
+.xp-bar { width: 100%; height: 100%; }
 .xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #ff9f1c); transition: width 0.5s ease; border-radius: 12px; }
-.xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); color: white; }
+.xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); color: white; }
 
 .shop-balance { font-size: 2rem; color: var(--accent); font-weight: 800; margin-bottom: 20px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 .shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; }
@@ -238,6 +251,14 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); }
 .player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); }
 .player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); }
+
+/* NEW FRAME: ABYSS */
+.player-chip.frame_abyss, .profile-card.frame_abyss, .modal-content.frame_abyss {
+    border: 3px solid #4a0072;
+    box-shadow: 0 0 15px #7a00b3;
+    background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_bezdna.png');
+    background-size: cover;
+}
 
 .inv-preview.player-chip { min-width: auto; max-width: none; width: 40px; height: 40px; padding: 0; }
 .emote-bubble-img { position: absolute; width: 100px; height: 100px; left: 50%; top: 50%; transform: translate(-50%, -50%); animation: emotePop 3s ease-out forwards; pointer-events: none; z-index: 9999; filter: drop-shadow(0 0 10px rgba(0,0,0,0.8)); object-fit: contain; }
@@ -367,20 +388,38 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 
 /* --- ИСПРАВЛЕНИЯ (FIXES) --- */
 
-/* 1. Исправление наложения кнопок на экране результата */
 #screen-result .slide-up-delay {
     display: flex;
     flex-direction: column;
-    gap: 15px;          /* Расстояние между кнопками */
+    gap: 15px;          
     width: 100%;
-    max-width: 300px;   /* Чтобы кнопки не были слишком широкими на ПК */
-    margin-top: 25px;   /* Отступ от карточки победителя */
+    max-width: 300px;   
+    margin-top: 25px;   
 }
 
-/* 2. Исправление пустой шкалы опыта */
-/* У тебя в HTML есть div class="xp-bar", но нет стилей для него. 
-   Он имел высоту 0, поэтому шкалу не было видно. */
-.xp-bar {
-    width: 100%;
-    height: 100%;
+/* --- АДАПТИВНОСТЬ --- */
+@media (max-height: 750px) {
+    .game-logo {
+        max-width: 220px; /* Уменьшаем лого на невысоких экранах */
+        margin-bottom: 10px;
+    }
+    .profile-card {
+        margin-top: 35px; /* Место для торчащей шляпы */
+        max-width: 160px; /* Еще компактнее */
+    }
+    .menu-buttons {
+        margin-top: 5px;
+    }
+    .btn {
+        padding: 10px;
+        min-height: 40px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-height: 600px) {
+    /* Для совсем маленьких экранов */
+    .game-logo { max-width: 180px; }
+    .title-text { font-size: 1.5rem; margin-bottom: 10px; }
+    .profile-card { margin-top: 25px; transform: scale(0.9); }
 }
