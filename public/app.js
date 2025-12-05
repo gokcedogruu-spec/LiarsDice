@@ -177,11 +177,11 @@ socket.on('profileUpdate', (data) => {
         
         if (data.equipped.hat && HATS_META[data.equipped.hat]) {
             const r = HATS_META[data.equipped.hat].rarity;
-            // Добавляем классы для размера (определены в CSS)
+            
+            // ВАЖНО: Добавляем классы для CSS, чтобы шляпы увеличивались
             if (r === 'legendary') rankImg.classList.add('hat-legendary');
             if (r === 'mythical') rankImg.classList.add('hat-mythical');
             
-            // Анимация
             if (r === 'legendary' || r === 'mythical') rankImg.classList.add('pulse-mythic');
         }
     }
