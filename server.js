@@ -183,7 +183,6 @@ function pushProfileUpdate(userId) {
     if (socketId) {
         const user = userDB.get(userId);
         const rInfo = getRankInfo(user.xp, user.streak);
-        // FIX: Added || 'MAX' here to fix empty bar issue
         io.to(socketId).emit('profileUpdate', { 
             ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min || 'MAX', rankLevel: rInfo.current.level 
         });
@@ -455,7 +454,7 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
     
     if (room.status === 'PLAYING') {
         if (isVoluntary) {
-            io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} сдался и покинул стол!`, type: 'error' });
+            io.to(room.id).emit('gameEvent', { text: `🏃‍♂‍ ${player.name} сдался и покинул стол!`, type: 'error' });
             if (player.diceCount > 0) {
                 player.diceCount = 0;
                 if (!player.isBot && player.tgId) {
@@ -487,7 +486,7 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
             io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' });
         }
     } else {
-        io.to(room.id).emit('gameEvent', { text: `🏃‍♂️ ${player.name} ушел!`, type: 'error' });
+        io.to(room.id).emit('gameEvent', { text: `🏃‍♂‍ ${player.name} ушел!`, type: 'error' });
         room.players.splice(i, 1);
         if (room.players.filter(p => !p.isBot).length === 0) { if(room.timerId) clearTimeout(room.timerId); rooms.delete(room.id); }
         else { if (wasCreator && room.players[0]) room.players[0].isCreator = true; broadcastRoomUpdate(room); }
@@ -629,7 +628,7 @@ if (bot) {
             user.inventory = [
                 'skin_white', 'skin_red', 'skin_gold', 'skin_black', 'skin_blue', 'skin_green', 'skin_purple', 'skin_cyber', 'skin_bone',
                 'bg_default', 'bg_lvl1', 'bg_lvl2', 'bg_lvl3', 'bg_lvl4', 'bg_lvl5',
-                'frame_default', 'frame_wood', 'frame_silver', 'frame_gold', 'frame_fire', 'frame_ice', 'frame_neon', 'frame_royal', 'frame_ghost', 'frame_kraken', 'frame_captain',
+                'frame_default', 'frame_wood', 'frame_silver', 'frame_gold', 'frame_fire', 'frame_ice', 'frame_neon', 'frame_royal', 'frame_ghost', 'frame_kraken', 'frame_captain', 'frame_abyss',
                 ...allHats
             ];
             userDB.set(uid, user); refreshUser(uid);
@@ -656,7 +655,7 @@ io.on('connection', (socket) => {
         const rank = getRankInfo(data.xp, data.streak);
         socket.tgUserId = tgUser.id;
         socket.emit('profileUpdate', { 
-            ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level 
+            ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rInfo.current.level 
         });
 
         // --- RECONNECTION LOGIC ---
@@ -705,7 +704,15 @@ io.on('connection', (socket) => {
     socket.on('shopBuy', (itemId) => { 
         if (!socket.tgUserId) return;
         const user = getUserData(socket.tgUserId);
-        const PRICES = { 'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 'skin_green': 400, 'skin_purple': 800, 'skin_cyber': 1500, 'skin_bone': 2500, 'bg_lvl1': 150000, 'bg_lvl2': 150000, 'bg_lvl3': 150000, 'bg_lvl4': 150000, 'bg_lvl5': 500000, 'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 'frame_kraken': 4000, 'frame_captain': 10000 };
+        const PRICES = { 
+            'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 
+            'skin_green': 400, 'skin_purple': 800, 'skin_cyber': 1500, 'skin_bone': 2500, 
+            'bg_lvl1': 150000, 'bg_lvl2': 150000, 'bg_lvl3': 150000, 'bg_lvl4': 150000, 'bg_lvl5': 500000, 
+            'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 
+            'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 
+            'frame_kraken': 4000, 'frame_captain': 10000,
+            'frame_abyss': 7500
+        };
         const price = PRICES[itemId];
         if (price && user.coins >= price && !user.inventory.includes(itemId)) {
             user.coins -= price; user.inventory.push(itemId); userDB.set(socket.tgUserId, user);
