@@ -108,45 +108,46 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.1rem; text-align: center; outline: none; font-weight: 600; }
 
-/* --- ПРОФИЛЬ (ШИРИНА 340px, БОЛЬШИЕ ШЛЯПЫ) --- */
+/* --- ПРОФИЛЬ (ИСПРАВЛЕННЫЙ) --- */
 .profile-card { 
     background: var(--surface); 
     border-radius: 20px; 
     padding: 10px 20px;          
     width: 100%; 
-    max-width: 340px; /* Ширина как у кнопок */      
+    max-width: 340px;      
     text-align: center; 
     margin-bottom: 10px; 
-    margin-top: 50px; /* УВЕЛИЧЕН ОТСТУП СВЕРХУ для шляпы */      
+    margin-top: 50px; /* Отступ для большой шляпы */      
     border: 2px solid var(--blue); 
     box-shadow: var(--shadow-card); 
     position: relative; 
     background-size: cover; background-position: center; 
     text-shadow: 1px 1px 2px black;
-    overflow: visible !important; /* ВАЖНО: Разрешаем шляпе торчать */
+    overflow: visible !important; /* ВАЖНО! */
+    z-index: 5;
 }
 
 .rank-icon-box { 
     width: 80px; height: 80px; 
-    margin: -50px auto 5px; 
+    margin: -55px auto 5px; /* Поднял выше */
     display: flex; justify-content: center; align-items: center; 
     z-index: 10; 
     position: relative; 
-    overflow: visible !important; 
+    overflow: visible !important; /* ВАЖНО! */
 }
 
-/* ШЛЯПЫ И СКЕЙЛ */
+/* ШЛЯПЫ */
 .rank-img { 
     width: 100%; height: 100%; object-fit: contain; 
     filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); 
     transition: transform 0.3s ease;
     position: relative;
-    z-index: 11;
+    z-index: 15;
 }
 
-/* ЭКСТРЕМАЛЬНОЕ УВЕЛИЧЕНИЕ */
-.rank-img.hat-legendary { transform: scale(2.3) translateY(-15px); transform-origin: bottom center; z-index: 100; }
-.rank-img.hat-mythical { transform: scale(2.8) translateY(-20px); transform-origin: bottom center; z-index: 100; }
+/* УВЕЛИЧЕНИЕ */
+.rank-img.hat-legendary { transform: scale(2.5) translateY(-12px); transform-origin: bottom center; }
+.rank-img.hat-mythical { transform: scale(3.0) translateY(-18px); transform-origin: bottom center; }
 
 .profile-card h2 { font-size: 1.3rem; margin: 5px 0 2px; font-weight: 800; }
 .rank-label { background: var(--blue); color: white; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
