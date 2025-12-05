@@ -1,370 +1,438 @@
-:root {
-  --bg-color: #5D4037;
-  --surface: #3d405b; 
-  --primary: #ef233c; --secondary: #8d99ae; --accent: #ffb703; 
-  --success: #06d6a0; --blue: #118ab2; --text: #edf2f4;
-  --purple: #9d4edd;
-  
-  --font: 'Shantell Sans', sans-serif;
-  --radius: 20px;
-  --shadow-card: 0px 8px 20px rgba(0,0,0,0.5);
-  --die-size: 45px; 
+// Глобальный перехватчик ошибок
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error("Error: " + message);
+};
+
+const socket = io();
+const tg = window.Telegram?.WebApp;
+
+// --- SYSTEM UI HELPERS ---
+const ui = {
+    modal: document.getElementById('modal-system'),
+    title: document.getElementById('sys-title'),
+    text: document.getElementById('sys-text'),
+    input: document.getElementById('sys-input'),
+    btns: document.getElementById('sys-btns'),
+    close: function() { this.modal.classList.remove('active'); },
+    show: function(titleStr, textStr, hasInput = false, buttonsHTML = '') {
+        this.title.textContent = titleStr;
+        this.text.textContent = textStr;
+        if (hasInput) { this.input.classList.remove('hidden'); this.input.value = ''; setTimeout(() => this.input.focus(), 100); } 
+        else { this.input.classList.add('hidden'); }
+        this.btns.innerHTML = buttonsHTML;
+        this.modal.classList.add('active');
+    }
+};
+window.uiAlert = (text, title = "ВНИМАНИЕ") => {
+    ui.show(title, text, false, `<button class="btn btn-blue" onclick="ui.close()">ПОНЯЛ</button>`);
+    if(tg) tg.HapticFeedback.notificationOccurred('warning');
+};
+window.uiConfirm = (text, onYes) => {
+    ui.show("ПОДТВЕРДИТЕ", text, false, `<button id="sys-btn-no" class="btn btn-gray">НЕТ</button><button id="sys-btn-yes" class="btn btn-red">ДА</button>`);
+    document.getElementById('sys-btn-no').onclick = () => ui.close();
+    document.getElementById('sys-btn-yes').onclick = () => { ui.close(); onYes(); };
+    if(tg) tg.HapticFeedback.impactOccurred('medium');
+};
+window.uiPrompt = (text, onSubmit) => {
+    ui.show("ВВОД", text, true, `<button id="sys-btn-cancel" class="btn btn-gray">ОТМЕНА</button><button id="sys-btn-ok" class="btn btn-green">ОК</button>`);
+    document.getElementById('sys-btn-cancel').onclick = () => ui.close();
+    document.getElementById('sys-btn-ok').onclick = () => { const val = ui.input.value.trim(); if(val) { ui.close(); onSubmit(val); } };
+};
+
+let state = {
+    username: null, roomId: null,
+    bidQty: 1, bidVal: 2, timerFrame: null,
+    createDice: 5, createPlayers: 10, createTime: 30,
+    rules: { jokers: false, spot: false, strict: false },
+    currentRoomBets: { coins: 0, xp: 0 },
+    pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
+    coins: 0, inventory: [], equipped: {}
+};
+
+const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
+const XP_STEPS = [0, 100, 250, 500, 1000];
+
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
+
+const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin'];
+
+function showScreen(name) {
+    screens.forEach(s => { const el = document.getElementById(`screen-${s}`); if(el) el.classList.remove('active'); });
+    const target = document.getElementById(`screen-${name}`);
+    if(target) target.classList.add('active');
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const loading = document.getElementById('screen-loading');
+        if (loading && loading.classList.contains('active')) { if (!tg?.initDataUnsafe?.user) showScreen('login'); }
+    }, 3000);
+    if (tg?.initDataUnsafe?.user) { state.username = tg.initDataUnsafe.user.first_name; loginSuccess(); }
+});
 
-body {
-  font-family: var(--font); height: 100vh; overflow: hidden; color: var(--text);
-  background-color: #5D4037;
-  background-repeat: repeat;
-  background-size: 384px auto; 
-  background-attachment: fixed;
-  box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
-  transition: background-image 0.3s ease;
+socket.on('connect', () => { if (state.username) loginSuccess(); });
+
+function bindClick(id, handler) { const el = document.getElementById(id); if (el) el.addEventListener('click', handler); }
+
+bindClick('btn-login', () => {
+    const val = document.getElementById('input-username').value.trim();
+    if (val) { state.username = val; socket.tgUserId = 123; loginSuccess(); }
+});
+
+function loginSuccess() {
+    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
+    if (tg && tg.CloudStorage) {
+        tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
+            let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
+            socket.emit('login', { tgUser: userPayload, savedData });
+        });
+    } else { socket.emit('login', { tgUser: userPayload, savedData: null }); }
 }
 
-/* ФОНЫ (Яркость 0.3) */
-body.bg_default { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
-body.bg_lvl1 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
-body.bg_lvl2 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
-body.bg_lvl3 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
-body.bg_lvl4 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
-body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); }
+// --- HATS DATA ---
+const HATS_META = {
+    'hat_fallen': { name: 'Шляпа падшей легенды', price: 1000000, rarity: 'rare' },
+    'hat_rich': { name: 'Шляпа богатого капитана', price: 1000000, rarity: 'rare' },
+    'hat_underwater': { name: 'Шляпа измученного капитана', price: 1000000, rarity: 'rare' },
+    'hat_voodoo': { name: 'Шляпа знатока вуду', price: 1000000, rarity: 'rare' },
+    'hat_king_voodoo': { name: 'Шляпа короля вуду', price: 10000000, rarity: 'legendary' },
+    'hat_cursed': { name: 'Шляпа проклятого капитана', price: 10000000, rarity: 'legendary' },
+    'hat_flame': { name: 'Шляпа обожжённого капитана', price: 10000000, rarity: 'legendary' },
+    'hat_frozen': { name: 'Шляпа замерзшего капитана', price: 10000000, rarity: 'legendary' },
+    'hat_ghost': { name: 'Шляпа потустороннего капитана', price: 10000000, rarity: 'legendary' },
+    'hat_lava': { name: 'Шляпа плавающего по лаве', price: 100000000, rarity: 'mythical' },
+    'hat_deadlycursed': { name: 'Шляпа коммодора флотилии теней', price: 100000000, rarity: 'mythical' },
+    'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' }
+};
 
-#app { height: 100%; display: flex; flex-direction: column; }
-.screen { display: none; height: 100%; padding: 10px; flex-direction: column; } /* Меньше паддинг экрана */
-.screen.active { display: flex; }
-.center-content { justify-content: center; align-items: center; }
-
-.loader {
-  border: 8px solid rgba(255,255,255,0.1); border-left-color: var(--accent);
-  border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite;
-}
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-/* --- ЛОГОТИП (УВЕЛИЧЕН) --- */
-.game-logo {
-    width: 95%; 
-    max-width: 500px; /* БЫЛО 350px */
-    height: auto; 
-    margin-bottom: 0; /* Убрал отступ снизу */
-    filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
-    transition: transform 0.3s;
-}
-.float-anim { animation: floatLogo 3s ease-in-out infinite; }
-@keyframes floatLogo {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
-
-.title-text {
-    font-family: var(--font); font-size: 2rem; color: var(--accent); 
-    text-align: center; text-shadow: 2px 2px 0 #d90429; margin-bottom: 20px; font-weight: 800;
-}
-
-.title-text-cabin {
-    font-family: var(--font); font-size: 2.2rem; color: var(--purple);
-    text-align: center; margin-bottom: 20px; font-weight: 900;
-    text-shadow: 3px 3px 0 #000;
-}
-
-.subtitle { font-family: var(--font); font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
-
-/* --- КНОПКИ (СЖАТЫ) --- */
-.btn { 
-    width: 100%; 
-    padding: 8px; /* Меньше отступ */
-    border: none; border-radius: 15px; /* Меньше радиус */
-    font-family: var(--font); 
-    font-size: 0.9rem; /* Меньше шрифт */
-    font-weight: 800; cursor: pointer; margin-top: 0; 
-    transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); 
-    min-height: 40px; /* Меньше высота */
-    display: flex; align-items: center; justify-content: center;
-}
-.btn:active { transform: translateY(4px); box-shadow: none !important; }
-
-.btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 0 #d90429; }
-.btn-orange { background: #fb8500; color: #2b2d42; box-shadow: 0 4px 0 #c46900; }
-.btn-blue { background: var(--blue); color: white; box-shadow: 0 4px 0 #075f7a; }
-.btn-green { background: var(--success); color: #2b2d42; box-shadow: 0 4px 0 #04916c; }
-.btn-red { background: var(--primary); color: white; box-shadow: 0 4px 0 #d90429; }
-.btn-gray { background: var(--surface); color: var(--secondary); box-shadow: 0 4px 0 #2b2d42; }
-.btn-purple { background: var(--purple); color: white; box-shadow: 0 4px 0 #5a189a; }
-
-#btn-pve-back, #btn-back-home, #btn-shop-back, #btn-cabin-back { margin-top: 10px !important; }
-
-/* --- МЕНЮ (ПОДНЯТО) --- */
-.menu-buttons {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    width: 100%; max-width: 340px; 
-    margin-top: -10px; /* Тянем вверх к профилю */
+function getRankImage(rankName, hatId = null) {
+    const baseHat = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/hats/';
+    if (hatId && HATS_META[hatId]) {
+        const map = {
+            'hat_fallen': 'common/lvl7_fallen.png',
+            'hat_rich': 'common/lvl7_richcaptain.png',
+            'hat_underwater': 'common/lvl7_underwaterclassic.png',
+            'hat_voodoo': 'common/lvl7_vodoo.png',
+            'hat_king_voodoo': 'legendary/lvl7_king_voodoo.png',
+            'hat_cursed': 'legendary/lvl8_cursed.png',
+            'hat_flame': 'legendary/lvl8_flame.png',
+            'hat_frozen': 'legendary/lvl8_frozen.png',
+            'hat_ghost': 'legendary/lvl8_ghost.png',
+            'hat_lava': 'mythical/lvl9_cursedflame.png',
+            'hat_deadlycursed': 'mythical/lvl9_deadlycursed.png',
+            'hat_antarctica': 'mythical/lvl9_kingofantarctica.png'
+        };
+        if(map[hatId]) return baseHat + map[hatId];
+    }
+    const baseRank = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/rating/';
+    if (rankName === 'Салага') return baseRank + 'lvl1_salaga.png';
+    if (rankName === 'Юнга') return baseRank + 'lvl1_yunga.png';
+    if (rankName === 'Матрос') return baseRank + 'lvl2_moryak.png';
+    if (rankName === 'Старший матрос') return baseRank + 'lvl3_starmoryak.png';
+    if (rankName === 'Боцман') return baseRank + 'lvl4_bocman.png';
+    if (rankName === 'Первый помощник') return baseRank + 'lvl5_perpomos.png';
+    if (rankName === 'Капитан') return baseRank + 'lvl6_captain.png';
+    if (rankName === 'Легенда морей') return baseRank + 'lvl7_goldencaptain.png';
+    return baseRank + 'lvl1_salaga.png';
 }
 
-#btn-to-create, #btn-to-pve, #btn-join-room { grid-column: span 2; }
+socket.on('profileUpdate', (data) => {
+    if(document.getElementById('screen-loading')?.classList.contains('active') || 
+       document.getElementById('screen-login')?.classList.contains('active')) { showScreen('home'); }
+    
+    document.getElementById('user-display').textContent = data.name;
+    document.getElementById('rank-display').textContent = data.rankName;
+    document.getElementById('win-streak').textContent = `Серия: ${data.streak} 🔥`;
+    document.getElementById('user-coins').textContent = data.coins;
+    
+    state.coins = data.coins;
+    state.inventory = data.inventory || [];
+    state.equipped = data.equipped || {};
 
-.btn-mini { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--surface); color: white; font-size: 1.2rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,0.3); cursor: pointer; }
-.btn-mini:active { transform: translateY(3px); box-shadow: none; }
+    const btnCabin = document.getElementById('btn-to-cabin');
+    const btnShop = document.getElementById('btn-shop');
+    
+    if (data.rankLevel >= 6) { 
+        btnCabin.style.display = 'block'; 
+        btnShop.style.gridColumn = 'auto';
+    } else {
+        btnCabin.style.display = 'none';
+        btnShop.style.gridColumn = 'span 2';
+    }
 
-.btn-icon { position: absolute; top: 15px; width: 40px; height: 40px; background: var(--surface); color: var(--accent); border: 2px solid var(--accent); border-radius: 50%; font-size: 1.5rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; display: flex; align-items: center; justify-content: center; }
-.btn-icon:active { transform: scale(0.9); }
-.btn-rules { right: 15px; }
-.btn-lobby-back { top: 15px; left: 15px; position: absolute; }
-.btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
+    if (!document.getElementById('screen-game').classList.contains('active')) {
+        document.body.className = data.equipped.bg || 'bg_default';
+    }
 
-.lobby-btns-row { display: flex; gap: 10px; width: 100%; margin-top: 15px; }
-.card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
-input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.1rem; text-align: center; outline: none; font-weight: 600; }
+    const profileCard = document.querySelector('.profile-card');
+    if (profileCard) {
+        profileCard.className = 'profile-card pop-in clickable-card';
+        if (data.equipped.frame && data.equipped.frame !== 'frame_default') profileCard.classList.add(data.equipped.frame);
+    }
 
-/* --- ПРОФИЛЬ (БОЛЬШОЙ) --- */
-.profile-card { 
-    background: var(--surface); 
-    border-radius: 20px; 
-    padding: 10px 20px;          
-    width: 100%; 
-    max-width: 360px; /* Максимальная ширина */      
-    text-align: center; 
-    margin-bottom: 10px; 
-    margin-top: 75px; /* Большой отступ для ОГРОМНОЙ шляпы */      
-    border: 3px solid var(--blue); 
-    box-shadow: var(--shadow-card); 
-    position: relative; 
-    background-size: cover; background-position: center; 
-    text-shadow: 1px 1px 2px black;
-    overflow: visible !important; 
-    z-index: 5;
+    const rankImg = document.getElementById('rank-badge-img');
+    if(rankImg) {
+        rankImg.src = getRankImage(data.rankName, data.equipped.hat);
+        rankImg.className = 'rank-img';
+        
+        if (data.equipped.hat && HATS_META[data.equipped.hat]) {
+            const r = HATS_META[data.equipped.hat].rarity;
+            if (r === 'legendary') rankImg.classList.add('hat-legendary');
+            if (r === 'mythical') rankImg.classList.add('hat-mythical');
+            if (r === 'legendary' || r === 'mythical') rankImg.classList.add('pulse-mythic');
+        }
+    }
+
+    const next = (data.nextRankXP === 'MAX') ? data.xp : data.nextRankXP;
+    let pct = 0;
+    const currentMin = data.currentRankMin || 0;
+    if (data.nextRankXP === 'MAX') { pct = 100; } 
+    else {
+        const totalRange = next - currentMin;
+        if (totalRange > 0) pct = ((data.xp - currentMin) / totalRange) * 100;
+    }
+    document.getElementById('xp-fill').style.width = `${Math.min(100, Math.max(0, pct))}%`;
+    const txt = document.getElementById('xp-text'); 
+    txt.textContent = (data.nextRankXP === 'MAX') ? 'MAX' : `${data.xp} / ${next} XP`;
+
+    if (tg && tg.CloudStorage) {
+        tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ 
+            xp: data.xp, streak: data.streak, coins: data.coins, 
+            wins: data.wins, matches: data.matches, inventory: data.inventory, equipped: data.equipped 
+        }));
+    }
+
+    if (document.getElementById('screen-shop').classList.contains('active')) {
+        document.getElementById('shop-coins').textContent = state.coins;
+        renderShop();
+    }
+    if (document.getElementById('screen-cabin').classList.contains('active')) {
+        document.getElementById('cabin-coins').textContent = state.coins;
+        renderCabin();
+    }
+});
+
+// --- SHOP ---
+const ITEMS_META = {
+    'skin_white': { name: 'Классика', price: 0, type: 'skins' },
+    'skin_red':   { name: 'Рубин', price: 200, type: 'skins' },
+    'skin_gold':  { name: 'Золото', price: 1000, type: 'skins' },
+    'skin_black': { name: 'Черная метка', price: 500, type: 'skins' },
+    'skin_blue':  { name: 'Морской', price: 300, type: 'skins' },
+    'skin_green': { name: 'Яд', price: 400, type: 'skins' },
+    'skin_purple':{ name: 'Магия вуду', price: 800, type: 'skins' },
+    'skin_bone':  { name: 'Костяной', price: 2500, type: 'skins' },
+    'frame_default': { name: 'Нет рамки', price: 0, type: 'frames' },
+    'frame_wood':    { name: 'Дерево', price: 100, type: 'frames' },
+    'frame_silver':  { name: 'Серебро', price: 300, type: 'frames' },
+    'frame_gold':    { name: 'Золото', price: 500, type: 'frames' },
+    'frame_fire':    { name: 'Огонь', price: 1500, type: 'frames' },
+    'frame_ice':     { name: 'Лед', price: 1200, type: 'frames' },
+    'frame_neon':    { name: 'Неон', price: 2000, type: 'frames' },
+    'frame_royal':   { name: 'Король', price: 5000, type: 'frames' },
+    'frame_ghost':   { name: 'Призрак', price: 3000, type: 'frames' },
+    'frame_kraken':  { name: 'Кракен', price: 4000, type: 'frames' },
+    'frame_captain': { name: 'Капитанская', price: 10000, type: 'frames' },
+    'frame_abyss':   { name: 'Бездна', price: 7500, type: 'frames' },
+    'bg_default': { name: 'Стандарт', price: 0, type: 'bg' },
+    'bg_lvl1':    { name: 'Палуба фрегата', price: 150000, type: 'bg' },
+    'bg_lvl2':    { name: 'Палуба Летучего Голландца', price: 150000, type: 'bg' },
+    'bg_lvl3':    { name: 'Палуба Черной Жемчужины', price: 150000, type: 'bg' },
+    'bg_lvl4':    { name: 'Палуба старой шлюпки', price: 150000, type: 'bg' },
+    'bg_lvl5':    { name: 'Палуба корабля-призрака', price: 500000, type: 'bg' }
+};
+
+let currentShopTab = 'skins'; 
+window.filterShop = (type) => {
+    currentShopTab = type;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById(`tab-${type}`);
+    if(btn) btn.classList.add('active');
+    renderShop();
+};
+
+function renderShop() {
+    const grid = document.getElementById('shop-items');
+    if(!grid) return;
+    grid.innerHTML = '';
+    for (const [id, meta] of Object.entries(ITEMS_META)) {
+        if (meta.type !== currentShopTab) continue; 
+        const owned = state.inventory.includes(id);
+        const equipped = state.equipped.skin === id || state.equipped.bg === id || state.equipped.frame === id;
+        let btnHTML = '';
+        if (equipped) btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
+        else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
+        else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
+        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><h4>${meta.name}</h4>${btnHTML}</div>`;
+    }
 }
 
-/* ИКОНКА (УВЕЛИЧЕНА В 2 РАЗА: 140px) */
-.rank-icon-box { 
-    width: 140px; height: 140px; /* БЫЛО 80px */
-    margin: -90px auto 5px; /* Сдвиг вверх */
-    display: flex; justify-content: center; align-items: center; 
-    z-index: 10; 
-    position: relative; 
-    overflow: visible !important; 
+bindClick('btn-shop', () => {
+    showScreen('shop');
+    const coinEl = document.getElementById('shop-coins');
+    if(coinEl) coinEl.textContent = state.coins;
+    renderShop();
+});
+bindClick('btn-shop-back', () => showScreen('home'));
+
+window.buyItem = (id, price) => {
+    if (state.coins >= price) socket.emit('shopBuy', id);
+    else uiAlert("Не хватает монет!", "УПС...");
+};
+window.equipItem = (id) => socket.emit('shopEquip', id);
+
+// --- CABIN (HATS) ---
+bindClick('btn-to-cabin', () => {
+    showScreen('cabin');
+    document.getElementById('cabin-coins').textContent = state.coins;
+    renderCabin();
+});
+bindClick('btn-cabin-back', () => showScreen('home'));
+
+function renderCabin() {
+    const grid = document.getElementById('cabin-items');
+    if(!grid) return;
+    grid.innerHTML = '';
+
+    const groups = {
+        'rare': 'Редкие',
+        'legendary': 'Легендарные',
+        'mythical': 'Мифические'
+    };
+
+    for (const [rarityKey, label] of Object.entries(groups)) {
+        const hatsInGroup = Object.entries(HATS_META).filter(([id, meta]) => meta.rarity === rarityKey);
+        
+        if (hatsInGroup.length > 0) {
+            grid.innerHTML += `<div class="cabin-category-title">${label}</div>`;
+            
+            hatsInGroup.forEach(([id, meta]) => {
+                const owned = state.inventory.includes(id);
+                const equipped = state.equipped.hat === id;
+                const cssClass = `rarity-${meta.rarity}`;
+                let imgUrl = getRankImage(null, id);
+                
+                let btnHTML = '';
+                if (equipped) btnHTML = `<button class="shop-btn equipped" onclick="equipHat(null)">СНЯТЬ</button>`;
+                else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipHat('${id}')">НАДЕТЬ</button>`;
+                else btnHTML = `<button class="shop-btn buy" onclick="buyHat('${id}', ${meta.price})">КУПИТЬ (${meta.price.toLocaleString()})</button>`;
+
+                grid.innerHTML += `
+                    <div class="shop-item ${owned ? 'owned' : ''} ${cssClass}">
+                        <img src="${imgUrl}" style="width:60px; height:60px; object-fit:contain; margin-bottom:5px;" class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}">
+                        <h4 style="font-size:0.8rem;">${meta.name}</h4>
+                        ${btnHTML}
+                    </div>`;
+            });
+        }
+    }
 }
 
-/* ШЛЯПЫ (МАСШТАБИРОВАНИЕ ПОД НОВЫЙ РАЗМЕР) */
-.rank-img { 
-    width: 100%; height: 100%; object-fit: contain; 
-    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); 
-    transition: transform 0.3s ease;
-    position: relative;
-    z-index: 15;
-}
+window.buyHat = (id, price) => {
+    if (state.coins >= price) socket.emit('hatBuy', id);
+    else uiAlert("Не хватает золота!", "УПС...");
+};
+window.equipHat = (id) => socket.emit('hatEquip', id);
 
-/* Коэффициенты чуть меньше, так как сама коробка уже 140px */
-.rank-img.hat-legendary { transform: scale(1.6) translateY(-10px); transform-origin: bottom center; }
-.rank-img.hat-mythical { transform: scale(2.0) translateY(-15px); transform-origin: bottom center; }
-
-/* ТЕКСТ ПРОФИЛЯ (КРУПНЕЕ) */
-.profile-card h2 { font-size: 1.8rem; margin: 5px 0 2px; font-weight: 900; } /* Имя */
-.rank-label { background: var(--blue); color: white; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 1rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-.streak-label { color: var(--primary); font-weight: 800; margin-bottom: 4px; font-size: 1.1rem; text-shadow: 1px 1px 0 black; }
-.coins-row { font-size: 1.4rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; text-shadow: 1px 1px 0 black; }
-.xp-track { background: rgba(0,0,0,0.6); height: 22px; border-radius: 11px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); margin-top: 5px;}
-.xp-bar { width: 100%; height: 100%; }
-.xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #ff9f1c); transition: width 0.5s ease; border-radius: 12px; }
-.xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); color: white; }
-
-/* --- ОСТАЛЬНОЕ --- */
-.shop-balance { font-size: 2rem; color: var(--accent); font-weight: 800; margin-bottom: 20px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
-.shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; }
-.tab-btn { padding: 8px 15px; border: none; background: rgba(0,0,0,0.3); color: #8d99ae; border-radius: 10px; font-weight: bold; cursor: pointer; }
-.tab-btn.active { background: #ef233c; color: white; }
-.shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 400px; max-height: 60vh; overflow-y: auto; padding-bottom: 40px; }
-.shop-item { background: var(--surface); padding: 10px; border-radius: 16px; text-align: center; border: 2px solid rgba(255,255,255,0.1); }
-.shop-item h4 { font-size: 0.9rem; margin: 5px 0; }
-.shop-item.owned { border-color: var(--success); }
-.shop-btn { width: 100%; padding: 8px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; min-height: auto; }
-.shop-btn.buy { background: var(--accent); color: var(--bg-color); }
-.shop-btn.equip { background: var(--blue); color: white; }
-.shop-btn.equipped { background: var(--success); color: #2b2d42; }
-
-.cabin-category-title { grid-column: 1 / -1; color: white; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid rgba(255,255,255,0.1); margin-top: 15px; margin-bottom: 10px; text-shadow: 1px 1px 0 black; padding-left: 5px; }
-.shop-item.rarity-rare { border: 2px solid #4cc9f0; box-shadow: 0 0 10px rgba(76, 201, 240, 0.3); }
-.shop-item.rarity-legendary { border: 2px solid #ffb703; box-shadow: 0 0 15px rgba(255, 183, 3, 0.4); }
-.shop-item.rarity-mythical { border: 2px solid #f72585; box-shadow: 0 0 20px rgba(247, 37, 133, 0.6); }
-
-.pulse-mythic { animation: mythicPulse 2s infinite; }
-@keyframes mythicPulse { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.05); filter: brightness(1.3); } 100% { transform: scale(1); filter: brightness(1); } }
-
-.setting-group { margin-bottom: 15px; }
-.setting-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: var(--secondary); font-weight: 700; }
-.stepper-row { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 16px; }
-.stepper-val { font-size: 1.5rem; font-weight: bold; color: var(--accent); min-width: 40px; text-align: center; }
-.time-selector { display: flex; gap: 8px; }
-.btn-time { flex: 1; padding: 10px; border: none; border-radius: 12px; background: rgba(0,0,0,0.3); color: var(--secondary); font-weight: 700; font-family: var(--font); cursor: pointer; }
-.btn-time.active { background: var(--accent); color: var(--bg-color); box-shadow: 0 4px 0 #c48e00; transform: translateY(-2px); }
-.room-code-card { background: var(--accent); color: var(--bg-color); border-radius: 20px; padding: 15px; text-align: center; margin-bottom: 10px; cursor: pointer; box-shadow: 0 6px 0 #c48e00; }
-.room-code-card:active { transform: translateY(4px); box-shadow: none; }
-.code-val { font-size: 2.5rem; font-weight: 800; line-height: 1; margin: 5px 0; }
-.code-label { font-size: 0.8rem; font-weight: 700; opacity: 0.7; }
-.code-hint { font-size: 0.7rem; opacity: 0.8; font-weight: 600; }
-.rules-tag { text-align: center; color: var(--secondary); font-size: 0.8rem; margin-bottom: 5px; font-weight: 600; }
-.bets-tag { text-align: center; color: #ff9f1c; font-size: 0.9rem; margin-bottom: 10px; font-weight: 800; text-shadow: 1px 1px 0 black; }
-.player-list-scroll { max-height: 300px; overflow-y: auto; }
-.player-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid var(--secondary); }
-.rank-sub { font-size: 0.7rem; color: var(--accent); margin-left: 5px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
-
-.game-layout { padding: 10px; }
-.rivals-bar-container { background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; margin-bottom: 10px; overflow: visible; margin-top: 45px; }
-.rivals-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; padding-top: 40px; margin-top: -40px; }
-
-.player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; box-shadow: 0 4px 0 rgba(0,0,0,0.2); z-index: 1; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
-.player-chip b { display: block; font-size: 0.7rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-.player-chip .rank-game { font-size: 0.6rem; color: var(--secondary); display: block; line-height: 1; margin-top: 2px; font-weight: 700; color: rgba(255,255,255,0.8); }
-.player-chip .dice-count { font-size: 0.9rem; font-weight: 800; color: white; margin-top: 2px; }
-.player-chip.turn { transform: translateY(-3px); box-shadow: 0 0 15px var(--accent); border-color: var(--accent) !important; }
-.player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
-
-.player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default { border: 2px solid transparent; background-image: none; background-color: var(--surface); }
-.player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood { border: 3px solid #8d6e63; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); }
-.player-chip.frame_silver, .profile-card.frame_silver, .modal-content.frame_silver { border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_serebro.png'); }
-.player-chip.frame_ice, .profile-card.frame_ice, .modal-content.frame_ice { border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_led.png'); }
-.player-chip.frame_neon, .profile-card.frame_neon, .modal-content.frame_neon { border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_neon.png'); }
-.player-chip.frame_gold, .profile-card.frame_gold, .modal-content.frame_gold { border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_zoloto.png'); }
-.player-chip.frame_fire, .profile-card.frame_fire, .modal-content.frame_fire { border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_ogon.png'); }
-.player-chip.frame_royal, .profile-card.frame_royal, .modal-content.frame_royal { border: 4px solid #ffd700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_korolevski.png'); }
-.player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); }
-.player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); }
-.player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); }
-
-.player-chip.frame_abyss, .profile-card.frame_abyss, .modal-content.frame_abyss { border: 3px solid #4a0072; box-shadow: 0 0 15px #7a00b3; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_bezdna.png'); background-size: cover; }
-
-.inv-preview.player-chip { min-width: auto; max-width: none; width: 40px; height: 40px; padding: 0; }
-.emote-bubble-img { position: absolute; width: 100px; height: 100px; left: 50%; top: 50%; transform: translate(-50%, -50%); animation: emotePop 3s ease-out forwards; pointer-events: none; z-index: 9999; filter: drop-shadow(0 0 10px rgba(0,0,0,0.8)); object-fit: contain; }
-@keyframes emotePop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 15% { transform: translate(-50%, -50%) scale(1); } 70% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -60%) scale(1.1); } }
-
-.table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-.timer-capsule { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; width: 80%; margin-bottom: 15px; }
-.timer-track { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
-.timer-progress { height: 100%; background: var(--success); width: 100%; border-radius: 5px; transition: width 0.1s linear, background-color 0.3s; }
-.bid-bubble { background: var(--text); color: var(--bg-color); padding: 20px; border-radius: 24px; text-align: center; min-width: 200px; box-shadow: 0 8px 0 #999; border: 4px solid var(--bg-color); position: relative; }
-.bid-bubble::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: var(--bg-color) transparent transparent transparent; }
-.bid-qty { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
-.bid-face { font-size: 2rem; background: var(--bg-color); color: white; padding: 2px 8px; border-radius: 8px; }
-.game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--text); text-shadow: 1px 1px 0 black; text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
-.my-controls-area { width: 100%; }
-.emotes-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
-.emotes-bar button { background: none; border: none; cursor: pointer; transition: transform 0.1s; padding: 0; }
-.emotes-bar button img { width: 70px; height: 70px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
-.emotes-bar button:active { transform: scale(1.2); }
-
-.my-dice-panel { text-align: center; margin-bottom: 5px; }
-.panel-label { font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; text-shadow: 1px 1px 0 black; }
-.my-dice-row { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; max-width: 100%; padding: 0 10px; }
-
-.die { width: var(--die-size); height: var(--die-size); border-radius: 8px; display: block; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); transition: transform 0.1s; border: none; background-color: transparent; box-shadow: none; }
-.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice1.png'); }
-.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice2.png'); }
-.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice3.png'); }
-.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice4.png'); }
-.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice5.png'); }
-.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice6.png'); }
-.skin_gold.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice1.png'); }
-.skin_gold.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice2.png'); }
-.skin_gold.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice3.png'); }
-.skin_gold.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice4.png'); }
-.skin_gold.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice5.png'); }
-.skin_gold.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice6.png'); }
-
-.skin_white { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); }
-
-.skin_red.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice1.png'); }
-.skin_red.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice2.png'); }
-.skin_red.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice3.png'); }
-.skin_red.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice4.png'); }
-.skin_red.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice5.png'); }
-.skin_red.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice6.png'); }
-
-.skin_black.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice1.png'); }
-.skin_black.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice2.png'); }
-.skin_black.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice3.png'); }
-.skin_black.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice4.png'); }
-.skin_black.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice5.png'); }
-.skin_black.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice6.png'); }
-
-.skin_blue  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(180deg); }
-
-.skin_green.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice1.png'); }
-.skin_green.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice2.png'); }
-.skin_green.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice3.png'); }
-.skin_green.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice4.png'); }
-.skin_green.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice5.png'); }
-.skin_green.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice6.png'); }
-
-.skin_purple{ filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(260deg); }
-.skin_cyber { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) invert(1) hue-rotate(90deg); }
-.skin_bone  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) sepia(0.5); }
-
-.action-panel { background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
-.hidden { display: none; }
-.bid-controls { display: flex; gap: 6px; margin-bottom: 6px; }
-.bid-stepper { flex: 1; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; text-align: center; }
-.bid-stepper label { font-size: 0.5rem; color: var(--secondary); font-weight: 700; display: block; margin-bottom: 1px; }
-.stepper-row { padding: 2px; }
-.bid-val { font-size: 1rem; min-width: 20px; }
-.dice-face { font-size: 1rem; padding: 0 4px; border-radius: 4px; }
-.main-actions { display: flex; gap: 6px; }
-.main-actions button { margin: 0; padding: 6px 4px; font-size: 0.75rem; margin-top: 0; border-radius: 10px; min-height: auto; }
-#btn-call-spot.hidden-rule { display: none !important; }
-
-.skills-bar { display: flex; justify-content: center; gap: 15px; margin-top: 15px; flex-wrap: wrap; margin-bottom: 5px; }
-.btn-skill { width: 35px; height: 35px; border: none; border-radius: 8px; cursor: pointer; background-color: transparent; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.6)); transition: transform 0.1s ease, filter 0.1s ease; box-shadow: none; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-.btn-skill:active { transform: translateY(4px); filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
-.skill-ears { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/skills/ihearu.png'); }
-.skill-lucky { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/skills/saviorcube.png'); }
-.skill-kill { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/skills/kill.png'); }
-@keyframes popIn { 0% { opacity: 0; transform: scale(0.5) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
-.modal-overlay.active { display: flex; }
-.modal-content { background: var(--surface); border-radius: 24px; padding: 30px 20px; width: 100%; max-width: 340px; position: relative; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
-.btn-close { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--secondary); font-size: 1.5rem; cursor: pointer; padding: 10px; z-index: 5; }
-.rank-icon-box.small { width: 60px; height: 60px; margin-top: -10px; }
-.rank-icon-box.small .rank-emoji { font-size: 2rem; }
-.stats-row { display: flex; justify-content: space-around; margin: 20px 0; background: rgba(0,0,0,0.4); border-radius: 16px; padding: 15px 5px; border: 1px solid rgba(255,255,255,0.1); }
-.stat-box { text-align: center; }
-.stat-val { font-size: 1.4rem; font-weight: 800; color: white; text-shadow: 1px 1px 0 black; }
-.stat-label { font-size: 0.7rem; color: var(--secondary); text-transform: uppercase; font-weight: 700; color: rgba(255,255,255,0.7); }
-.modal-subtitle { font-size: 1rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; text-shadow: 1px 1px 0 black; }
-.inventory-grid-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; max-height: 150px; overflow-y: auto; }
-.inv-item { background: rgba(0,0,0,0.4); border-radius: 10px; padding: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); }
-.inv-item span { font-size: 0.6rem; margin-top: 4px; opacity: 0.9; line-height: 1; color: white; text-shadow: 1px 1px 0 black; }
-.inv-preview { width: 30px; height: 30px; border-radius: 6px; }
-.clickable-card { cursor: pointer; transition: transform 0.2s; }
-.clickable-card:active { transform: scale(0.98); }
-
-.modal-title { font-size: 1.8rem; color: var(--accent); margin-bottom: 15px; text-transform: uppercase; font-weight: 800; text-shadow: 2px 2px 0 #d90429; }
-.scrollable-content { max-height: 80vh; overflow-y: auto; text-align: left; }
-.rules-section { margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 16px; }
-.rules-section h3 { color: var(--secondary); font-size: 1.1rem; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
-.rules-section p { font-size: 0.9rem; line-height: 1.4; margin-bottom: 8px; color: rgba(255,255,255,0.9); }
-.rules-section b { color: var(--accent); }
-.rules-footer { text-align: center; font-size: 0.7rem; opacity: 0.5; margin-top: 20px; font-weight: 600; }
-.inv-category-title { grid-column: 1 / -1; font-size: 0.8rem; color: var(--accent); margin-top: 10px; margin-bottom: 5px; text-align: left; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); text-shadow: 1px 1px 0 black; }
-.bet-selector { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; margin-top: 8px; }
-.bet-label { font-weight: bold; font-size: 0.9rem; min-width: 120px; }
-input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
-#sys-input { width: 100%; padding: 10px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; text-align: center; font-weight: 800; font-size: 1.2rem; outline: none; }
-#sys-input:focus { border-color: var(--accent); }
-.bid-container { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.bid-die-icon { width: 45px !important; height: 45px !important; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.6)); }
-#screen-result .slide-up-delay { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin-top: 25px; }
-
-/* АДАПТИВНОСТЬ (ПОПРАВИЛ, ЧТОБЫ НА МЕЛКИХ НЕ РАЗРЫВАЛО) */
-@media (max-height: 750px) {
-    .game-logo { max-width: 300px; margin-bottom: 5px; }
-    .profile-card { margin-top: 55px; }
-    .menu-buttons { margin-top: -5px; }
-}
-@media (max-height: 600px) {
-    .game-logo { max-width: 220px; }
-    .title-text { font-size: 1.5rem; margin-bottom: 10px; }
-    .profile-card { margin-top: 45px; transform: scale(0.9); }
-}
-
-
-
+// --- PVE, SETTINGS, ETC (No changes below, keep existing logic) ---
+bindClick('btn-to-pve', () => showScreen('pve-settings'));
+bindClick('btn-pve-back', () => showScreen('home'));
+window.setDiff = (diff) => {
+    state.pve.difficulty = diff;
+    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
+    const container = document.querySelector('#screen-pve-settings .time-selector');
+    if(container) { Array.from(container.children).forEach(btn => { if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active'); }); }
+    const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
+    document.getElementById('diff-desc').textContent = desc[diff];
+};
+bindClick('btn-start-pve', () => {
+    socket.emit('joinOrCreateRoom', { roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123, first_name:state.username}, mode: 'pve', options: { dice: state.pve.dice, players: state.pve.bots + 1, jokers: state.pve.jokers, spot: state.pve.spot, strict: state.pve.strict, difficulty: state.pve.difficulty } });
+});
+bindClick('btn-to-create', () => showScreen('create-settings'));
+bindClick('btn-back-home', () => showScreen('home'));
+window.setTime = (sec) => {
+    state.createTime = sec;
+    const container = document.querySelector('#screen-create-settings .time-selector');
+    if (container) { Array.from(container.children).forEach(btn => { btn.classList.remove('active'); if (parseInt(btn.textContent) === sec) btn.classList.add('active'); }); }
+};
+window.adjSetting = (type, delta) => {
+    if (type === 'dice') { state.createDice = Math.max(1, Math.min(10, state.createDice + delta)); state.pve.dice = state.createDice; document.querySelectorAll('#set-dice, #pve-dice').forEach(el => el.textContent = state.createDice); } 
+    else if (type === 'players') { state.createPlayers = Math.max(2, Math.min(10, state.createPlayers + delta)); document.getElementById('set-players').textContent = state.createPlayers; }
+    else if (type === 'bots') { state.pve.bots = Math.max(1, Math.min(9, state.pve.bots + delta)); document.getElementById('pve-bots').textContent = state.pve.bots; }
+};
+bindClick('btn-confirm-create', () => {
+    const betCoins = COIN_STEPS[document.getElementById('range-bet-coins').value];
+    const betXp = XP_STEPS[document.getElementById('range-bet-xp').value];
+    if((betCoins > 0 && betCoins > state.coins) || (betXp > 0 && betXp > state.xp)) { document.getElementById('modal-res-alert').classList.add('active'); return; }
+    socket.emit('joinOrCreateRoom', { roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123, first_name:state.username}, options: { dice: state.createDice, players: state.createPlayers, time: state.createTime, jokers: state.rules.jokers, spot: state.rules.spot, strict: state.rules.strict, betCoins: betCoins, betXp: betXp } });
+});
+window.toggleRule = (rule, isPve = false) => {
+    const target = isPve ? state.pve : state.rules;
+    target[rule] = !target[rule];
+    const id = isPve ? (rule==='jokers'?'btn-rule-jokers-pve':`btn-rule-${rule}-pve`) : (rule==='jokers'?'btn-rule-jokers':`btn-rule-${rule}`);
+    document.getElementById(id).classList.toggle('active', target[rule]);
+};
+window.updateBetVal = (type) => {
+    const val = parseInt(document.getElementById(`range-bet-${type}`).value);
+    document.getElementById(`val-bet-${type}`).textContent = (type === 'coins') ? COIN_STEPS[val] : XP_STEPS[val];
+};
+window.closeResAlert = () => { document.getElementById('modal-res-alert').classList.remove('active'); };
+window.requestMyStats = () => { socket.emit('getPlayerStats', 'me'); };
+window.requestPlayerStats = (socketId) => { if (socketId && (socketId.toString().startsWith('bot') || socketId.toString().startsWith('CPU'))) { uiAlert("Это бот. У него нет души."); return; } socket.emit('getPlayerStats', socketId); };
+socket.on('showPlayerStats', (data) => {
+    const modal = document.getElementById('modal-player'); if (!modal) return;
+    const content = modal.querySelector('.modal-content'); content.className = 'modal-content pop-in'; if (data.equipped.frame && data.equipped.frame !== 'frame_default') content.classList.add(data.equipped.frame);
+    document.getElementById('info-name').textContent = data.name;
+    document.getElementById('info-rank-name').textContent = data.rankName;
+    document.getElementById('info-matches').textContent = data.matches;
+    document.getElementById('info-wins').textContent = data.wins;
+    document.getElementById('info-wr').textContent = (data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0) + '%';
+    const rankImg = document.getElementById('info-rank-img'); if(rankImg) rankImg.src = getRankImage(data.rankName, data.equipped?.hat);
+    const invGrid = document.getElementById('info-inventory'); invGrid.innerHTML = '';
+    const categories = { 'hats': 'Шляпы', 'skins': 'Кости', 'frames': 'Рамки', 'bg': 'Палуба' };
+    const getType = (id) => { if(HATS_META[id]) return 'hats'; if(ITEMS_META[id]) return ITEMS_META[id].type; return null; };
+    if (data.inventory && data.inventory.length > 0) {
+        for (const [catKey, label] of Object.entries(categories)) {
+            const items = data.inventory.filter(id => getType(id) === catKey);
+            if (items.length > 0) {
+                const header = document.createElement('div'); header.className = 'inv-category-title'; header.textContent = label; invGrid.appendChild(header);
+                items.forEach(itemId => {
+                    let name = '???', preview = '';
+                    if (catKey === 'hats') { name = HATS_META[itemId].name; const url = getRankImage(null, itemId); preview = `<img src="${url}" style="width:30px;height:30px;object-fit:contain;">`; } 
+                    else { const meta = ITEMS_META[itemId]; name = meta.name; if (meta.type === 'skins') preview = `<div class="inv-preview die ${itemId} face-6" style="width:30px;height:30px;"></div>`; else if (meta.type === 'frames') preview = `<div class="inv-preview player-chip ${itemId}" style="width:30px; height:30px;"></div>`; else if (meta.type === 'bg') preview = `<div class="inv-preview" style="background: #5D4037; border: 1px solid #aaa;"></div>`; }
+                    invGrid.insertAdjacentHTML('beforeend', `<div class="inv-item">${preview}<span>${name}</span></div>`);
+                });
+            }
+        }
+    } else { invGrid.innerHTML = '<div style="grid-column:1/-1; opacity:0.5; font-size:0.8rem;">Пусто</div>'; }
+    modal.classList.add('active');
+});
+window.closePlayerModal = (e) => { if (!e || e.target.id === 'modal-player' || e.target.classList.contains('btn-close')) { document.getElementById('modal-player').classList.remove('active'); } };
+window.openRules = () => { document.getElementById('modal-rules').classList.add('active'); };
+window.closeRules = (e) => { if (!e || e.target.id === 'modal-rules' || e.target.classList.contains('btn-close')) { document.getElementById('modal-rules').classList.remove('active'); } };
+window.leaveLobby = () => { socket.emit('leaveRoom'); setTimeout(() => location.reload(), 100); };
+window.leaveGame = () => { uiConfirm("Сдаться и покинуть игру? Вы потеряете ставку.", () => { socket.emit('leaveRoom'); setTimeout(() => location.reload(), 100); }); };
+bindClick('btn-join-room', () => { uiPrompt("Введи код комнаты:", (code) => { const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username }; if(code) socket.emit('joinOrCreateRoom', { roomId: code.toUpperCase().trim(), tgUser: userPayload }); }); });
+bindClick('share-btn', () => { const code = state.roomId; navigator.clipboard.writeText(code).then(() => uiAlert('Код скопирован!')).catch(() => { uiPrompt("Код комнаты (скопируй вручную):", () => {}); document.getElementById('sys-input').value = code; }); });
+bindClick('btn-ready', function() { const isReady = this.textContent === "Я ГОТОВ"; socket.emit('setReady', isReady); this.textContent = isReady ? "НЕ ГОТОВ" : "Я ГОТОВ"; this.className = isReady ? "btn btn-green" : "btn btn-blue"; });
+bindClick('btn-start-game', () => socket.emit('startGame'));
+window.adjBid = (type, delta) => { if (type === 'qty') { state.bidQty = Math.max(1, state.bidQty + delta); document.getElementById('display-qty').textContent = state.bidQty; } else { state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta)); document.getElementById('display-val').textContent = state.bidVal; } };
+bindClick('btn-make-bid', () => socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal }));
+bindClick('btn-call-bluff', () => socket.emit('callBluff'));
+bindClick('btn-call-spot', () => socket.emit('callSpot'));
+bindClick('btn-restart', () => socket.emit('requestRestart'));
+bindClick('btn-home', () => location.reload());
+window.sendEmote = (e) => { socket.emit('sendEmote', e); };
+socket.on('emoteReceived', (data) => { const el = document.querySelector(`.player-chip[data-id='${data.id}']`); if (el) { const img = document.createElement('img'); img.className = 'emote-bubble-img'; img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`; el.appendChild(img); setTimeout(() => { if(img.parentNode) img.remove(); }, 3000); if(tg) tg.HapticFeedback.selectionChanged(); } });
+socket.on('skillResult', (data) => { const modal = document.getElementById('modal-skill-alert'); const iconEl = document.getElementById('skill-alert-title'); let icon = '⚡'; if (data.type === 'ears') icon = '👂'; else if (data.type === 'lucky') icon = '🎲'; else if (data.type === 'kill') icon = '🔫'; iconEl.textContent = icon; document.getElementById('skill-alert-text').textContent = data.text; modal.classList.add('active'); });
+window.closeSkillAlert = () => { document.getElementById('modal-skill-alert').classList.remove('active'); };
+socket.on('errorMsg', (msg) => { if (msg === 'NO_FUNDS') { document.getElementById('modal-res-alert').classList.add('active'); } else { uiAlert(msg, "ОШИБКА"); } });
+socket.on('roomUpdate', (room) => { state.roomId = room.roomId; if (room.status === 'LOBBY') { showScreen('lobby'); document.getElementById('lobby-room-id').textContent = room.roomId; if (room.config) { document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`; state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp }; let betStr = ''; if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `; if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`; document.getElementById('lobby-bets').textContent = betStr; } const list = document.getElementById('lobby-players'); list.innerHTML = ''; room.players.forEach(p => { list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')"><div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div><span>${p.ready?'✅':'⏳'}</span></div>`; }); const me = room.players.find(p => p.id === socket.id); const startBtn = document.getElementById('btn-start-game'); if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none'; } });
+socket.on('gameEvent', (evt) => { const log = document.getElementById('game-log'); if(log) log.innerHTML = `<div>${evt.text}</div>`; if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning'); });
+socket.on('yourDice', (dice) => { const skin = state.equipped.skin || 'skin_white'; document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join(''); });
+socket.on('gameState', (gs) => { showScreen('game'); document.body.className = gs.activeBackground || 'bg_default'; let rulesText = ''; if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  '; if (gs.activeRules.spot) rulesText += '🎯 В точку'; if (gs.activeRules.strict) rulesText += '🔒 Строго'; document.getElementById('active-rules-display').textContent = rulesText; const bar = document.getElementById('players-bar'); const activeIds = new Set(gs.players.map(p => p.id)); gs.players.forEach(p => { let chip = bar.querySelector(`.player-chip[data-id="${p.id}"]`); const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default'; const turnClass = p.isTurn ? 'turn' : ''; const deadClass = p.isEliminated ? 'dead' : ''; const finalClass = `player-chip ${turnClass} ${deadClass} ${frameClass}`; if (!chip) { chip = document.createElement('div'); chip.setAttribute('data-id', p.id); chip.setAttribute('onclick', `requestPlayerStats('${p.id}')`); bar.appendChild(chip); chip.innerHTML = `<b>${p.name}</b><span class="rank-game">${p.rank}</span><div class="dice-count">🎲 ${p.diceCount}</div>`; } chip.className = finalClass; chip.querySelector('b').textContent = p.name; chip.querySelector('.rank-game').textContent = p.rank; chip.querySelector('.dice-count').textContent = `🎲 ${p.diceCount}`; }); Array.from(bar.children).forEach(child => { if (!activeIds.has(child.getAttribute('data-id'))) child.remove(); }); const bid = document.getElementById('current-bid-display'); if (gs.currentBid) { const bidder = gs.players.find(p => p.id === gs.currentBid.playerId); const skin = bidder?.equipped?.skin || 'skin_white'; bid.innerHTML = `<div class="bid-container"><div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span></div><div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div></div>`; state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs(); } else { const me = gs.players.find(p => p.id === socket.id); if (me?.isTurn) { bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`; } else { const turnPlayer = gs.players.find(p => p.isTurn); const name = turnPlayer ? turnPlayer.name : "Ожидание"; bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`; } state.bidQty = 1; state.bidVal = 2; updateInputs(); } const me = gs.players.find(p => p.id === socket.id); const myTurn = me?.isTurn; const controls = document.getElementById('game-controls'); const spotBtn = document.getElementById('btn-call-spot'); if (spotBtn) { if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule'); else spotBtn.classList.add('hidden-rule'); } const existingSkills = document.querySelector('.skills-bar'); if(existingSkills) existingSkills.remove(); if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) { const skillsDiv = document.createElement('div'); skillsDiv.className = 'skills-bar'; me.availableSkills.forEach(skill => { const btn = document.createElement('button'); btn.className = `btn-skill skill-${skill}`; btn.setAttribute('onclick', `useSkill('${skill}')`); skillsDiv.appendChild(btn); }); document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls); } if(myTurn) { controls.classList.remove('hidden'); controls.classList.add('slide-up'); document.getElementById('btn-call-bluff').disabled = !gs.currentBid; if(spotBtn) spotBtn.disabled = !gs.currentBid; if(tg) tg.HapticFeedback.impactOccurred('medium'); } else { controls.classList.add('hidden'); } if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } });
+window.useSkill = (skillType) => { socket.emit('useSkill', skillType); };
+socket.on('roundResult', (data) => uiAlert(data.message, "ИТОГ"));
+socket.on('gameOver', (data) => { showScreen('result'); document.getElementById('winner-name').textContent = data.winner; const isWinner = (data.winner === state.username); const profitEl = document.getElementById('result-profit'); if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) { if (isWinner) { let txt = 'Выигрыш: '; if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#06d6a0'; } else { let txt = 'Потеряно: '; if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#ef233c'; } } else { profitEl.textContent = ''; } if(tg) tg.HapticFeedback.notificationOccurred('success'); });
+function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
+function startVisualTimer(remaining, total) { if (state.timerFrame) cancelAnimationFrame(state.timerFrame); const bar = document.querySelector('.timer-progress'); if (!bar) return; if (remaining <= 0 || !total) { bar.style.width = '0%'; return; } const endTime = Date.now() + remaining; function tick() { const now = Date.now(); const left = endTime - now; if (left <= 0) { bar.style.width = '0%'; return; } const pct = (left / total) * 100; bar.style.width = `${Math.min(100, Math.max(0, pct))}%`; if (pct < 25) bar.style.backgroundColor = '#ef233c'; else if (pct < 50) bar.style.backgroundColor = '#ffb703'; else bar.style.backgroundColor = '#06d6a0'; state.timerFrame = requestAnimationFrame(tick); } tick(); }
