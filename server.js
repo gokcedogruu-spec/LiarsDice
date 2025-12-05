@@ -33,18 +33,15 @@ const RANKS = [
 ];
 
 const HATS = {
-    // RARE (1M)
     'hat_fallen': { price: 1000000, level: 6 },
     'hat_rich': { price: 1000000, level: 6 },
     'hat_underwater': { price: 1000000, level: 6 },
     'hat_voodoo': { price: 1000000, level: 6 },
-    // LEGENDARY (10M)
     'hat_king_voodoo': { price: 10000000, level: 6 },
     'hat_cursed': { price: 10000000, level: 6 },
     'hat_flame': { price: 10000000, level: 6 },
     'hat_frozen': { price: 10000000, level: 6 },
     'hat_ghost': { price: 10000000, level: 6 },
-    // MYTHICAL (100M)
     'hat_lava': { price: 100000000, level: 7 },
     'hat_deadlycursed': { price: 100000000, level: 7 },
     'hat_antarctica': { price: 100000000, level: 7 }
@@ -57,6 +54,7 @@ function getUserData(userId) {
     if (!userDB.has(userId)) {
         userDB.set(userId, { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
+            matchHistory: [], lossStreak: 0, // NEW: Для расчета среднего и яда
             name: 'Unknown', username: null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
             equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null }
@@ -71,6 +69,7 @@ function syncUserData(tgUser, savedData) {
     if (!user) {
         user = { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
+            matchHistory: [], lossStreak: 0,
             name: tgUser.first_name, 
             username: tgUser.username ? tgUser.username.toLowerCase() : null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
@@ -113,35 +112,160 @@ function getRankInfo(xp, streak) {
     return { current, next };
 }
 
+// --- ГЛАВНАЯ ФУНКЦИЯ НАГРАД (ОБНОВЛЕННАЯ) ---
 function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, winnerPotMultiplier = 0) {
     if (typeof userId === 'string' && userId.startsWith('bot')) return null;
     const user = getUserData(userId);
     const currentRankInfo = getRankInfo(user.xp, user.streak);
+    const skin = user.equipped.skin;
+
+    // Инициализация (если старый юзер)
+    if (!user.matchHistory) user.matchHistory = [];
+    if (typeof user.lossStreak === 'undefined') user.lossStreak = 0;
+
+    // Базовые значения выигрыша
+    let baseWinXP = 65;
+    let baseWinCoins = 50;
     
-    if (type === 'win_game') {
-        user.matches++; user.wins++; user.streak++;
-        user.xp += 65; user.coins += 50;
-        if(winnerPotMultiplier > 0) {
-            user.coins += (betCoins * winnerPotMultiplier);
-            user.xp += (betXp * winnerPotMultiplier);
-        }
-    } 
-    else if (type === 'lose_game') {
-        user.matches++; user.streak = 0;
-        if (currentRankInfo.current.penalty) user.xp -= currentRankInfo.current.penalty;
-        user.coins += 10;
-        user.coins -= betCoins;
-        user.xp -= betXp;
-    }
-    else if (type === 'win_pve') {
-        user.matches++;
-        if (difficulty === 'medium') { user.xp += 10; user.coins += 10; }
-        else if (difficulty === 'pirate') { user.xp += 40; user.coins += 40; }
-    }
-    else if (type === 'lose_pve') {
-        user.matches++;
+    // PVE значения
+    if (type === 'win_pve') {
+        if (difficulty === 'medium') { baseWinXP = 10; baseWinCoins = 10; }
+        else if (difficulty === 'pirate') { baseWinXP = 40; baseWinCoins = 40; }
     }
 
+    // Добавляем выигрыш со ставок в базу (до умножения)
+    let potCoins = 0;
+    let potXP = 0;
+    if (winnerPotMultiplier > 0) {
+        potCoins = betCoins * winnerPotMultiplier;
+        potXP = betXp * winnerPotMultiplier;
+    }
+
+    // Итоговое изменение
+    let deltaCoins = 0;
+    let deltaXP = 0;
+
+    if (type === 'win_game' || type === 'win_pve') {
+        user.matches++; user.wins++; user.streak++; user.lossStreak = 0;
+        
+        let totalMatchCoins = baseWinCoins + potCoins;
+        let totalMatchXP = baseWinXP + potXP;
+
+        // 1. Сохраняем историю для расчета среднего (храним последние 10)
+        user.matchHistory.push({ c: totalMatchCoins, x: totalMatchXP });
+        if (user.matchHistory.length > 10) user.matchHistory.shift();
+
+        // Расчет среднего заработка за последние N матчей
+        const calcAvg = (n) => {
+            const slice = user.matchHistory.slice(-n);
+            if (slice.length === 0) return { c: 0, x: 0 };
+            const sumC = slice.reduce((a, b) => a + b.c, 0);
+            const sumX = slice.reduce((a, b) => a + b.x, 0);
+            return { c: sumC / slice.length, x: sumX / slice.length };
+        };
+
+        let bonusMultiplierCoins = 1.0;
+        let bonusMultiplierXP = 1.0;
+        let flatBonusCoins = 0;
+        let flatBonusXP = 0;
+
+        // --- БАФФЫ СЕРИЙ ПОБЕД ---
+        
+        // Глобальный бонус: каждые 10 побед (+10% от среднего)
+        // НЕ РАБОТАЕТ ДЛЯ ЯДОВИТОГО
+        if (skin !== 'skin_green' && user.streak > 0 && user.streak % 10 === 0) {
+            const avg10 = calcAvg(10);
+            flatBonusCoins += (avg10.c * 0.10);
+            flatBonusXP += (avg10.x * 0.10);
+        }
+
+        // Скин: Золото (+15% монет, -10% XP)
+        if (skin === 'skin_gold') { bonusMultiplierCoins += 0.15; bonusMultiplierXP -= 0.10; }
+        
+        // Скин: Черная метка (-10% монет, +15% XP)
+        if (skin === 'skin_black') { bonusMultiplierCoins -= 0.10; bonusMultiplierXP += 0.15; }
+
+        // Скин: Рубин (+4% от среднего за 5 побед, суммируется с глобальным)
+        if (skin === 'skin_red' && user.streak > 0 && user.streak % 5 === 0) {
+            const avg5 = calcAvg(5);
+            flatBonusCoins += (avg5.c * 0.04);
+            // XP бонуса нет
+        }
+
+        // Скин: Ядовитый (+1% за победу, стак до 20%, без глобального бонуса)
+        if (skin === 'skin_green') {
+            let poisonStack = Math.min(user.streak, 20);
+            let poisonFactor = poisonStack / 100; // 0.01 - 0.20
+            // Применяем как множитель к текущему выигрышу
+            bonusMultiplierCoins += poisonFactor;
+            bonusMultiplierXP += poisonFactor;
+        }
+
+        // Скин: Вуду (10% шанс х2 или х0)
+        if (skin === 'skin_purple') {
+            const r = Math.random();
+            if (r < 0.1) bonusMultiplierCoins += 1.0; // x2
+            else if (r > 0.9) bonusMultiplierCoins = 0; // x0
+        }
+
+        deltaCoins = (totalMatchCoins * bonusMultiplierCoins) + flatBonusCoins;
+        deltaXP = (totalMatchXP * bonusMultiplierXP) + flatBonusXP;
+
+    } else if (type === 'lose_game' || type === 'lose_pve') {
+        user.matches++; 
+        user.streak = 0; 
+        user.lossStreak++;
+
+        // Базовый штраф ранга
+        let rankPenalty = currentRankInfo.current.penalty || 0;
+        let xpLossBase = rankPenalty + betXp;
+        let coinLossBase = betCoins; // Теряем ставку
+
+        // Утешительный приз (только монеты)
+        let consolation = 10;
+
+        // --- ДЕБАФФЫ ПРОИГРЫША ---
+
+        // Скин: Рубин (теряешь на 5% больше XP от всей суммы потерь)
+        if (skin === 'skin_red') {
+            xpLossBase = xpLossBase * 1.05;
+        }
+
+        // Скин: Морской (-20% штрафа)
+        if (skin === 'skin_blue') {
+            xpLossBase = xpLossBase * 0.8;
+        }
+
+        // Скин: Костяной (Дороже вход на 5% = теряем на 5% больше монет)
+        if (skin === 'skin_bone') {
+            coinLossBase = coinLossBase * 1.05;
+            // Бафф: Если всухую (эмулируем - если это первая смерть в комнате)
+            // Сложно отследить "всухую", давай просто дадим шанс 20% на возврат 10% ставки
+            if (Math.random() < 0.2 && betCoins > 0) {
+                consolation += (betCoins * 0.10);
+            }
+        }
+
+        // Скин: Ядовитый (Стак штрафа за серию поражений до 20%)
+        if (skin === 'skin_green') {
+            let poisonLossStack = Math.min(user.lossStreak, 20);
+            let poisonLossFactor = 1.0 + (poisonLossStack / 100);
+            xpLossBase = xpLossBase * poisonLossFactor;
+            coinLossBase = coinLossBase * poisonLossFactor;
+            consolation = 0; // Нет утешения
+        }
+
+        // Применяем
+        user.xp -= Math.floor(xpLossBase);
+        user.coins -= Math.floor(coinLossBase);
+        user.coins += consolation; // Утешение
+    }
+
+    // Применяем дельту выигрыша
+    if (deltaCoins > 0) user.coins += Math.floor(deltaCoins);
+    if (deltaXP > 0) user.xp += Math.floor(deltaXP);
+
+    // Лимиты
     if (user.xp < 0) user.xp = 0;
     if (user.coins < 0) user.coins = 0;
 
@@ -182,9 +306,9 @@ function pushProfileUpdate(userId) {
     const socketId = findSocketIdByUserId(userId);
     if (socketId) {
         const user = userDB.get(userId);
-        const rInfo = getRankInfo(user.xp, user.streak);
+        const rank = getRankInfo(user.xp, user.streak);
         io.to(socketId).emit('profileUpdate', { 
-            ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min || 'MAX', rankLevel: rInfo.current.level 
+            ...user, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level 
         });
     }
 }
@@ -626,7 +750,7 @@ if (bot) {
             // Add all hats to unlock all
             const allHats = Object.keys(HATS);
             user.inventory = [
-                'skin_white', 'skin_red', 'skin_gold', 'skin_black', 'skin_blue', 'skin_green', 'skin_purple', 'skin_cyber', 'skin_bone',
+                'skin_white', 'skin_red', 'skin_gold', 'skin_black', 'skin_blue', 'skin_green', 'skin_purple', 'skin_bone',
                 'bg_default', 'bg_lvl1', 'bg_lvl2', 'bg_lvl3', 'bg_lvl4', 'bg_lvl5',
                 'frame_default', 'frame_wood', 'frame_silver', 'frame_gold', 'frame_fire', 'frame_ice', 'frame_neon', 'frame_royal', 'frame_ghost', 'frame_kraken', 'frame_captain', 'frame_abyss',
                 ...allHats
@@ -704,9 +828,10 @@ io.on('connection', (socket) => {
     socket.on('shopBuy', (itemId) => { 
         if (!socket.tgUserId) return;
         const user = getUserData(socket.tgUserId);
+        // Удалил кибер (skin_cyber)
         const PRICES = { 
             'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 
-            'skin_green': 400, 'skin_purple': 800, 'skin_cyber': 1500, 'skin_bone': 2500, 
+            'skin_green': 400, 'skin_purple': 800, 'skin_bone': 2500, 
             'bg_lvl1': 150000, 'bg_lvl2': 150000, 'bg_lvl3': 150000, 'bg_lvl4': 150000, 'bg_lvl5': 500000, 
             'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 
             'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 
