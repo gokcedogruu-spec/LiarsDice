@@ -271,7 +271,13 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .skin_gold.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice6.png'); }
 
 .skin_white { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); }
-.skin_red   { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) sepia(1) saturate(4) hue-rotate(-50deg); }
+
+.skin_red.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice1.png'); }
+.skin_red.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice2.png'); }
+.skin_red.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice3.png'); }
+.skin_red.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice4.png'); }
+.skin_red.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice5.png'); }
+.skin_red.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice6.png'); }
 
 .skin_black.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice1.png'); }
 .skin_black.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice2.png'); }
@@ -359,5 +365,6 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     .title-text { font-size: 1.5rem; margin-bottom: 10px; }
     .profile-card { margin-top: 45px; transform: scale(0.9); }
 }
+
 
 
