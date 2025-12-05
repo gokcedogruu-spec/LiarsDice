@@ -32,7 +32,7 @@ body.bg_lvl4 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); }
 
 #app { height: 100%; display: flex; flex-direction: column; }
-.screen { display: none; height: 100%; padding: 10px; flex-direction: column; } /* Меньше паддинг экрана */
+.screen { display: none; height: 100%; padding: 10px; flex-direction: column; }
 .screen.active { display: flex; }
 .center-content { justify-content: center; align-items: center; }
 
@@ -42,12 +42,13 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* --- ЛОГОТИП (УВЕЛИЧЕН) --- */
+/* --- ЛОГОТИП (ПОДНЯТ НА 5px) --- */
 .game-logo {
     width: 95%; 
-    max-width: 500px; /* БЫЛО 350px */
+    max-width: 500px; 
     height: auto; 
-    margin-bottom: 0; /* Убрал отступ снизу */
+    margin-bottom: 0; 
+    margin-top: -5px; /* <--- ПОДНЯЛ */
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
     transition: transform 0.3s;
 }
@@ -70,16 +71,16 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 
 .subtitle { font-family: var(--font); font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 
-/* --- КНОПКИ (СЖАТЫ) --- */
+/* --- КНОПКИ --- */
 .btn { 
     width: 100%; 
-    padding: 8px; /* Меньше отступ */
-    border: none; border-radius: 15px; /* Меньше радиус */
+    padding: 8px; 
+    border: none; border-radius: 15px; 
     font-family: var(--font); 
-    font-size: 0.9rem; /* Меньше шрифт */
+    font-size: 0.9rem; 
     font-weight: 800; cursor: pointer; margin-top: 0; 
     transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); 
-    min-height: 40px; /* Меньше высота */
+    min-height: 40px; 
     display: flex; align-items: center; justify-content: center;
 }
 .btn:active { transform: translateY(4px); box-shadow: none !important; }
@@ -94,11 +95,11 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 
 #btn-pve-back, #btn-back-home, #btn-shop-back, #btn-cabin-back { margin-top: 10px !important; }
 
-/* --- МЕНЮ (ПОДНЯТО) --- */
+/* --- МЕНЮ --- */
 .menu-buttons {
     display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
     width: 100%; max-width: 340px; 
-    margin-top: -10px; /* Тянем вверх к профилю */
+    margin-top: -10px; 
 }
 
 #btn-to-create, #btn-to-pve, #btn-join-room { grid-column: span 2; }
@@ -109,6 +110,7 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .btn-icon { position: absolute; top: 15px; width: 40px; height: 40px; background: var(--surface); color: var(--accent); border: 2px solid var(--accent); border-radius: 50%; font-size: 1.5rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; display: flex; align-items: center; justify-content: center; }
 .btn-icon:active { transform: scale(0.9); }
 .btn-rules { right: 15px; }
+.btn-encyclopedia { right: 65px; color: var(--blue); border-color: var(--blue); } /* <--- КНОПКА ЭНЦИКЛОПЕДИИ */
 .btn-lobby-back { top: 15px; left: 15px; position: absolute; }
 .btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
 
@@ -116,16 +118,16 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.1rem; text-align: center; outline: none; font-weight: 600; }
 
-/* --- ПРОФИЛЬ (БОЛЬШОЙ) --- */
+/* --- ПРОФИЛЬ (ПОДНЯТ НА 5px) --- */
 .profile-card { 
     background: var(--surface); 
     border-radius: 20px; 
     padding: 10px 20px;          
     width: 100%; 
-    max-width: 360px; /* Максимальная ширина */      
+    max-width: 340px;      
     text-align: center; 
     margin-bottom: 10px; 
-    margin-top: 75px; /* Большой отступ для ОГРОМНОЙ шляпы */      
+    margin-top: 70px; /* БЫЛО 75px -> СТАЛО 70px */      
     border: 3px solid var(--blue); 
     box-shadow: var(--shadow-card); 
     position: relative; 
@@ -135,17 +137,16 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
     z-index: 5;
 }
 
-/* ИКОНКА (УВЕЛИЧЕНА В 2 РАЗА: 140px) */
 .rank-icon-box { 
-    width: 140px; height: 140px; /* БЫЛО 80px */
-    margin: -90px auto 5px; /* Сдвиг вверх */
+    width: 140px; height: 140px; 
+    margin: -90px auto 5px; 
     display: flex; justify-content: center; align-items: center; 
     z-index: 10; 
     position: relative; 
     overflow: visible !important; 
 }
 
-/* ШЛЯПЫ (МАСШТАБИРОВАНИЕ ПОД НОВЫЙ РАЗМЕР) */
+/* ШЛЯПЫ */
 .rank-img { 
     width: 100%; height: 100%; object-fit: contain; 
     filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); 
@@ -154,12 +155,11 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
     z-index: 15;
 }
 
-/* Коэффициенты чуть меньше, так как сама коробка уже 140px */
-.rank-img.hat-legendary { transform: scale(1.6) translateY(-10px); transform-origin: bottom center; }
-.rank-img.hat-mythical { transform: scale(2.0) translateY(-15px); transform-origin: bottom center; }
+.rank-img.hat-legendary { transform: scale(2.5) translateY(-12px); transform-origin: bottom center; }
+.rank-img.hat-mythical { transform: scale(3.0) translateY(-18px); transform-origin: bottom center; }
 
-/* ТЕКСТ ПРОФИЛЯ (КРУПНЕЕ) */
-.profile-card h2 { font-size: 1.8rem; margin: 5px 0 2px; font-weight: 900; } /* Имя */
+/* ТЕКСТ ПРОФИЛЯ */
+.profile-card h2 { font-size: 1.8rem; margin: 5px 0 2px; font-weight: 900; } 
 .rank-label { background: var(--blue); color: white; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 1rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
 .streak-label { color: var(--primary); font-weight: 800; margin-bottom: 4px; font-size: 1.1rem; text-shadow: 1px 1px 0 black; }
 .coins-row { font-size: 1.4rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; text-shadow: 1px 1px 0 black; }
@@ -168,7 +168,6 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #ff9f1c); transition: width 0.5s ease; border-radius: 12px; }
 .xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); color: white; }
 
-/* --- ОСТАЛЬНОЕ --- */
 .shop-balance { font-size: 2rem; color: var(--accent); font-weight: 800; margin-bottom: 20px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 .shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; }
 .tab-btn { padding: 8px 15px; border: none; background: rgba(0,0,0,0.3); color: #8d99ae; border-radius: 10px; font-weight: bold; cursor: pointer; }
@@ -272,22 +271,21 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 
 .skin_white { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); }
 
+/* РУБИН */
 .skin_red.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice1.png'); }
 .skin_red.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice2.png'); }
 .skin_red.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice3.png'); }
 .skin_red.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice4.png'); }
 .skin_red.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice5.png'); }
 .skin_red.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice6.png'); }
-
+/* ЧЕРНАЯ МЕТКА */
 .skin_black.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice1.png'); }
 .skin_black.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice2.png'); }
 .skin_black.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice3.png'); }
 .skin_black.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice4.png'); }
 .skin_black.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice5.png'); }
 .skin_black.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice6.png'); }
-
-.skin_blue  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(180deg); }
-
+/* ЯД */
 .skin_green.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice1.png'); }
 .skin_green.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice2.png'); }
 .skin_green.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice3.png'); }
@@ -295,6 +293,7 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .skin_green.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice5.png'); }
 .skin_green.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice6.png'); }
 
+.skin_blue  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(180deg); }
 .skin_purple{ filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(260deg); }
 .skin_cyber { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) invert(1) hue-rotate(90deg); }
 .skin_bone  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) sepia(0.5); }
@@ -354,7 +353,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .bid-die-icon { width: 45px !important; height: 45px !important; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.6)); }
 #screen-result .slide-up-delay { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin-top: 25px; }
 
-/* АДАПТИВНОСТЬ (ПОПРАВИЛ, ЧТОБЫ НА МЕЛКИХ НЕ РАЗРЫВАЛО) */
+/* АДАПТИВНОСТЬ */
 @media (max-height: 750px) {
     .game-logo { max-width: 300px; margin-bottom: 5px; }
     .profile-card { margin-top: 55px; }
@@ -365,6 +364,3 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     .title-text { font-size: 1.5rem; margin-bottom: 10px; }
     .profile-card { margin-top: 45px; transform: scale(0.9); }
 }
-
-
-
