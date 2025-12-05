@@ -356,12 +356,10 @@ window.openEncyclopedia = () => {
     state.inventory.forEach(itemId => {
         if (ENCYCLOPEDIA_DATA[itemId]) {
             const data = ENCYCLOPEDIA_DATA[itemId];
+            
             // Добавляем превью (кубик)
-            let previewHTML = '';
-            // Для скинов (костей) используем CSS класс с background-image
-            // Но здесь мы не можем просто добавить div с классом, так как он зависит от face-X
-            // Сделаем проще: добавим div с face-6 и нужным скином
-            previewHTML = `<div class="die ${itemId} face-6" style="width:40px; height:40px; display:inline-block; margin-right:10px; vertical-align:middle;"></div>`;
+            // Используем фиксированный стиль background-size: contain, чтобы все кубики влезали в квадрат 40x40
+            let previewHTML = `<div class="die ${itemId} face-6" style="width:40px; height:40px; min-width:40px; background-size:contain; display:inline-block; margin-right:10px; vertical-align:middle;"></div>`;
 
             content.innerHTML += `
                 <div class="rules-section" style="margin-bottom:10px; display:flex; align-items:center;">
@@ -491,3 +489,4 @@ socket.on('roundResult', (data) => uiAlert(data.message, "ИТОГ"));
 socket.on('gameOver', (data) => { showScreen('result'); document.getElementById('winner-name').textContent = data.winner; const isWinner = (data.winner === state.username); const profitEl = document.getElementById('result-profit'); if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) { if (isWinner) { let txt = 'Выигрыш: '; if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#06d6a0'; } else { let txt = 'Потеряно: '; if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#ef233c'; } } else { profitEl.textContent = ''; } if(tg) tg.HapticFeedback.notificationOccurred('success'); });
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 function startVisualTimer(remaining, total) { if (state.timerFrame) cancelAnimationFrame(state.timerFrame); const bar = document.querySelector('.timer-progress'); if (!bar) return; if (remaining <= 0 || !total) { bar.style.width = '0%'; return; } const endTime = Date.now() + remaining; function tick() { const now = Date.now(); const left = endTime - now; if (left <= 0) { bar.style.width = '0%'; return; } const pct = (left / total) * 100; bar.style.width = `${Math.min(100, Math.max(0, pct))}%`; if (pct < 25) bar.style.backgroundColor = '#ef233c'; else if (pct < 50) bar.style.backgroundColor = '#ffb703'; else bar.style.backgroundColor = '#06d6a0'; state.timerFrame = requestAnimationFrame(tick); } tick(); }
+
