@@ -334,6 +334,61 @@ window.buyHat = (id, price) => {
 };
 window.equipHat = (id) => socket.emit('hatEquip', id);
 
+// --- ENCYCLOPEDIA (NEW) ---
+const ENCYCLOPEDIA_DATA = {
+    'skin_gold': { name: 'Золото', desc: '<b>+15% Монет</b> за победу.<br><b>-10% XP</b> за победу.' },
+    'skin_black': { name: 'Черная метка', desc: '<b>-10% Монет</b> за победу.<br><b>+15% XP</b> за победу.' },
+    'skin_red': { name: 'Рубин', desc: '<b>+4% от среднего заработка</b> за каждые 5 побед подряд.<br><b>-5% XP</b> дополнительно при проигрыше.' },
+    'skin_blue': { name: 'Морской', desc: '<b>-20% штрафа</b> (XP и Монет) при проигрыше.<br>Нет бонуса за серию побед.' },
+    'skin_green': { name: 'Яд', desc: '<b>+1%</b> к награде за каждую победу подряд (макс 20%).<br><b>+1%</b> к штрафу за каждое поражение подряд (макс 20%).<br>Нет глобального бонуса (10 побед) и утешения.' },
+    'skin_purple': { name: 'Магия вуду', desc: '<b>10% шанс</b> удвоить выигрыш.<br><b>10% шанс</b> потерять весь выигрыш.' },
+    'skin_bone': { name: 'Костяной', desc: '<b>20% шанс</b> вернуть 10% ставки при проигрыше.<br>Вход в игру на <b>5% дороже</b>.' }
+};
+
+window.openEncyclopedia = () => {
+    const modal = document.getElementById('modal-encyclopedia');
+    const content = document.getElementById('encyclopedia-content');
+    content.innerHTML = '';
+
+    let hasEntries = false;
+
+    // Проверяем купленные скины
+    state.inventory.forEach(itemId => {
+        if (ENCYCLOPEDIA_DATA[itemId]) {
+            const data = ENCYCLOPEDIA_DATA[itemId];
+            // Добавляем превью (кубик)
+            let previewHTML = '';
+            // Для скинов (костей) используем CSS класс с background-image
+            // Но здесь мы не можем просто добавить div с классом, так как он зависит от face-X
+            // Сделаем проще: добавим div с face-6 и нужным скином
+            previewHTML = `<div class="die ${itemId} face-6" style="width:40px; height:40px; display:inline-block; margin-right:10px; vertical-align:middle;"></div>`;
+
+            content.innerHTML += `
+                <div class="rules-section" style="margin-bottom:10px; display:flex; align-items:center;">
+                    ${previewHTML}
+                    <div>
+                        <h3 style="margin:0; font-size:1rem;">${data.name}</h3>
+                        <p style="margin:5px 0 0 0; font-size:0.8rem;">${data.desc}</p>
+                    </div>
+                </div>
+            `;
+            hasEntries = true;
+        }
+    });
+
+    if (!hasEntries) {
+        content.innerHTML = '<div style="text-align:center; opacity:0.6; margin-top:20px;">Здесь пока пусто...<br>Купите особые предметы в Лавке!</div>';
+    }
+
+    modal.classList.add('active');
+};
+
+window.closeEncyclopedia = (e) => {
+    if (!e || e.target.id === 'modal-encyclopedia' || e.target.classList.contains('btn-close')) {
+        document.getElementById('modal-encyclopedia').classList.remove('active');
+    }
+};
+
 // --- PVE, SETTINGS, ETC (No changes below, keep existing logic) ---
 bindClick('btn-to-pve', () => showScreen('pve-settings'));
 bindClick('btn-pve-back', () => showScreen('home'));
@@ -436,4 +491,3 @@ socket.on('roundResult', (data) => uiAlert(data.message, "ИТОГ"));
 socket.on('gameOver', (data) => { showScreen('result'); document.getElementById('winner-name').textContent = data.winner; const isWinner = (data.winner === state.username); const profitEl = document.getElementById('result-profit'); if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) { if (isWinner) { let txt = 'Выигрыш: '; if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#06d6a0'; } else { let txt = 'Потеряно: '; if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#ef233c'; } } else { profitEl.textContent = ''; } if(tg) tg.HapticFeedback.notificationOccurred('success'); });
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 function startVisualTimer(remaining, total) { if (state.timerFrame) cancelAnimationFrame(state.timerFrame); const bar = document.querySelector('.timer-progress'); if (!bar) return; if (remaining <= 0 || !total) { bar.style.width = '0%'; return; } const endTime = Date.now() + remaining; function tick() { const now = Date.now(); const left = endTime - now; if (left <= 0) { bar.style.width = '0%'; return; } const pct = (left / total) * 100; bar.style.width = `${Math.min(100, Math.max(0, pct))}%`; if (pct < 25) bar.style.backgroundColor = '#ef233c'; else if (pct < 50) bar.style.backgroundColor = '#ffb703'; else bar.style.backgroundColor = '#06d6a0'; state.timerFrame = requestAnimationFrame(tick); } tick(); }
-
