@@ -45,7 +45,7 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 /* ЛОГОТИП */
 .game-logo {
     width: 100%; max-width: 450px; height: auto; 
-    margin-bottom: 5px; 
+    margin-bottom: -15px; 
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
     transition: transform 0.3s;
 }
@@ -325,7 +325,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 
 /* АДАПТИВНОСТЬ */
 @media (max-height: 750px) {
-    .game-logo { max-width: 360px; margin-bottom: 10px; }
+    .game-logo { max-width: 360px; margin-bottom: 5px; }
     .profile-card { margin-top: 35px; }
     .menu-buttons { margin-top: 5px; }
     .btn { padding: 10px; min-height: 40px; font-size: 0.9rem; }
@@ -335,6 +335,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     .title-text { font-size: 1.5rem; margin-bottom: 10px; }
     .profile-card { margin-top: 25px; transform: scale(0.9); }
 }
+
 
 
 
