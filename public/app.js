@@ -154,11 +154,9 @@ socket.on('profileUpdate', (data) => {
     
     if (data.rankLevel >= 6) { 
         btnCabin.style.display = 'block'; 
-        // Если Каюта видна, Лавка занимает 1 колонку (стандарт)
         btnShop.style.gridColumn = 'auto';
     } else {
         btnCabin.style.display = 'none';
-        // Если Каюта скрыта, Лавка растягивается
         btnShop.style.gridColumn = 'span 2';
     }
 
@@ -175,9 +173,15 @@ socket.on('profileUpdate', (data) => {
     const rankImg = document.getElementById('rank-badge-img');
     if(rankImg) {
         rankImg.src = getRankImage(data.rankName, data.equipped.hat);
-        rankImg.className = 'rank-img';
+        rankImg.className = 'rank-img'; // Сброс классов
+        
         if (data.equipped.hat && HATS_META[data.equipped.hat]) {
             const r = HATS_META[data.equipped.hat].rarity;
+            // Добавляем классы для размера (определены в CSS)
+            if (r === 'legendary') rankImg.classList.add('hat-legendary');
+            if (r === 'mythical') rankImg.classList.add('hat-mythical');
+            
+            // Анимация
             if (r === 'legendary' || r === 'mythical') rankImg.classList.add('pulse-mythic');
         }
     }
@@ -233,6 +237,7 @@ const ITEMS_META = {
     'frame_ghost':   { name: 'Призрак', price: 3000, type: 'frames' },
     'frame_kraken':  { name: 'Кракен', price: 4000, type: 'frames' },
     'frame_captain': { name: 'Капитанская', price: 10000, type: 'frames' },
+    'frame_abyss':   { name: 'Бездна', price: 7500, type: 'frames' },
     'bg_default': { name: 'Стандарт', price: 0, type: 'bg' },
     'bg_lvl1':    { name: 'Палуба фрегата', price: 150000, type: 'bg' },
     'bg_lvl2':    { name: 'Палуба Летучего Голландца', price: 150000, type: 'bg' },
