@@ -44,7 +44,7 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 
 /* ЛОГОТИП */
 .game-logo {
-    width: 100%; max-width: 350px; height: auto; 
+    width: 100%; max-width: 450px; height: auto; 
     margin-bottom: 5px; 
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
     transition: transform 0.3s;
@@ -335,5 +335,6 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     .title-text { font-size: 1.5rem; margin-bottom: 10px; }
     .profile-card { margin-top: 25px; transform: scale(0.9); }
 }
+
 
 
