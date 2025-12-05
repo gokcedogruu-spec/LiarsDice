@@ -655,7 +655,7 @@ io.on('connection', (socket) => {
         const rank = getRankInfo(data.xp, data.streak);
         socket.tgUserId = tgUser.id;
         socket.emit('profileUpdate', { 
-            ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rInfo.current.level 
+            ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level 
         });
 
         // --- RECONNECTION LOGIC ---
