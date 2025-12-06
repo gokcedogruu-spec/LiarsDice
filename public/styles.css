@@ -292,8 +292,14 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .skin_green.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice4.png'); }
 .skin_green.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice5.png'); }
 .skin_green.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice6.png'); }
+/* МОРЕ */
+.skin_blue.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice1.png'); }
+.skin_blue.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice2.png'); }
+.skin_blue.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice3.png'); }
+.skin_blue.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice4.png'); }
+.skin_blue.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice5.png'); }
+.skin_blue.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice6.png'); }
 
-.skin_blue  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(180deg); }
 .skin_purple{ filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(260deg); }
 .skin_cyber { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) invert(1) hue-rotate(90deg); }
 .skin_bone  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) sepia(0.5); }
@@ -364,5 +370,6 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     .title-text { font-size: 1.5rem; margin-bottom: 10px; }
     .profile-card { margin-top: 45px; transform: scale(0.9); }
 }
+
 
 
