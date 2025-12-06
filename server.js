@@ -66,6 +66,8 @@ function getUserData(userId) {
 function syncUserData(tgUser, savedData) {
     const userId = tgUser.id;
     let user = userDB.get(userId);
+    
+    // Если пользователя нет в памяти (первый вход или рестарт сервера)
     if (!user) {
         user = { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
@@ -75,22 +77,27 @@ function syncUserData(tgUser, savedData) {
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
             equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null }
         };
+
+        // Применяем сохранение ТОЛЬКО если создаем пользователя с нуля
+        if (savedData) {
+            if (typeof savedData.xp === 'number') user.xp = savedData.xp; // Убрал Math.max, доверяем сохранению при рестарте
+            if (typeof savedData.coins === 'number') user.coins = savedData.coins;
+            if (typeof savedData.matches === 'number') user.matches = savedData.matches;
+            if (typeof savedData.wins === 'number') user.wins = savedData.wins;
+            if (typeof savedData.streak === 'number') user.streak = savedData.streak;
+            if (Array.isArray(savedData.inventory)) {
+                const combined = new Set([...user.inventory, ...savedData.inventory]);
+                user.inventory = Array.from(combined);
+            }
+            if (savedData.equipped) user.equipped = { ...user.equipped, ...savedData.equipped };
+        }
     } else {
+        // Если пользователь УЖЕ есть в памяти, мы НЕ перезаписываем его прогресс старым сохранением
+        // Просто обновляем имя/никнейм на случай их смены в Телеграм
         user.name = tgUser.first_name;
         user.username = tgUser.username ? tgUser.username.toLowerCase() : null;
     }
-    if (savedData) {
-        if (typeof savedData.xp === 'number') user.xp = Math.max(user.xp, savedData.xp);
-        if (typeof savedData.coins === 'number') user.coins = savedData.coins;
-        if (typeof savedData.matches === 'number') user.matches = Math.max(user.matches, savedData.matches);
-        if (typeof savedData.wins === 'number') user.wins = Math.max(user.wins, savedData.wins);
-        if (typeof savedData.streak === 'number') user.streak = savedData.streak;
-        if (Array.isArray(savedData.inventory)) {
-            const combined = new Set([...user.inventory, ...savedData.inventory]);
-            user.inventory = Array.from(combined);
-        }
-        if (savedData.equipped) user.equipped = { ...user.equipped, ...savedData.equipped };
-    }
+
     if (!user.inventory.includes('bg_default')) user.inventory.push('bg_default');
     userDB.set(userId, user);
     return user;
@@ -995,3 +1002,4 @@ setInterval(() => {
 }, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
