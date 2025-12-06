@@ -110,7 +110,9 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .btn-icon { position: absolute; top: 15px; width: 40px; height: 40px; background: var(--surface); color: var(--accent); border: 2px solid var(--accent); border-radius: 50%; font-size: 1.5rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; display: flex; align-items: center; justify-content: center; }
 .btn-icon:active { transform: scale(0.9); }
 .btn-rules { right: 15px; }
-.btn-encyclopedia { right: 65px; color: var(--blue); border-color: var(--blue); } /* <--- КНОПКА ЭНЦИКЛОПЕДИИ */
+/* КНОПКИ МЕНЮ (НОВЫЕ ПОЗИЦИИ) */
+.btn-encyclopedia { right: 65px; color: var(--blue); border-color: var(--blue); }
+.btn-friends { right: 115px; color: var(--success); border-color: var(--success); } /* НОВАЯ КНОПКА */
 .btn-lobby-back { top: 15px; left: 15px; position: absolute; }
 .btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
 
@@ -370,6 +372,44 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     .title-text { font-size: 1.5rem; margin-bottom: 10px; }
     .profile-card { margin-top: 45px; transform: scale(0.9); }
 }
+
+/* ... (ДРУЗЬЯ) ... */
+
+/* МИГАНИЕ (ДЛЯ УВЕДОМЛЕНИЙ) */
+.blink-anim { animation: blink 1s infinite; }
+@keyframes blink {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--success); }
+    50% { opacity: 0.5; box-shadow: none; }
+}
+
+/* МОДАЛЬНОЕ ОКНО ДРУЗЕЙ */
+.friend-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+.friend-tab { flex: 1; background: none; border: none; color: var(--secondary); font-weight: 700; padding: 8px; border-radius: 10px; cursor: pointer; }
+.friend-tab.active { background: rgba(255,255,255,0.1); color: white; }
+
+.friend-list-container { max-height: 300px; overflow-y: auto; text-align: left; }
+.friend-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.friend-name { font-weight: bold; font-size: 0.9rem; }
+.friend-status { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.status-online { background: var(--success); box-shadow: 0 0 5px var(--success); }
+.status-offline { background: var(--secondary); }
+.status-ingame { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+
+.friend-actions { display: flex; gap: 5px; }
+.btn-friend-action { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; border: none; font-weight: bold; cursor: pointer; }
+.btn-accept { background: var(--success); color: #2b2d42; }
+.btn-decline { background: var(--primary); color: white; }
+.btn-invite { background: var(--blue); color: white; }
+
+#search-result { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; display: none; }
+#search-result.active { display: block; }
+
+/* ДОБАВИТЬ В ДРУЗЬЯ (В МАТЧЕ) */
+.btn-add-friend-game { 
+    width: 100%; margin-top: 10px; background: var(--success); 
+    color: #2b2d42; border: none; padding: 8px; border-radius: 10px; font-weight: bold; cursor: pointer; 
+}
+
 
 
 
