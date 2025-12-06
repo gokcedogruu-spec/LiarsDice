@@ -334,7 +334,7 @@ window.buyHat = (id, price) => {
 };
 window.equipHat = (id) => socket.emit('hatEquip', id);
 
-// --- ENCYCLOPEDIA (NEW) ---
+// --- ENCYCLOPEDIA ---
 const ENCYCLOPEDIA_DATA = {
     'skin_gold': { name: 'Золото', desc: '<b>+15% Монет</b> за победу.<br><b>-10% XP</b> за победу.' },
     'skin_black': { name: 'Черная метка', desc: '<b>-10% Монет</b> за победу.<br><b>+15% XP</b> за победу.' },
@@ -355,7 +355,7 @@ window.openEncyclopedia = () => {
     state.inventory.forEach(itemId => {
         if (ENCYCLOPEDIA_DATA[itemId]) {
             const data = ENCYCLOPEDIA_DATA[itemId];
-            // Добавил !important к размерам
+            // !IMPORTANT для фикса размеров
             let previewHTML = `<div class="die ${itemId} face-6" style="width:40px !important; height:40px !important; min-width:40px; background-size:contain; display:inline-block; margin-right:10px; vertical-align:middle;"></div>`;
 
             content.innerHTML += `
@@ -384,7 +384,7 @@ window.closeEncyclopedia = (e) => {
     }
 };
 
-// --- PVE, SETTINGS, ETC (No changes below, keep existing logic) ---
+// --- PVE, SETTINGS, ETC ---
 bindClick('btn-to-pve', () => showScreen('pve-settings'));
 bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
@@ -405,8 +405,13 @@ window.setTime = (sec) => {
     const container = document.querySelector('#screen-create-settings .time-selector');
     if (container) { Array.from(container.children).forEach(btn => { btn.classList.remove('active'); if (parseInt(btn.textContent) === sec) btn.classList.add('active'); }); }
 };
+// ВАЛИДАЦИЯ: минимум 3 кубика (для UI)
 window.adjSetting = (type, delta) => {
-    if (type === 'dice') { state.createDice = Math.max(1, Math.min(10, state.createDice + delta)); state.pve.dice = state.createDice; document.querySelectorAll('#set-dice, #pve-dice').forEach(el => el.textContent = state.createDice); } 
+    if (type === 'dice') { 
+        state.createDice = Math.max(3, Math.min(10, state.createDice + delta)); // Минимум 3
+        state.pve.dice = state.createDice; 
+        document.querySelectorAll('#set-dice, #pve-dice').forEach(el => el.textContent = state.createDice); 
+    } 
     else if (type === 'players') { state.createPlayers = Math.max(2, Math.min(10, state.createPlayers + delta)); document.getElementById('set-players').textContent = state.createPlayers; }
     else if (type === 'bots') { state.pve.bots = Math.max(1, Math.min(9, state.pve.bots + delta)); document.getElementById('pve-bots').textContent = state.pve.bots; }
 };
@@ -483,8 +488,40 @@ socket.on('yourDice', (dice) => { const skin = state.equipped.skin || 'skin_whit
 socket.on('gameState', (gs) => { showScreen('game'); document.body.className = gs.activeBackground || 'bg_default'; let rulesText = ''; if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  '; if (gs.activeRules.spot) rulesText += '🎯 В точку'; if (gs.activeRules.strict) rulesText += '🔒 Строго'; document.getElementById('active-rules-display').textContent = rulesText; const bar = document.getElementById('players-bar'); const activeIds = new Set(gs.players.map(p => p.id)); gs.players.forEach(p => { let chip = bar.querySelector(`.player-chip[data-id="${p.id}"]`); const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default'; const turnClass = p.isTurn ? 'turn' : ''; const deadClass = p.isEliminated ? 'dead' : ''; const finalClass = `player-chip ${turnClass} ${deadClass} ${frameClass}`; if (!chip) { chip = document.createElement('div'); chip.setAttribute('data-id', p.id); chip.setAttribute('onclick', `requestPlayerStats('${p.id}')`); bar.appendChild(chip); chip.innerHTML = `<b>${p.name}</b><span class="rank-game">${p.rank}</span><div class="dice-count">🎲 ${p.diceCount}</div>`; } chip.className = finalClass; chip.querySelector('b').textContent = p.name; chip.querySelector('.rank-game').textContent = p.rank; chip.querySelector('.dice-count').textContent = `🎲 ${p.diceCount}`; }); Array.from(bar.children).forEach(child => { if (!activeIds.has(child.getAttribute('data-id'))) child.remove(); }); const bid = document.getElementById('current-bid-display'); if (gs.currentBid) { const bidder = gs.players.find(p => p.id === gs.currentBid.playerId); const skin = bidder?.equipped?.skin || 'skin_white'; bid.innerHTML = `<div class="bid-container"><div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span></div><div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div></div>`; state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs(); } else { const me = gs.players.find(p => p.id === socket.id); if (me?.isTurn) { bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`; } else { const turnPlayer = gs.players.find(p => p.isTurn); const name = turnPlayer ? turnPlayer.name : "Ожидание"; bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`; } state.bidQty = 1; state.bidVal = 2; updateInputs(); } const me = gs.players.find(p => p.id === socket.id); const myTurn = me?.isTurn; const controls = document.getElementById('game-controls'); const spotBtn = document.getElementById('btn-call-spot'); if (spotBtn) { if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule'); else spotBtn.classList.add('hidden-rule'); } const existingSkills = document.querySelector('.skills-bar'); if(existingSkills) existingSkills.remove(); if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) { const skillsDiv = document.createElement('div'); skillsDiv.className = 'skills-bar'; me.availableSkills.forEach(skill => { const btn = document.createElement('button'); btn.className = `btn-skill skill-${skill}`; btn.setAttribute('onclick', `useSkill('${skill}')`); skillsDiv.appendChild(btn); }); document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls); } if(myTurn) { controls.classList.remove('hidden'); controls.classList.add('slide-up'); document.getElementById('btn-call-bluff').disabled = !gs.currentBid; if(spotBtn) spotBtn.disabled = !gs.currentBid; if(tg) tg.HapticFeedback.impactOccurred('medium'); } else { controls.classList.add('hidden'); } if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } });
 window.useSkill = (skillType) => { socket.emit('useSkill', skillType); };
 socket.on('roundResult', (data) => uiAlert(data.message, "ИТОГ"));
-socket.on('gameOver', (data) => { showScreen('result'); document.getElementById('winner-name').textContent = data.winner; const isWinner = (data.winner === state.username); const profitEl = document.getElementById('result-profit'); if (state.currentRoomBets.coins > 0 || state.currentRoomBets.xp > 0) { if (isWinner) { let txt = 'Выигрыш: '; if(state.currentRoomBets.coins) txt += `+${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `+${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#06d6a0'; } else { let txt = 'Потеряно: '; if(state.currentRoomBets.coins) txt += `-${state.currentRoomBets.coins}💰 `; if(state.currentRoomBets.xp) txt += `-${state.currentRoomBets.xp}⭐`; profitEl.textContent = txt; profitEl.style.color = '#ef233c'; } } else { profitEl.textContent = ''; } if(tg) tg.HapticFeedback.notificationOccurred('success'); });
+socket.on('gameOver', (data) => { showScreen('result'); document.getElementById('winner-name').textContent = data.winner; });
+
+// --- NEW: MATCH RESULTS REPORT ---
+socket.on('matchResults', (res) => {
+    const profitEl = document.getElementById('result-profit');
+    profitEl.innerHTML = '';
+
+    let html = '';
+    
+    // Основной итог
+    if (res.coins !== 0 || res.xp !== 0) {
+        const color = res.coins >= 0 ? '#06d6a0' : '#ef233c';
+        html += `<div style="color:${color}; font-size:1.2rem; margin-bottom:10px;">`;
+        if(res.coins !== 0) html += `${res.coins > 0 ? '+' : ''}${res.coins}💰 `;
+        if(res.xp !== 0) html += `${res.xp > 0 ? '+' : ''}${res.xp}⭐`;
+        html += `</div>`;
+    }
+
+    // Повышение ранга
+    if (res.rankUp) {
+        html += `<div style="color:#ffb703; font-weight:900; font-size:1.1rem; margin-bottom:5px; text-shadow:1px 1px 0 black;">🎉 ПОВЫШЕНИЕ: ${res.rankUp}!</div>`;
+    }
+
+    // Детали
+    if (res.details && res.details.length > 0) {
+        html += `<div style="font-size:0.8rem; opacity:0.8; margin-top:5px; line-height:1.4;">`;
+        res.details.forEach(line => {
+            html += `<div>${line}</div>`;
+        });
+        html += `</div>`;
+    }
+
+    profitEl.innerHTML = html;
+});
+
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 function startVisualTimer(remaining, total) { if (state.timerFrame) cancelAnimationFrame(state.timerFrame); const bar = document.querySelector('.timer-progress'); if (!bar) return; if (remaining <= 0 || !total) { bar.style.width = '0%'; return; } const endTime = Date.now() + remaining; function tick() { const now = Date.now(); const left = endTime - now; if (left <= 0) { bar.style.width = '0%'; return; } const pct = (left / total) * 100; bar.style.width = `${Math.min(100, Math.max(0, pct))}%`; if (pct < 25) bar.style.backgroundColor = '#ef233c'; else if (pct < 50) bar.style.backgroundColor = '#ffb703'; else bar.style.backgroundColor = '#06d6a0'; state.timerFrame = requestAnimationFrame(tick); } tick(); }
-
-
