@@ -198,9 +198,7 @@ socket.on('profileUpdate', (data) => {
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ 
             xp: data.xp, streak: data.streak, coins: data.coins, 
-            wins: data.wins, matches: data.matches, inventory: data.inventory, equipped: data.equipped,
-            friends: friendDataCache.friends.map(f => f.id), // Simple persistence attempt
-            requests: friendDataCache.requests.map(r => r.id)
+            wins: data.wins, matches: data.matches, inventory: data.inventory, equipped: data.equipped 
         }));
     }
 
@@ -357,6 +355,7 @@ window.openEncyclopedia = () => {
     state.inventory.forEach(itemId => {
         if (ENCYCLOPEDIA_DATA[itemId]) {
             const data = ENCYCLOPEDIA_DATA[itemId];
+            // !IMPORTANT для фикса размеров
             let previewHTML = `<div class="die ${itemId} face-6" style="width:40px !important; height:40px !important; min-width:40px; background-size:contain; display:inline-block; margin-right:10px; vertical-align:middle;"></div>`;
 
             content.innerHTML += `
@@ -406,9 +405,10 @@ window.setTime = (sec) => {
     const container = document.querySelector('#screen-create-settings .time-selector');
     if (container) { Array.from(container.children).forEach(btn => { btn.classList.remove('active'); if (parseInt(btn.textContent) === sec) btn.classList.add('active'); }); }
 };
+// ВАЛИДАЦИЯ: минимум 3 кубика (для UI)
 window.adjSetting = (type, delta) => {
     if (type === 'dice') { 
-        state.createDice = Math.max(3, Math.min(10, state.createDice + delta)); 
+        state.createDice = Math.max(3, Math.min(10, state.createDice + delta)); // Минимум 3
         state.pve.dice = state.createDice; 
         document.querySelectorAll('#set-dice, #pve-dice').forEach(el => el.textContent = state.createDice); 
     } 
@@ -433,17 +433,7 @@ window.updateBetVal = (type) => {
 };
 window.closeResAlert = () => { document.getElementById('modal-res-alert').classList.remove('active'); };
 window.requestMyStats = () => { socket.emit('getPlayerStats', 'me'); };
-
-// FRIEND LOGIC: SAVING PROFILE ID TO ADD
-let currentProfileId = null;
-window.requestPlayerStats = (socketId) => { 
-    if (socketId && (socketId.toString().startsWith('bot') || socketId.toString().startsWith('CPU'))) { 
-        uiAlert("Это бот. У него нет души."); return; 
-    } 
-    currentProfileId = socketId; 
-    socket.emit('getPlayerStats', socketId); 
-};
-
+window.requestPlayerStats = (socketId) => { if (socketId && (socketId.toString().startsWith('bot') || socketId.toString().startsWith('CPU'))) { uiAlert("Это бот. У него нет души."); return; } socket.emit('getPlayerStats', socketId); };
 socket.on('showPlayerStats', (data) => {
     const modal = document.getElementById('modal-player'); if (!modal) return;
     const content = modal.querySelector('.modal-content'); content.className = 'modal-content pop-in'; if (data.equipped.frame && data.equipped.frame !== 'frame_default') content.classList.add(data.equipped.frame);
@@ -453,7 +443,6 @@ socket.on('showPlayerStats', (data) => {
     document.getElementById('info-wins').textContent = data.wins;
     document.getElementById('info-wr').textContent = (data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0) + '%';
     const rankImg = document.getElementById('info-rank-img'); if(rankImg) rankImg.src = getRankImage(data.rankName, data.equipped?.hat);
-    
     const invGrid = document.getElementById('info-inventory'); invGrid.innerHTML = '';
     const categories = { 'hats': 'Шляпы', 'skins': 'Кости', 'frames': 'Рамки', 'bg': 'Палуба' };
     const getType = (id) => { if(HATS_META[id]) return 'hats'; if(ITEMS_META[id]) return ITEMS_META[id].type; return null; };
@@ -471,30 +460,8 @@ socket.on('showPlayerStats', (data) => {
             }
         }
     } else { invGrid.innerHTML = '<div style="grid-column:1/-1; opacity:0.5; font-size:0.8rem;">Пусто</div>'; }
-    
-    // ADD FRIEND BUTTON
-    const btnAdd = document.getElementById('btn-add-friend');
-    // Only show if it's another player (and not bot)
-    if (currentProfileId && currentProfileId !== socket.id) {
-        btnAdd.style.display = 'block';
-        btnAdd.onclick = () => {
-            // currentProfileId is socketID here from requestPlayerStats
-            // We assume server handles socketID in friend request or we need logic update
-            // NOTE: The server 'friendAction' expects userId (integer).
-            // Since we don't have userId here easily without server change, 
-            // this button might not work until we fix server to accept socketId or return userId in stats.
-            // But for now, let's try sending search by name? No, names are not unique.
-            // Let's leave it as is, assuming you might fix server later. 
-            // For now, this button is UI only unless server updated.
-            uiAlert("Чтобы добавить друга, используйте Поиск в меню Команды (по имени).");
-        };
-    } else {
-        btnAdd.style.display = 'none';
-    }
-
     modal.classList.add('active');
 });
-
 window.closePlayerModal = (e) => { if (!e || e.target.id === 'modal-player' || e.target.classList.contains('btn-close')) { document.getElementById('modal-player').classList.remove('active'); } };
 window.openRules = () => { document.getElementById('modal-rules').classList.add('active'); };
 window.closeRules = (e) => { if (!e || e.target.id === 'modal-rules' || e.target.classList.contains('btn-close')) { document.getElementById('modal-rules').classList.remove('active'); } };
@@ -530,6 +497,7 @@ socket.on('matchResults', (res) => {
 
     let html = '';
     
+    // Основной итог
     if (res.coins !== 0 || res.xp !== 0) {
         const color = res.coins >= 0 ? '#06d6a0' : '#ef233c';
         html += `<div style="color:${color}; font-size:1.2rem; margin-bottom:10px;">`;
@@ -538,10 +506,12 @@ socket.on('matchResults', (res) => {
         html += `</div>`;
     }
 
+    // Повышение ранга
     if (res.rankUp) {
         html += `<div style="color:#ffb703; font-weight:900; font-size:1.1rem; margin-bottom:5px; text-shadow:1px 1px 0 black;">🎉 ПОВЫШЕНИЕ: ${res.rankUp}!</div>`;
     }
 
+    // Детали
     if (res.details && res.details.length > 0) {
         html += `<div style="font-size:0.8rem; opacity:0.8; margin-top:5px; line-height:1.4;">`;
         res.details.forEach(line => {
@@ -555,168 +525,3 @@ socket.on('matchResults', (res) => {
 
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 function startVisualTimer(remaining, total) { if (state.timerFrame) cancelAnimationFrame(state.timerFrame); const bar = document.querySelector('.timer-progress'); if (!bar) return; if (remaining <= 0 || !total) { bar.style.width = '0%'; return; } const endTime = Date.now() + remaining; function tick() { const now = Date.now(); const left = endTime - now; if (left <= 0) { bar.style.width = '0%'; return; } const pct = (left / total) * 100; bar.style.width = `${Math.min(100, Math.max(0, pct))}%`; if (pct < 25) bar.style.backgroundColor = '#ef233c'; else if (pct < 50) bar.style.backgroundColor = '#ffb703'; else bar.style.backgroundColor = '#06d6a0'; state.timerFrame = requestAnimationFrame(tick); } tick(); }
-
-// --- FRIEND SYSTEM CLIENT LOGIC ---
-
-let currentFriendTab = 'list';
-let friendDataCache = { friends: [], requests: [] };
-
-window.openFriends = () => {
-    document.getElementById('modal-friends').classList.add('active');
-    document.getElementById('btn-friends-menu').classList.remove('blink-anim'); // Stop blinking
-    socket.emit('friendAction', { action: 'get' });
-};
-
-window.closeFriends = (e) => {
-    if (!e || e.target.id === 'modal-friends' || e.target.classList.contains('btn-close')) {
-        document.getElementById('modal-friends').classList.remove('active');
-    }
-};
-
-window.switchFriendTab = (tab) => {
-    currentFriendTab = tab;
-    document.querySelectorAll('.friend-tab').forEach(b => b.classList.remove('active'));
-    document.getElementById(`tab-f-${tab}`).classList.add('active');
-    
-    document.getElementById('friend-content-list').classList.add('hidden');
-    document.getElementById('friend-content-req').classList.add('hidden');
-    document.getElementById('friend-content-find').classList.add('hidden');
-    
-    document.getElementById(`friend-content-${tab}`).classList.remove('hidden');
-};
-
-socket.on('friendUpdate', (data) => {
-    friendDataCache = data;
-    renderFriends();
-    
-    const btn = document.getElementById('btn-friends-menu');
-    if (data.requests.length > 0) {
-        btn.classList.add('blink-anim');
-        btn.textContent = `👥 ${data.requests.length}`;
-    } else {
-        btn.classList.remove('blink-anim');
-        btn.textContent = `👥`;
-    }
-});
-
-socket.on('forceFriendUpdate', () => {
-    socket.emit('friendAction', { action: 'get' });
-});
-
-function renderFriends() {
-    const listContainer = document.getElementById('friend-content-list');
-    const reqContainer = document.getElementById('friend-content-req');
-    
-    listContainer.innerHTML = '';
-    if (friendDataCache.friends.length === 0) {
-        listContainer.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пока никого...</div>';
-    } else {
-        friendDataCache.friends.forEach(f => {
-            let statusClass = 'status-offline';
-            let inviteBtn = '';
-            
-            if (f.status === 'online') {
-                statusClass = 'status-online';
-                if (state.roomId) { 
-                    inviteBtn = `<button class="btn-friend-action btn-invite" onclick="inviteFriend('${f.id}')">ЗОВИ</button>`;
-                }
-            } else if (f.status === 'ingame') {
-                statusClass = 'status-ingame';
-            }
-
-            listContainer.innerHTML += `
-                <div class="friend-row">
-                    <div style="display:flex; align-items:center;">
-                        <div class="friend-status ${statusClass}"></div>
-                        <span class="friend-name">${f.name}</span>
-                    </div>
-                    <div class="friend-actions">
-                        ${inviteBtn}
-                        <button class="btn-friend-action btn-decline" onclick="removeFriend('${f.id}')">X</button>
-                    </div>
-                </div>`;
-        });
-    }
-
-    reqContainer.innerHTML = '';
-    if (friendDataCache.requests.length === 0) {
-        reqContainer.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пусто</div>';
-    } else {
-        friendDataCache.requests.forEach(r => {
-            reqContainer.innerHTML += `
-                <div class="friend-row">
-                    <span class="friend-name">${r.name}</span>
-                    <div class="friend-actions">
-                        <button class="btn-friend-action btn-accept" onclick="acceptFriend('${r.id}')">ДА</button>
-                        <button class="btn-friend-action btn-decline" onclick="declineFriend('${r.id}')">НЕТ</button>
-                    </div>
-                </div>`;
-        });
-    }
-}
-
-window.searchFriend = () => {
-    const val = document.getElementById('input-friend-search').value;
-    if (val) socket.emit('friendAction', { action: 'search', payload: val });
-};
-
-window.inviteFriend = (id) => {
-    socket.emit('inviteToRoom', id);
-};
-
-window.removeFriend = (id) => {
-    // Simplified removal via ui confirmation
-    uiConfirm("Удалить из друзей?", () => {
-        // Currently server uses 'decline' logic to remove request, 
-        // but real 'remove friend' needs server update. 
-        // For now using 'decline' might only remove request.
-        // Let's assume we just hide it for now or you add 'remove' action to server later.
-        socket.emit('friendAction', { action: 'decline', payload: id }); 
-    });
-};
-
-window.acceptFriend = (id) => socket.emit('friendAction', { action: 'accept', payload: id });
-window.declineFriend = (id) => socket.emit('friendAction', { action: 'decline', payload: id });
-
-socket.on('friendSearchResult', (res) => {
-    const container = document.getElementById('search-result');
-    container.classList.add('active');
-    if (res) {
-        container.innerHTML = `
-            <div class="friend-row" style="border:none; padding:0;">
-                <span class="friend-name">${res.name}</span>
-                <button class="btn-friend-action btn-invite" onclick="sendRequest('${res.id}')">ДРУЖИТЬ</button>
-            </div>`;
-    } else {
-        container.innerHTML = '<span style="opacity:0.6">Не найден</span>';
-    }
-});
-
-window.sendRequest = (id) => {
-    socket.emit('friendAction', { action: 'request', payload: id });
-    document.getElementById('search-result').innerHTML = 'Отправлено!';
-};
-
-socket.on('gameInvite', (data) => {
-    uiConfirm(`<b>${data.inviter}</b> зовет в игру!<br>Ставки: ${data.betCoins}💰 ${data.betXp}⭐`, () => {
-        const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
-        socket.emit('joinOrCreateRoom', { 
-            roomId: data.roomId, 
-            tgUser: userPayload 
-        });
-    });
-});
-
-socket.on('notification', (data) => {
-    if (data.type === 'friend_req') {
-        const btn = document.getElementById('btn-friends-menu');
-        btn.classList.add('blink-anim');
-        if(tg) tg.HapticFeedback.notificationOccurred('success');
-    }
-});
-
-window.openInviteModal = () => {
-    openFriends();
-    switchFriendTab('list');
-    uiAlert("Выбери друга и нажми ЗОВИ!");
-};
