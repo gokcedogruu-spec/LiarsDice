@@ -54,7 +54,7 @@ function getUserData(userId) {
     if (!userDB.has(userId)) {
         userDB.set(userId, { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
-            matchHistory: [], lossStreak: 0, // NEW: Для расчета среднего и яда
+            matchHistory: [], lossStreak: 0,
             name: 'Unknown', username: null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
             equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null }
@@ -112,28 +112,25 @@ function getRankInfo(xp, streak) {
     return { current, next };
 }
 
-// --- ГЛАВНАЯ ФУНКЦИЯ НАГРАД (ОБНОВЛЕННАЯ) ---
+// --- UPDATED REWARD LOGIC ---
 function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, winnerPotMultiplier = 0) {
     if (typeof userId === 'string' && userId.startsWith('bot')) return null;
     const user = getUserData(userId);
-    const currentRankInfo = getRankInfo(user.xp, user.streak);
+    const oldRankInfo = getRankInfo(user.xp, user.streak);
     const skin = user.equipped.skin;
 
-    // Инициализация (если старый юзер)
+    // Инициализация
     if (!user.matchHistory) user.matchHistory = [];
     if (typeof user.lossStreak === 'undefined') user.lossStreak = 0;
 
-    // Базовые значения выигрыша
     let baseWinXP = 65;
     let baseWinCoins = 50;
     
-    // PVE значения
     if (type === 'win_pve') {
         if (difficulty === 'medium') { baseWinXP = 10; baseWinCoins = 10; }
         else if (difficulty === 'pirate') { baseWinXP = 40; baseWinCoins = 40; }
     }
 
-    // Добавляем выигрыш со ставок в базу (до умножения)
     let potCoins = 0;
     let potXP = 0;
     if (winnerPotMultiplier > 0) {
@@ -141,9 +138,9 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         potXP = betXp * winnerPotMultiplier;
     }
 
-    // Итоговое изменение
     let deltaCoins = 0;
     let deltaXP = 0;
+    let reportDetails = []; // Для отчета игроку
 
     if (type === 'win_game' || type === 'win_pve') {
         user.matches++; user.wins++; user.streak++; user.lossStreak = 0;
@@ -151,11 +148,9 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         let totalMatchCoins = baseWinCoins + potCoins;
         let totalMatchXP = baseWinXP + potXP;
 
-        // 1. Сохраняем историю для расчета среднего (храним последние 10)
         user.matchHistory.push({ c: totalMatchCoins, x: totalMatchXP });
         if (user.matchHistory.length > 10) user.matchHistory.shift();
 
-        // Расчет среднего заработка за последние N матчей
         const calcAvg = (n) => {
             const slice = user.matchHistory.slice(-n);
             if (slice.length === 0) return { c: 0, x: 0 };
@@ -169,103 +164,105 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         let flatBonusCoins = 0;
         let flatBonusXP = 0;
 
-        // --- БАФФЫ СЕРИЙ ПОБЕД ---
-        
-        // Глобальный бонус: каждые 10 побед (+10% от среднего)
-        // НЕ РАБОТАЕТ ДЛЯ ЯДОВИТОГО
+        // Глобальный бонус 10 побед (кроме Яда)
         if (skin !== 'skin_green' && user.streak > 0 && user.streak % 10 === 0) {
             const avg10 = calcAvg(10);
-            flatBonusCoins += (avg10.c * 0.10);
-            flatBonusXP += (avg10.x * 0.10);
+            const bC = Math.floor(avg10.c * 0.10);
+            const bX = Math.floor(avg10.x * 0.10);
+            flatBonusCoins += bC;
+            flatBonusXP += bX;
+            reportDetails.push(`Серия 10 побед: +${bC}💰 +${bX}⭐`);
         }
 
-        // Скин: Золото (+15% монет, -10% XP)
-        if (skin === 'skin_gold') { bonusMultiplierCoins += 0.15; bonusMultiplierXP -= 0.10; }
-        
-        // Скин: Черная метка (-10% монет, +15% XP)
-        if (skin === 'skin_black') { bonusMultiplierCoins -= 0.10; bonusMultiplierXP += 0.15; }
+        if (skin === 'skin_gold') { 
+            bonusMultiplierCoins += 0.15; bonusMultiplierXP -= 0.10;
+            reportDetails.push("Золото: +15%💰 -10%⭐");
+        }
+        if (skin === 'skin_black') { 
+            bonusMultiplierCoins -= 0.10; bonusMultiplierXP += 0.15;
+            reportDetails.push("Метка: -10%💰 +15%⭐");
+        }
 
-        // Скин: Рубин (+4% от среднего за 5 побед, суммируется с глобальным)
+        // Рубин (5 побед)
         if (skin === 'skin_red' && user.streak > 0 && user.streak % 5 === 0) {
             const avg5 = calcAvg(5);
-            flatBonusCoins += (avg5.c * 0.04);
-            // XP бонуса нет
+            const bC = Math.floor(avg5.c * 0.04);
+            flatBonusCoins += bC;
+            reportDetails.push(`Рубин (5 побед): +${bC}💰`);
         }
 
-        // Скин: Ядовитый (+1% за победу, стак до 20%, без глобального бонуса)
+        // Яд
         if (skin === 'skin_green') {
             let poisonStack = Math.min(user.streak, 20);
-            let poisonFactor = poisonStack / 100; // 0.01 - 0.20
-            // Применяем как множитель к текущему выигрышу
+            let poisonFactor = poisonStack / 100; 
             bonusMultiplierCoins += poisonFactor;
             bonusMultiplierXP += poisonFactor;
+            if(poisonStack > 0) reportDetails.push(`Яд (x${poisonStack}): +${Math.round(poisonFactor*100)}%`);
         }
 
-        // Скин: Вуду (10% шанс х2 или х0)
+        // Вуду
         if (skin === 'skin_purple') {
             const r = Math.random();
-            if (r < 0.1) bonusMultiplierCoins += 1.0; // x2
-            else if (r > 0.9) bonusMultiplierCoins = 0; // x0
-        }
-
-        deltaCoins = (totalMatchCoins * bonusMultiplierCoins) + flatBonusCoins;
-        deltaXP = (totalMatchXP * bonusMultiplierXP) + flatBonusXP;
-
-    } else if (type === 'lose_game' || type === 'lose_pve') {
-        user.matches++; 
-        user.streak = 0; 
-        user.lossStreak++;
-
-        // Базовый штраф ранга
-        let rankPenalty = currentRankInfo.current.penalty || 0;
-        let xpLossBase = rankPenalty + betXp;
-        let coinLossBase = betCoins; // Теряем ставку
-
-        // Утешительный приз (только монеты)
-        let consolation = 10;
-
-        // --- ДЕБАФФЫ ПРОИГРЫША ---
-
-        // Скин: Рубин (теряешь на 5% больше XP от всей суммы потерь)
-        if (skin === 'skin_red') {
-            xpLossBase = xpLossBase * 1.05;
-        }
-
-        // Скин: Морской (-20% штрафа)
-        if (skin === 'skin_blue') {
-            xpLossBase = xpLossBase * 0.8;
-        }
-
-        // Скин: Костяной (Дороже вход на 5% = теряем на 5% больше монет)
-        if (skin === 'skin_bone') {
-            coinLossBase = coinLossBase * 1.05;
-            // Бафф: Если всухую (эмулируем - если это первая смерть в комнате)
-            // Сложно отследить "всухую", давай просто дадим шанс 20% на возврат 10% ставки
-            if (Math.random() < 0.2 && betCoins > 0) {
-                consolation += (betCoins * 0.10);
+            if (r < 0.1) { 
+                bonusMultiplierCoins += 1.0; 
+                reportDetails.push("Вуду: ДЖЕКПОТ (x2)!");
+            } else if (r > 0.9) {
+                bonusMultiplierCoins = 0; 
+                reportDetails.push("Вуду: Неудача (x0)...");
             }
         }
 
-        // Скин: Ядовитый (Стак штрафа за серию поражений до 20%)
+        deltaCoins = Math.floor((totalMatchCoins * bonusMultiplierCoins) + flatBonusCoins);
+        deltaXP = Math.floor((totalMatchXP * bonusMultiplierXP) + flatBonusXP);
+
+        // Записываем базу для отображения
+        if(potCoins > 0 || potXP > 0) reportDetails.unshift(`Банк: ${potCoins}💰 ${potXP}⭐`);
+        reportDetails.unshift(`Победа: ${baseWinCoins}💰 ${baseWinXP}⭐`);
+
+    } else if (type === 'lose_game' || type === 'lose_pve') {
+        user.matches++; user.streak = 0; user.lossStreak++;
+
+        let rankPenalty = oldRankInfo.current.penalty || 0;
+        let xpLossBase = rankPenalty + betXp;
+        let coinLossBase = betCoins;
+        let consolation = 10;
+
+        if (skin === 'skin_red') {
+            xpLossBase = Math.floor(xpLossBase * 1.05);
+            reportDetails.push("Рубин: -5% XP штраф");
+        }
+        if (skin === 'skin_blue') {
+            xpLossBase = Math.floor(xpLossBase * 0.8);
+            reportDetails.push("Морской: Штраф снижен");
+        }
+        if (skin === 'skin_bone') {
+            coinLossBase = Math.floor(coinLossBase * 1.05);
+            if (Math.random() < 0.2 && betCoins > 0) {
+                consolation += Math.floor(betCoins * 0.10);
+                reportDetails.push("Костяной: Возврат 10% ставки!");
+            }
+        }
         if (skin === 'skin_green') {
             let poisonLossStack = Math.min(user.lossStreak, 20);
-            let poisonLossFactor = 1.0 + (poisonLossStack / 100);
-            xpLossBase = xpLossBase * poisonLossFactor;
-            coinLossBase = coinLossBase * poisonLossFactor;
-            consolation = 0; // Нет утешения
+            let f = 1.0 + (poisonLossStack / 100);
+            xpLossBase = Math.floor(xpLossBase * f);
+            coinLossBase = Math.floor(coinLossBase * f);
+            consolation = 0;
+            reportDetails.push(`Яд: Штраф увеличен (+${poisonLossStack}%)`);
         }
 
-        // Применяем
-        user.xp -= Math.floor(xpLossBase);
-        user.coins -= Math.floor(coinLossBase);
-        user.coins += consolation; // Утешение
+        deltaXP = -xpLossBase;
+        deltaCoins = -coinLossBase + consolation;
+        
+        if (consolation > 0) reportDetails.push(`Утешение: +${consolation}💰`);
+        if (coinLossBase > 0) reportDetails.push(`Потеря ставки: -${coinLossBase}💰`);
+        if (xpLossBase > 0) reportDetails.push(`Потеря опыта: -${xpLossBase}⭐`);
     }
 
-    // Применяем дельту выигрыша
-    if (deltaCoins > 0) user.coins += Math.floor(deltaCoins);
-    if (deltaXP > 0) user.xp += Math.floor(deltaXP);
+    user.xp += deltaCoins > 0 ? 0 : 0; // Костыль, чтобы не менять логику ниже
+    user.coins += deltaCoins;
+    user.xp += deltaXP;
 
-    // Лимиты
     if (user.xp < 0) user.xp = 0;
     if (user.coins < 0) user.coins = 0;
 
@@ -274,8 +271,22 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         user.equipped.hat = null;
     }
 
+    // Проверка повышения ранга
+    let rankUpMsg = null;
+    if (newRankInfo.current.level > oldRankInfo.current.level) {
+        rankUpMsg = newRankInfo.current.name;
+    }
+
     userDB.set(userId, user);
-    return user;
+
+    // Возвращаем объект с деталями для отображения
+    return {
+        coins: deltaCoins,
+        xp: deltaXP,
+        details: reportDetails,
+        rankUp: rankUpMsg,
+        streak: user.streak
+    };
 }
 
 function findUserIdByUsername(input) {
@@ -387,8 +398,16 @@ function startNewRound(room, isFirst = false, startIdx = null) {
         }
         p.dice = p.diceCount > 0 ? rollDice(p.diceCount) : [];
     });
-    if (startIdx !== null) room.currentTurn = startIdx;
-    else if (isFirst) room.currentTurn = 0;
+    
+    // ЖЕРЕБЬЕВКА (Random Turn)
+    if (startIdx !== null) {
+        room.currentTurn = startIdx;
+    } else if (isFirst) {
+        // Случайный первый ход
+        room.currentTurn = Math.floor(Math.random() * room.players.length);
+        io.to(room.id).emit('gameEvent', { text: `🎲 Первый ход: ${room.players[room.currentTurn].name}`, type: 'info' });
+    }
+
     let safety = 0;
     while (room.players[room.currentTurn].diceCount === 0) {
         room.currentTurn = (room.currentTurn + 1) % room.players.length;
@@ -439,8 +458,12 @@ function checkEliminationAndContinue(room, loser, killer) {
 
     if (loser.diceCount === 0) {
         if (!loser.isBot && loser.tgId) {
-            const d = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0);
-            if(d) pushProfileUpdate(loser.tgId);
+            const result = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0);
+            if(result) {
+                pushProfileUpdate(loser.tgId);
+                // Отправляем проигравшему отчет
+                io.to(loser.id).emit('matchResults', result);
+            }
         }
         io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
     }
@@ -453,8 +476,11 @@ function checkEliminationAndContinue(room, loser, killer) {
             const type = room.isPvE ? 'win_pve' : 'win_game';
             const diff = room.isPvE ? room.config.difficulty : null;
             const multiplier = room.players.length - 1; 
-            updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier);
+            const result = updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier);
+            
             pushProfileUpdate(winner.tgId);
+            // Отправляем победителю отчет
+            io.to(winner.id).emit('matchResults', result);
         }
         io.to(room.id).emit('gameOver', { winner: winner.name });
     } else {
@@ -582,7 +608,8 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
             if (player.diceCount > 0) {
                 player.diceCount = 0;
                 if (!player.isBot && player.tgId) {
-                    updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
+                    const result = updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
+                    if(result) io.to(player.id).emit('matchResults', result);
                 }
             }
             room.players.splice(i, 1);
@@ -600,7 +627,8 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
                     const type = room.isPvE ? 'win_pve' : 'win_game';
                     const diff = room.isPvE ? room.config.difficulty : null;
                     const multiplier = room.players.length; 
-                    updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
+                    const result = updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
+                    io.to(winner.id).emit('matchResults', result);
                 }
                 io.to(room.id).emit('gameOver', { winner: winner.name });
             } else {
@@ -628,8 +656,6 @@ function handleSkill(socket, skillType) {
     const user = getUserData(player.tgId);
     const rankInfo = getRankInfo(user.xp, user.streak);
     const level = rankInfo.current.level;
-
-    console.log(`[SKILL] Player ${player.name} tries ${skillType}. Level: ${level}`);
 
     try {
         if (skillType === 'ears') {
@@ -694,7 +720,6 @@ if (bot) {
             if (args[1] === 'xp') { user.xp = parseInt(args[2] || 0); userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `XP: ${user.xp}`); }
         }
         else if (cmd === '/givehat') {
-            // /givehat @username hat_id
             if (args.length < 3) return bot.sendMessage(chatId, "/givehat @user hat_id");
             const uid = findUserIdByUsername(args[1]); 
             if (!uid) return bot.sendMessage(chatId, "User not found");
@@ -747,7 +772,6 @@ if (bot) {
             if (args.length < 2) return;
             const uid = findUserIdByUsername(args[1]); if (!uid) return;
             const user = userDB.get(uid);
-            // Add all hats to unlock all
             const allHats = Object.keys(HATS);
             user.inventory = [
                 'skin_white', 'skin_red', 'skin_gold', 'skin_black', 'skin_blue', 'skin_green', 'skin_purple', 'skin_bone',
@@ -782,7 +806,6 @@ io.on('connection', (socket) => {
             ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level 
         });
 
-        // --- RECONNECTION LOGIC ---
         for (const [roomId, room] of rooms) {
             if (room.status === 'PLAYING') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
@@ -828,15 +851,14 @@ io.on('connection', (socket) => {
     socket.on('shopBuy', (itemId) => { 
         if (!socket.tgUserId) return;
         const user = getUserData(socket.tgUserId);
-        // Удалил кибер (skin_cyber)
         const PRICES = { 
-            'skin_red': 200, 'skin_gold': 1000, 'skin_black': 500, 'skin_blue': 300, 
-            'skin_green': 400, 'skin_purple': 800, 'skin_bone': 2500, 
+            'skin_red': 5000, 'skin_gold': 6500, 'skin_black': 6500, 'skin_blue': 10000, 
+            'skin_green': 15000, 'skin_purple': 25000, 'skin_bone': 25000, 
             'bg_lvl1': 150000, 'bg_lvl2': 150000, 'bg_lvl3': 150000, 'bg_lvl4': 150000, 'bg_lvl5': 500000, 
-            'frame_wood': 100, 'frame_silver': 300, 'frame_gold': 500, 'frame_fire': 1500, 
-            'frame_ice': 1200, 'frame_neon': 2000, 'frame_royal': 5000, 'frame_ghost': 3000, 
-            'frame_kraken': 4000, 'frame_captain': 10000,
-            'frame_abyss': 7500
+            'frame_wood': 2500, 'frame_silver': 5000, 'frame_gold': 5000, 'frame_fire': 7500, 
+            'frame_ice': 7500, 'frame_neon': 7500, 'frame_royal': 10000, 'frame_ghost': 10000, 
+            'frame_kraken': 15000, 'frame_captain': 20000,
+            'frame_abyss': 25000
         };
         const price = PRICES[itemId];
         if (price && user.coins >= price && !user.inventory.includes(itemId)) {
@@ -910,6 +932,9 @@ io.on('connection', (socket) => {
         if (!tgUser) return;
         const userId = tgUser.id; const uData = getUserData(userId); const rInfo = getRankInfo(uData.xp, uData.streak);
         
+        // ВАЛИДАЦИЯ (мин 3 кубика)
+        if (options && options.dice < 3) options.dice = 3;
+
         if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) {
             socket.emit('errorMsg', 'NO_FUNDS'); 
             return;
@@ -918,7 +943,7 @@ io.on('connection', (socket) => {
         let room; let isCreator = false;
         if (mode === 'pve') {
             const newId = 'CPU_' + Math.random().toString(36).substring(2,6);
-            room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: { dice: options.dice, players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty }, isPvE: true };
+            room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: { dice: Math.max(3, options.dice), players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty }, isPvE: true };
             rooms.set(newId, room); isCreator = true;
             room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: true, isCreator: true, equipped: uData.equipped });
             const botNames = ['Джек', 'Барбосса', 'Уилл', 'Дейви Джонс', 'Тич', 'Гиббс'];
@@ -933,7 +958,7 @@ io.on('connection', (socket) => {
                 return;
             }
         }
-        else { const newId = generateRoomId(); const st = options || { dice: 5, players: 10, time: 30 }; room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: st, isPvE: false }; rooms.set(newId, room); roomId = newId; isCreator = true; }
+        else { const newId = generateRoomId(); const st = options || { dice: 5, players: 10, time: 30 }; if(st.dice < 3) st.dice = 3; room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: st, isPvE: false }; rooms.set(newId, room); roomId = newId; isCreator = true; }
         room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: false, isCreator: isCreator, equipped: uData.equipped });
         socket.join(roomId); broadcastRoomUpdate(room);
     });
