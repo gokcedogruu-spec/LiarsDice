@@ -55,6 +55,7 @@ function getUserData(userId) {
         userDB.set(userId, { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
             matchHistory: [], lossStreak: 0,
+            friends: [], requests: [], 
             name: 'Unknown', username: null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
             equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null }
@@ -71,6 +72,7 @@ function syncUserData(tgUser, savedData) {
         user = { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
             matchHistory: [], lossStreak: 0,
+            friends: [], requests: [],
             name: tgUser.first_name, 
             username: tgUser.username ? tgUser.username.toLowerCase() : null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
@@ -83,6 +85,8 @@ function syncUserData(tgUser, savedData) {
             if (typeof savedData.matches === 'number') user.matches = savedData.matches;
             if (typeof savedData.wins === 'number') user.wins = savedData.wins;
             if (typeof savedData.streak === 'number') user.streak = savedData.streak;
+            if (Array.isArray(savedData.friends)) user.friends = savedData.friends;
+            if (Array.isArray(savedData.requests)) user.requests = savedData.requests;
             if (Array.isArray(savedData.inventory)) {
                 const combined = new Set([...user.inventory, ...savedData.inventory]);
                 user.inventory = Array.from(combined);
@@ -115,7 +119,6 @@ function getRankInfo(xp, streak) {
     return { current, next };
 }
 
-// --- REWARD LOGIC ---
 function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, winnerPotMultiplier = 0) {
     if (typeof userId === 'string' && userId.startsWith('bot')) return null;
     const user = getUserData(userId);
@@ -325,7 +328,6 @@ function rollDice(count) { return Array.from({length: count}, () => Math.floor(M
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
 function resolveBackground(room) {
-    // FIX: В PvE всегда фон создателя (игрока)
     if (room.isPvE) {
         const creator = room.players.find(p => p.isCreator);
         if (creator && creator.tgId) {
@@ -334,8 +336,6 @@ function resolveBackground(room) {
         }
         return 'bg_default';
     }
-
-    // В PvP логика рангов
     const creator = room.players.find(p => p.isCreator);
     if (creator && creator.tgId) {
         const uData = getUserData(creator.tgId);
@@ -610,7 +610,8 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
             if (player.diceCount > 0) {
                 player.diceCount = 0;
                 if (!player.isBot && player.tgId) {
-                    updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
+                    const result = updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp);
+                    if(result) io.to(player.id).emit('matchResults', result);
                 }
             }
             room.players.splice(i, 1);
@@ -628,7 +629,8 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
                     const type = room.isPvE ? 'win_pve' : 'win_game';
                     const diff = room.isPvE ? room.config.difficulty : null;
                     const multiplier = room.players.length; 
-                    updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
+                    const result = updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier);
+                    io.to(winner.id).emit('matchResults', result);
                 }
                 io.to(room.id).emit('gameOver', { winner: winner.name });
             } else {
@@ -740,7 +742,7 @@ if (bot) {
             if (args[1] === 'rich') { user.coins = 100000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "Rich"); }
             if (args[1] === 'xp') { user.xp = parseInt(args[2] || 0); userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `XP: ${user.xp}`); }
         }
-        else if (cmd === '/streak') { // NEW: CHEAT CODE
+        else if (cmd === '/streak') {
             if (args.length < 2) return bot.sendMessage(chatId, "/streak N");
             const user = userDB.get(ADMIN_ID);
             if (user) {
@@ -999,6 +1001,125 @@ io.on('connection', (socket) => {
     socket.on('callSpot', () => handleCall(socket, 'spot'));
     socket.on('requestRestart', () => { const r = getRoomBySocketId(socket.id); if (r?.status === 'FINISHED') { r.players.forEach(p => { if (!p.isBot && p.tgId) pushProfileUpdate(p.tgId); }); if (r.isPvE) { r.status = 'PLAYING'; r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; startNewRound(r, true); } else { r.status = 'LOBBY'; r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; broadcastRoomUpdate(r); } } });
     socket.on('disconnect', () => { const r = getRoomBySocketId(socket.id); if (r) handlePlayerDisconnect(socket.id, r, false); });
+
+    // --- FRIEND ACTION HANDLER ---
+    socket.on('friendAction', ({ action, payload }) => {
+        if (!socket.tgUserId) return;
+        const userId = socket.tgUserId;
+        const user = getUserData(userId);
+
+        if (action === 'get') {
+            const list = user.friends.map(fid => {
+                const fData = getUserData(fid);
+                let status = 'offline';
+                const fSocket = findSocketIdByUserId(fid);
+                if (fSocket) {
+                    status = 'online';
+                    const room = getRoomBySocketId(fSocket);
+                    if (room && room.status === 'PLAYING') status = 'ingame';
+                }
+                return { id: fid, name: fData.name, status: status };
+            });
+            
+            const reqs = user.requests.map(rid => {
+                const rData = getUserData(rid);
+                return { id: rid, name: rData.name };
+            });
+
+            socket.emit('friendUpdate', { friends: list, requests: reqs });
+        }
+
+        else if (action === 'search') {
+            const targetName = payload.trim().toLowerCase();
+            if (!targetName) return;
+            let foundId = null;
+            for (const [uid, uData] of userDB.entries()) {
+                if (uid !== userId && (uData.username === targetName || uData.name.toLowerCase() === targetName)) {
+                    foundId = uid;
+                    break;
+                }
+            }
+            if (foundId) {
+                const fData = getUserData(foundId);
+                socket.emit('friendSearchResult', { id: foundId, name: fData.name });
+            } else {
+                socket.emit('friendSearchResult', null);
+            }
+        }
+
+        else if (action === 'request') {
+            const targetId = parseInt(payload);
+            if (targetId === userId || user.friends.includes(targetId)) return;
+            
+            const target = getUserData(targetId);
+            if (!target.requests.includes(userId)) {
+                target.requests.push(userId);
+                userDB.set(targetId, target);
+                
+                const targetSocket = findSocketIdByUserId(targetId);
+                if (targetSocket) {
+                    io.to(targetSocket).emit('notification', { type: 'friend_req' });
+                    io.to(targetSocket).emit('forceFriendUpdate'); 
+                }
+                socket.emit('errorMsg', 'Запрос отправлен!');
+            } else {
+                socket.emit('errorMsg', 'Уже отправлено.');
+            }
+        }
+
+        else if (action === 'accept') {
+            const targetId = parseInt(payload);
+            const target = getUserData(targetId);
+            
+            if (!user.friends.includes(targetId)) user.friends.push(targetId);
+            if (!target.friends.includes(userId)) target.friends.push(userId);
+            
+            user.requests = user.requests.filter(r => r !== targetId);
+            
+            userDB.set(userId, user);
+            userDB.set(targetId, target);
+            
+            socket.emit('friendAction', { action: 'get' });
+            
+            const targetSocket = findSocketIdByUserId(targetId);
+            if(targetSocket) io.to(targetSocket).emit('forceFriendUpdate');
+        }
+
+        else if (action === 'decline') {
+            const targetId = parseInt(payload);
+            user.requests = user.requests.filter(r => r !== targetId);
+            userDB.set(userId, user);
+            socket.emit('friendAction', { action: 'get' });
+        }
+    });
+
+    socket.on('inviteToRoom', (targetId) => {
+        if (!socket.tgUserId) return;
+        const myRoom = getRoomBySocketId(socket.id);
+        if (!myRoom || myRoom.status !== 'LOBBY') return; 
+
+        const targetSocket = findSocketIdByUserId(targetId);
+        if (!targetSocket) {
+            socket.emit('errorMsg', 'Игрок оффлайн.');
+            return;
+        }
+
+        const targetRoom = getRoomBySocketId(targetSocket);
+        if (targetRoom && targetRoom.status === 'PLAYING') {
+            socket.emit('errorMsg', 'Игрок уже в бою.');
+            return;
+        }
+
+        const user = getUserData(socket.tgUserId);
+        
+        io.to(targetSocket).emit('gameInvite', {
+            inviter: user.name,
+            roomId: myRoom.id,
+            betCoins: myRoom.config.betCoins,
+            betXp: myRoom.config.betXp
+        });
+        socket.emit('errorMsg', 'Приглашение отправлено!');
+    });
 });
 
 const PING_INTERVAL = 14 * 60 * 1000;
