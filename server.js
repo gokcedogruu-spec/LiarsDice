@@ -112,14 +112,13 @@ function getRankInfo(xp, streak) {
     return { current, next };
 }
 
-// --- UPDATED REWARD LOGIC ---
+// --- REWARD LOGIC ---
 function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, winnerPotMultiplier = 0) {
     if (typeof userId === 'string' && userId.startsWith('bot')) return null;
     const user = getUserData(userId);
     const oldRankInfo = getRankInfo(user.xp, user.streak);
     const skin = user.equipped.skin;
 
-    // Инициализация
     if (!user.matchHistory) user.matchHistory = [];
     if (typeof user.lossStreak === 'undefined') user.lossStreak = 0;
 
@@ -140,7 +139,7 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
 
     let deltaCoins = 0;
     let deltaXP = 0;
-    let reportDetails = []; // Для отчета игроку
+    let reportDetails = [];
 
     if (type === 'win_game' || type === 'win_pve') {
         user.matches++; user.wins++; user.streak++; user.lossStreak = 0;
@@ -164,7 +163,6 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         let flatBonusCoins = 0;
         let flatBonusXP = 0;
 
-        // Глобальный бонус 10 побед (кроме Яда)
         if (skin !== 'skin_green' && user.streak > 0 && user.streak % 10 === 0) {
             const avg10 = calcAvg(10);
             const bC = Math.floor(avg10.c * 0.10);
@@ -183,7 +181,6 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
             reportDetails.push("Метка: -10%💰 +15%⭐");
         }
 
-        // Рубин (5 побед)
         if (skin === 'skin_red' && user.streak > 0 && user.streak % 5 === 0) {
             const avg5 = calcAvg(5);
             const bC = Math.floor(avg5.c * 0.04);
@@ -191,7 +188,6 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
             reportDetails.push(`Рубин (5 побед): +${bC}💰`);
         }
 
-        // Яд
         if (skin === 'skin_green') {
             let poisonStack = Math.min(user.streak, 20);
             let poisonFactor = poisonStack / 100; 
@@ -200,7 +196,6 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
             if(poisonStack > 0) reportDetails.push(`Яд (x${poisonStack}): +${Math.round(poisonFactor*100)}%`);
         }
 
-        // Вуду
         if (skin === 'skin_purple') {
             const r = Math.random();
             if (r < 0.1) { 
@@ -215,7 +210,6 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         deltaCoins = Math.floor((totalMatchCoins * bonusMultiplierCoins) + flatBonusCoins);
         deltaXP = Math.floor((totalMatchXP * bonusMultiplierXP) + flatBonusXP);
 
-        // Записываем базу для отображения
         if(potCoins > 0 || potXP > 0) reportDetails.unshift(`Банк: ${potCoins}💰 ${potXP}⭐`);
         reportDetails.unshift(`Победа: ${baseWinCoins}💰 ${baseWinXP}⭐`);
 
@@ -259,7 +253,7 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         if (xpLossBase > 0) reportDetails.push(`Потеря опыта: -${xpLossBase}⭐`);
     }
 
-    user.xp += deltaCoins > 0 ? 0 : 0; // Костыль, чтобы не менять логику ниже
+    user.xp += deltaCoins > 0 ? 0 : 0;
     user.coins += deltaCoins;
     user.xp += deltaXP;
 
@@ -271,7 +265,6 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
         user.equipped.hat = null;
     }
 
-    // Проверка повышения ранга
     let rankUpMsg = null;
     if (newRankInfo.current.level > oldRankInfo.current.level) {
         rankUpMsg = newRankInfo.current.name;
@@ -279,7 +272,6 @@ function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, 
 
     userDB.set(userId, user);
 
-    // Возвращаем объект с деталями для отображения
     return {
         coins: deltaCoins,
         xp: deltaXP,
@@ -399,11 +391,9 @@ function startNewRound(room, isFirst = false, startIdx = null) {
         p.dice = p.diceCount > 0 ? rollDice(p.diceCount) : [];
     });
     
-    // ЖЕРЕБЬЕВКА (Random Turn)
     if (startIdx !== null) {
         room.currentTurn = startIdx;
     } else if (isFirst) {
-        // Случайный первый ход
         room.currentTurn = Math.floor(Math.random() * room.players.length);
         io.to(room.id).emit('gameEvent', { text: `🎲 Первый ход: ${room.players[room.currentTurn].name}`, type: 'info' });
     }
@@ -453,6 +443,8 @@ function makeBidInternal(room, player, quantity, faceValue) {
 }
 
 function checkEliminationAndContinue(room, loser, killer) {
+    if (room.timerId) clearTimeout(room.timerId); // STOP TIMER IMMEDIATELY
+
     const betCoins = room.config.betCoins || 0;
     const betXp = room.config.betXp || 0;
 
@@ -461,7 +453,6 @@ function checkEliminationAndContinue(room, loser, killer) {
             const result = updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0);
             if(result) {
                 pushProfileUpdate(loser.tgId);
-                // Отправляем проигравшему отчет
                 io.to(loser.id).emit('matchResults', result);
             }
         }
@@ -471,7 +462,6 @@ function checkEliminationAndContinue(room, loser, killer) {
     if (active.length === 1) {
         const winner = active[0];
         room.status = 'FINISHED';
-        if (room.timerId) clearTimeout(room.timerId);
         if (!winner.isBot && winner.tgId) {
             const type = room.isPvE ? 'win_pve' : 'win_game';
             const diff = room.isPvE ? room.config.difficulty : null;
@@ -479,7 +469,6 @@ function checkEliminationAndContinue(room, loser, killer) {
             const result = updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier);
             
             pushProfileUpdate(winner.tgId);
-            // Отправляем победителю отчет
             io.to(winner.id).emit('matchResults', result);
         }
         io.to(room.id).emit('gameOver', { winner: winner.name });
@@ -657,31 +646,51 @@ function handleSkill(socket, skillType) {
     const rankInfo = getRankInfo(user.xp, user.streak);
     const level = rankInfo.current.level;
 
+    console.log(`[SKILL] Player ${player.name} tries ${skillType}. Level: ${level}`);
+
     try {
         if (skillType === 'ears') {
             if (level < 4) return socket.emit('errorMsg', 'Нужен ранг Боцман');
             if (room.currentTurn !== room.players.indexOf(player)) return socket.emit('errorMsg', 'Только в свой ход');
             if (!room.currentBid) return socket.emit('errorMsg', 'Ставок нет');
-            let chance = level === 4 ? 0.35 : level === 5 ? 0.50 : level === 6 ? 0.75 : 1.0;
-            if (Math.random() < chance) {
+            
+            // Шанс 50%
+            if (Math.random() < 0.5) {
                 const bid = room.currentBid; let total = 0;
                 room.players.forEach(p => { p.dice.forEach(d => { if (d === bid.faceValue || (room.config.jokers && d===1 && bid.faceValue!==1)) total++; }) });
                 const isLying = total < bid.quantity;
                 socket.emit('skillResult', { type: 'ears', text: isLying ? "Он ВРЁТ!" : "Похоже на правду..." });
             } else socket.emit('skillResult', { type: 'ears', text: "Ничего не слышно..." });
-            if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('ears'); broadcastGameState(room);
+            
+            if(!player.skillsUsed) player.skillsUsed = []; 
+            player.skillsUsed.push('ears'); 
+            broadcastGameState(room);
         }
         else if (skillType === 'lucky') {
             if (level < 5) return socket.emit('errorMsg', 'Нужен ранг 1-й помощник');
             if (player.diceCount >= 5) return socket.emit('errorMsg', 'Максимум кубиков');
-            let chance = level === 5 ? 0.50 : level === 6 ? 0.75 : 1.0;
-            if (Math.random() < chance) {
+            
+            // Шанс 50%
+            if (Math.random() < 0.5) {
                 player.diceCount++; player.dice.push(Math.floor(Math.random()*6)+1);
                 io.to(room.id).emit('gameEvent', { text: `🎲 ${player.name} достал кубик!`, type: 'info' });
-                io.to(player.id).emit('yourDice', player.dice); broadcastGameState(room);
+                io.to(player.id).emit('yourDice', player.dice); 
                 socket.emit('skillResult', { type: 'lucky', text: "Вы достали кубик из рукава!" });
-            } else socket.emit('skillResult', { type: 'lucky', text: "Фокус не удался..." });
-            if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('lucky'); broadcastGameState(room);
+            } else {
+                // НЕУДАЧА: ТЕРЯЕШЬ КУБ
+                player.diceCount--;
+                player.dice.pop();
+                io.to(room.id).emit('gameEvent', { text: `🤡 ${player.name} уронил кубик!`, type: 'error' });
+                io.to(player.id).emit('yourDice', player.dice);
+                socket.emit('skillResult', { type: 'lucky', text: "Фокус не удался, кубик потерян!" });
+                
+                if(player.diceCount === 0) {
+                    checkEliminationAndContinue(room, player, null);
+                }
+            }
+            if(!player.skillsUsed) player.skillsUsed = []; 
+            player.skillsUsed.push('lucky'); 
+            broadcastGameState(room);
         }
         else if (skillType === 'kill') {
             if (level < 6) return socket.emit('errorMsg', 'Нужен ранг Капитан');
@@ -689,15 +698,24 @@ function handleSkill(socket, skillType) {
             if (active.length !== 2) return socket.emit('errorMsg', 'Нужно 1 на 1');
             const enemy = active.find(p => p.id !== player.id);
             if (player.diceCount !== 1 || enemy.diceCount !== 1) return socket.emit('errorMsg', 'У всех по 1 кубу');
-            let chance = level >= 7 ? 0.75 : 0.50;
-            if (Math.random() < chance) {
+            
+            // Шанс 50%
+            if (Math.random() < 0.5) {
+                // ПОБЕДА
                 io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} пристрелил ${enemy.name}!`, type: 'info' });
-                enemy.diceCount = 0; checkEliminationAndContinue(room, enemy, player);
+                enemy.diceCount = 0; 
+                // Сразу вызываем проверку
+                checkEliminationAndContinue(room, enemy, player);
             } else {
-                io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} промахнулся!`, type: 'error' });
-                player.diceCount = 0; checkEliminationAndContinue(room, player, enemy);
+                // ПРОИГРЫШ
+                io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} промахнулся и застрелился!`, type: 'error' });
+                player.diceCount = 0; 
+                // Сразу вызываем проверку
+                checkEliminationAndContinue(room, player, enemy);
             }
-            if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('kill'); broadcastGameState(room);
+            if(!player.skillsUsed) player.skillsUsed = []; 
+            player.skillsUsed.push('kill'); 
+            broadcastGameState(room);
         }
     } catch(e) { console.error(e); socket.emit('errorMsg', 'Ошибка навыка'); }
 }
@@ -932,7 +950,6 @@ io.on('connection', (socket) => {
         if (!tgUser) return;
         const userId = tgUser.id; const uData = getUserData(userId); const rInfo = getRankInfo(uData.xp, uData.streak);
         
-        // ВАЛИДАЦИЯ (мин 3 кубика)
         if (options && options.dice < 3) options.dice = 3;
 
         if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) {
