@@ -1116,15 +1116,29 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('inviteToRoom', (targetId) => {
+       socket.on('inviteToRoom', (targetId) => {
         if (!socket.tgUserId) return;
         const myRoom = getRoomBySocketId(socket.id);
+        
+        // Если я не в лобби, я не могу звать (защита)
         if (!myRoom || myRoom.status !== 'LOBBY') return; 
 
-        const targetSocket = findSocketIdByUserId(targetId);
+        // ИСПРАВЛЕНИЕ: Превращаем ID в число, так как с клиента может прийти строка
+        const targetIdInt = parseInt(targetId); 
+
+        const targetSocket = findSocketIdByUserId(targetIdInt);
+        
         if (!targetSocket) {
             socket.emit('errorMsg', 'Игрок оффлайн.');
             return;
+        }
+
+        const targetRoom = getRoomBySocketId(targetSocket);
+        if (targetRoom && targetRoom.status === 'PLAYING') {
+            // Мы решили разрешать звать даже из игры, но уведомлять. 
+            // Если хотите запретить, раскомментируйте строки ниже:
+            // socket.emit('errorMsg', 'Игрок уже в бою.');
+            // return;
         }
 
         const user = getUserData(socket.tgUserId);
@@ -1135,7 +1149,7 @@ io.on('connection', (socket) => {
             betCoins: myRoom.config.betCoins,
             betXp: myRoom.config.betXp
         });
-        socket.emit('errorMsg', 'Приглашение отправлено!');
+        socket.emit('gameEvent', { text: 'Приглашение отправлено!', type: 'info' }); // Поменял на gameEvent, чтобы красиво всплывало
     });
 });
 
@@ -1146,3 +1160,4 @@ setInterval(() => {
 }, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
