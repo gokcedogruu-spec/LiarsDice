@@ -12,7 +12,6 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const token = process.env.TELEGRAM_BOT_TOKEN;
-// Убедитесь, что в .env ADMIN_ID записан без кавычек, только цифры
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
 // --- 1. STATIC FILES & PING ---
@@ -664,6 +663,8 @@ function handleSkill(socket, skillType) {
     const rankInfo = getRankInfo(user.xp, user.streak);
     const level = rankInfo.current.level;
 
+    console.log(`[SKILL] Player ${player.name} tries ${skillType}. Level: ${level}`);
+
     try {
         if (skillType === 'ears') {
             if (level < 4) return socket.emit('errorMsg', 'Нужен ранг Боцман');
@@ -734,6 +735,8 @@ if (bot) {
     bot.on('message', (msg) => {
         const chatId = msg.chat.id; const text = (msg.text || '').trim(); const fromId = msg.from.id;
         
+        console.log(`[ADMIN] Msg from ${fromId}: ${text}`); // LOGGING
+
         if (text.toLowerCase().startsWith('/start')) {
             bot.sendMessage(chatId, "☠️ Костяшки", { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: 'https://liarsdicezmss.onrender.com' } }]] } }); 
             return;
@@ -752,24 +755,25 @@ if (bot) {
             } 
         };
 
+        if (!userDB.has(ADMIN_ID)) {
+            // FIX: Allow commands even if not in RAM? No, we need user object.
+            // Try to load from nowhere? No persistence.
+            bot.sendMessage(chatId, "⚠️ Админ, зайди в игру (WebApp) хотя бы раз после перезагрузки сервера!");
+            return;
+        }
+
         if (cmd === '/me') {
-            const user = getUserData(ADMIN_ID); // Uses safe getter
-            if (user) {
-                if (args[1] === 'rich') { user.coins = 100000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "💰 You are rich!"); }
-                if (args[1] === 'xp') { user.xp = parseInt(args[2] || 0); userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `⭐ XP set to ${user.xp}`); }
-            } else {
-                bot.sendMessage(chatId, "⚠️ You need to log in to the game first.");
-            }
+            const user = userDB.get(ADMIN_ID);
+            if (args[1] === 'rich') { user.coins = 100000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "💰 You are rich!"); }
+            if (args[1] === 'xp') { user.xp = parseInt(args[2] || 0); userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `⭐ XP set to ${user.xp}`); }
         }
         else if (cmd === '/streak') {
             if (args.length < 2) return bot.sendMessage(chatId, "/streak N");
-            const user = getUserData(ADMIN_ID);
-            if (user) {
-                user.streak = parseInt(args[1]);
-                userDB.set(ADMIN_ID, user);
-                refreshUser(ADMIN_ID);
-                bot.sendMessage(chatId, `🔥 Streak set to ${user.streak}`);
-            }
+            const user = userDB.get(ADMIN_ID);
+            user.streak = parseInt(args[1]);
+            userDB.set(ADMIN_ID, user);
+            refreshUser(ADMIN_ID);
+            bot.sendMessage(chatId, `🔥 Streak set to ${user.streak}`);
         }
         else if (cmd === '/givehat') {
             if (args.length < 3) return bot.sendMessage(chatId, "/givehat @user hat_id");
@@ -1016,9 +1020,11 @@ io.on('connection', (socket) => {
             for (const [uid, uData] of userDB.entries()) {
                 if (String(uid) === String(userId)) continue; 
                 
+                // FIX: Проверка на существование имени перед toLowerCase()
                 const dbName = (uData.name || '').toLowerCase();
                 const dbUser = (uData.username || '').toLowerCase();
 
+                // Ищем по точному совпадению @username ИЛИ по частичному имени
                 if (dbUser === targetName || dbName.includes(targetName)) {
                     foundId = uid;
                     break;
@@ -1121,8 +1127,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // REMOVED: Block if player in game
-        
         const user = getUserData(socket.tgUserId);
         
         io.to(targetSocket).emit('gameInvite', {
