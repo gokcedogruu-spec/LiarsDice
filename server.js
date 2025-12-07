@@ -56,7 +56,7 @@ function getUserData(userId) {
         userDB.set(userId, { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
             matchHistory: [], lossStreak: 0,
-            friends: [], requests: [], 
+            friends: [], requests: [], pendingInvites: [], // NEW: Pending Invites
             name: 'Unknown', username: null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
             equipped: { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null }
@@ -69,11 +69,12 @@ function syncUserData(tgUser, savedData) {
     const userId = tgUser.id;
     let user = userDB.get(userId);
     
+    // Если юзера нет в памяти (рестарт сервера)
     if (!user) {
         user = { 
             xp: 0, matches: 0, wins: 0, streak: 0, coins: 100,
             matchHistory: [], lossStreak: 0,
-            friends: [], requests: [],
+            friends: [], requests: [], pendingInvites: [],
             name: tgUser.first_name, 
             username: tgUser.username ? tgUser.username.toLowerCase() : null,
             inventory: ['skin_white', 'bg_default', 'frame_default'], 
@@ -86,8 +87,10 @@ function syncUserData(tgUser, savedData) {
             if (typeof savedData.matches === 'number') user.matches = savedData.matches;
             if (typeof savedData.wins === 'number') user.wins = savedData.wins;
             if (typeof savedData.streak === 'number') user.streak = savedData.streak;
+            // ВАЖНО: Восстанавливаем друзей из CloudStorage
             if (Array.isArray(savedData.friends)) user.friends = savedData.friends;
             if (Array.isArray(savedData.requests)) user.requests = savedData.requests;
+            
             if (Array.isArray(savedData.inventory)) {
                 const combined = new Set([...user.inventory, ...savedData.inventory]);
                 user.inventory = Array.from(combined);
@@ -95,6 +98,7 @@ function syncUserData(tgUser, savedData) {
             if (savedData.equipped) user.equipped = { ...user.equipped, ...savedData.equipped };
         }
     } else {
+        // Обновляем имя, если изменилось
         user.name = tgUser.first_name;
         user.username = tgUser.username ? tgUser.username.toLowerCase() : null;
     }
@@ -1020,7 +1024,6 @@ io.on('connection', (socket) => {
             for (const [uid, uData] of userDB.entries()) {
                 if (String(uid) === String(userId)) continue; 
                 
-                // FIX: Проверка на существование имени перед toLowerCase()
                 const dbName = (uData.name || '').toLowerCase();
                 const dbUser = (uData.username || '').toLowerCase();
 
@@ -1116,29 +1119,18 @@ io.on('connection', (socket) => {
         }
     });
 
-       socket.on('inviteToRoom', (targetId) => {
+    socket.on('inviteToRoom', (targetId) => {
         if (!socket.tgUserId) return;
         const myRoom = getRoomBySocketId(socket.id);
-        
-        // Если я не в лобби, я не могу звать (защита)
         if (!myRoom || myRoom.status !== 'LOBBY') return; 
 
-        // ИСПРАВЛЕНИЕ: Превращаем ID в число, так как с клиента может прийти строка
-        const targetIdInt = parseInt(targetId); 
-
+        // FIX: parseInt because clients send ID as string
+        const targetIdInt = parseInt(targetId);
         const targetSocket = findSocketIdByUserId(targetIdInt);
         
         if (!targetSocket) {
             socket.emit('errorMsg', 'Игрок оффлайн.');
             return;
-        }
-
-        const targetRoom = getRoomBySocketId(targetSocket);
-        if (targetRoom && targetRoom.status === 'PLAYING') {
-            // Мы решили разрешать звать даже из игры, но уведомлять. 
-            // Если хотите запретить, раскомментируйте строки ниже:
-            // socket.emit('errorMsg', 'Игрок уже в бою.');
-            // return;
         }
 
         const user = getUserData(socket.tgUserId);
@@ -1149,7 +1141,7 @@ io.on('connection', (socket) => {
             betCoins: myRoom.config.betCoins,
             betXp: myRoom.config.betXp
         });
-        socket.emit('gameEvent', { text: 'Приглашение отправлено!', type: 'info' }); // Поменял на gameEvent, чтобы красиво всплывало
+        socket.emit('gameEvent', { text: 'Приглашение отправлено!', type: 'info' });
     });
 });
 
@@ -1160,4 +1152,3 @@ setInterval(() => {
 }, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-
