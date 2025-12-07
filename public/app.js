@@ -16,7 +16,7 @@ const ui = {
     close: function() { this.modal.classList.remove('active'); },
     show: function(titleStr, textStr, hasInput = false, buttonsHTML = '') {
         this.title.textContent = titleStr;
-        this.text.textContent = textStr;
+         this.text.innerHTML = textStr;
         if (hasInput) { this.input.classList.remove('hidden'); this.input.value = ''; setTimeout(() => this.input.focus(), 100); } 
         else { this.input.classList.add('hidden'); }
         this.btns.innerHTML = buttonsHTML;
@@ -740,3 +740,4 @@ window.openInviteModal = () => {
     switchFriendTab('list');
     uiAlert("Выбери друга и нажми ЗОВИ!");
 };
+
