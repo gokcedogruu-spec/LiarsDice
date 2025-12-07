@@ -16,16 +16,18 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 const MONGO_URL = process.env.MONGO_URL;
 
-// --- DB CONNECTION ---
+// --- 0. INIT BOT ---
+const bot = token ? new TelegramBot(token, { polling: true }) : null;
+
+// --- 1. DATABASE ---
 if (MONGO_URL) {
     mongoose.connect(MONGO_URL)
         .then(() => console.log('✅ MongoDB Connected'))
         .catch(err => console.error('❌ MongoDB Error:', err));
 } else {
-    console.log('⚠️ NO MONGO_URL! Data will not save.');
+    console.log('⚠️ NO MONGO_URL! Using temporary memory.');
 }
 
-// --- SCHEMA ---
 const userSchema = new mongoose.Schema({
     id: { type: Number, required: true, unique: true },
     name: String,
@@ -50,20 +52,21 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
+// --- 2. SERVER CONFIG ---
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
 app.get('/ping', (req, res) => res.status(200).send('pong'));
 
-// --- DATA ---
+// --- 3. GAME DATA ---
 const RANKS = [
     { name: "Салага", min: 0, level: 0 },
     { name: "Юнга", min: 500, level: 1 },
     { name: "Матрос", min: 1500, level: 2 },
     { name: "Старший матрос", min: 5000, level: 3 },
-    { name: "Боцман", min: 10000, level: 4 },
-    { name: "Первый помощник", min: 25000, penalty: 30, level: 5 },
-    { name: "Капитан", min: 50000, penalty: 60, level: 6 },
+    { name: "Боцман", min: 10000, level: 4 }, 
+    { name: "Первый помощник", min: 25000, penalty: 30, level: 5 }, 
+    { name: "Капитан", min: 50000, penalty: 60, level: 6 }, 
     { name: "Легенда морей", min: 75000, reqStreak: 100, penalty: 100, level: 7 }
 ];
 
@@ -79,7 +82,7 @@ const HATS = {
 const userCache = new Map();
 const rooms = new Map();
 
-// --- HELPERS ---
+// --- 4. HELPERS ---
 async function loadUser(tgUser) {
     let user = await User.findOne({ id: tgUser.id });
     if (!user) {
@@ -100,8 +103,8 @@ async function loadUser(tgUser) {
 async function saveUser(userId) {
     const data = userCache.get(userId);
     if (data) {
-        // Mongoose update needs plain object without _id sometimes, but updateOne handles it
-        await User.updateOne({ id: userId }, data);
+        const { _id, ...updateData } = data;
+        await User.updateOne({ id: userId }, updateData);
     }
 }
 
@@ -113,7 +116,8 @@ async function findUserIdByUsername(input) {
         const u = await User.findOne({ id: idNum });
         return u ? u.id : null;
     }
-    const u = await User.findOne({ username: target });
+    // Case insensitive search
+    const u = await User.findOne({ username: new RegExp(`^${target}$`, 'i') });
     return u ? u.id : null;
 }
 
@@ -152,7 +156,6 @@ async function pushProfileUpdate(userId) {
     }
 }
 
-// --- GAME LOGIC HELPERS ---
 function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 
@@ -180,7 +183,6 @@ function resolveBackground(room) {
     return candidates[0].bg;
 }
 
-// --- REWARD SYSTEM ---
 async function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp = 0, winnerPotMultiplier = 0) {
     if (!userId || (typeof userId === 'string' && userId.startsWith('bot'))) return null;
     let user = userCache.get(userId);
@@ -315,6 +317,14 @@ function broadcastGameState(room) {
     });
 }
 
+function broadcastRoomUpdate(room) {
+    io.to(room.id).emit('roomUpdate', {
+        roomId: room.id,
+        players: room.players.map(p => ({ name: p.name, rank: p.rank, ready: p.ready, isCreator: p.isCreator, diceCount: room.config.dice, id: p.id, equipped: p.equipped })),
+        status: room.status, config: room.config, isPvE: room.isPvE
+    });
+}
+
 // --- BOT LOGIC & ROUND ---
 function startNewRound(room, isFirst = false, startIdx = null) {
     room.status = 'PLAYING'; room.currentBid = null; room.activeBackground = resolveBackground(room); 
@@ -370,9 +380,7 @@ function checkEliminationAndContinue(room, loser, killer) {
     if (active.length === 1) {
         const winner = active[0]; room.status = 'FINISHED';
         if (!winner.isBot && winner.tgId) {
-            const type = room.isPvE ? 'win_pve' : 'win_game';
-            const diff = room.isPvE ? room.config.difficulty : null;
-            const multiplier = room.players.length - 1; 
+            const type = room.isPvE ? 'win_pve' : 'win_game'; const diff = room.isPvE ? room.config.difficulty : null; const multiplier = room.players.length - 1; 
             updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier).then(res => { pushProfileUpdate(winner.tgId); io.to(winner.id).emit('matchResults', res); });
         }
         io.to(room.id).emit('gameOver', { winner: winner.name });
@@ -549,7 +557,7 @@ function handleSkill(socket, skillType) {
     } catch(e) { console.error(e); socket.emit('errorMsg', 'Ошибка навыка'); }
 }
 
-// --- ADMIN ---
+// --- 4. ADMIN COMMANDS ---
 if (bot) {
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id; const text = (msg.text || '').trim(); const fromId = msg.from.id;
@@ -598,6 +606,27 @@ if (bot) {
         else if (cmd === '/streak') {
             user.streak = parseInt(args[1] || 0); await saveUser(ADMIN_ID); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `🔥 Streak: ${user.streak}`);
         }
+        else if (cmd === '/givehat') {
+            const targetId = await findUserIdByUsername(args[1]);
+            if(targetId) {
+                let tUser = userCache.get(targetId);
+                if(!tUser) { const d = await User.findOne({id: targetId}); if(d) { tUser = d.toObject(); userCache.set(targetId, tUser); } }
+                if(tUser) {
+                    if (!tUser.inventory.includes(args[2])) tUser.inventory.push(args[2]);
+                    await saveUser(targetId); refreshUser(targetId);
+                    bot.sendMessage(chatId, `Gave ${args[2]} to ${tUser.name}`);
+                }
+            } else bot.sendMessage(chatId, "User not found");
+        }
+        else if (cmd === '/win') {
+            const socketId = findSocketIdByUserId(ADMIN_ID); 
+            if(!socketId) return bot.sendMessage(chatId, "You are not in a room");
+            const room = getRoomBySocketId(socketId); 
+            if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "Not active");
+            room.players.forEach(p => { if (p.tgId !== ADMIN_ID) p.diceCount = 0; });
+            checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null);
+            bot.sendMessage(chatId, "🏆 Force Win!");
+        }
         else if (cmd === '/reset') {
             const targetId = await findUserIdByUsername(args[1]);
             if(targetId) {
@@ -613,7 +642,7 @@ if (bot) {
     });
 }
 
-// --- SOCKET ---
+// --- 5. SOCKET LISTENERS ---
 io.on('connection', (socket) => {
     socket.on('login', async ({ tgUser }) => {
         if (!tgUser) return;
