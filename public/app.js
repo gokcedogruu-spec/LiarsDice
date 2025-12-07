@@ -357,6 +357,7 @@ window.openEncyclopedia = () => {
     state.inventory.forEach(itemId => {
         if (ENCYCLOPEDIA_DATA[itemId]) {
             const data = ENCYCLOPEDIA_DATA[itemId];
+            // !IMPORTANT для фикса размеров
             let previewHTML = `<div class="die ${itemId} face-6" style="width:40px !important; height:40px !important; min-width:40px; background-size:contain; display:inline-block; margin-right:10px; vertical-align:middle;"></div>`;
 
             content.innerHTML += `
@@ -663,15 +664,18 @@ window.inviteFriend = (id) => {
 
 window.removeFriend = (id) => {
     uiConfirm("Удалить из друзей?", () => {
+        // Visually remove immediately
+        const btn = event.target;
+        if(btn) {
+            const row = btn.closest('.friend-row');
+            if(row) row.remove();
+        }
         socket.emit('friendAction', { action: 'decline', payload: id }); 
     });
 };
 
-// --- ОБНОВЛЕННЫЕ ФУНКЦИИ ---
-
 window.acceptFriend = (id) => {
-    // Визуально убираем сразу, чтобы не "висело"
-    const btn = event.target; // Получаем нажатую кнопку
+    const btn = event.target;
     if(btn) {
         const row = btn.closest('.friend-row');
         if(row) row.remove();
@@ -688,11 +692,28 @@ window.declineFriend = (id) => {
     socket.emit('friendAction', { action: 'decline', payload: id });
 };
 
-// --- ОБНОВЛЕННАЯ ОБРАБОТКА ПРИГЛАШЕНИЯ ---
+socket.on('friendSearchResult', (res) => {
+    const container = document.getElementById('search-result');
+    container.classList.add('active');
+    if (res) {
+        container.innerHTML = `
+            <div class="friend-row" style="border:none; padding:0;">
+                <span class="friend-name">${res.name}</span>
+                <button class="btn-friend-action btn-invite" onclick="sendRequest('${res.id}')">ДРУЖИТЬ</button>
+            </div>`;
+    } else {
+        container.innerHTML = '<span style="opacity:0.6">Не найден</span>';
+    }
+});
+
+window.sendRequest = (id) => {
+    socket.emit('friendAction', { action: 'request', payload: id });
+    document.getElementById('search-result').innerHTML = 'Отправлено!';
+};
+
 socket.on('gameInvite', (data) => {
     let msg = `<b>${data.inviter}</b> зовет в игру!<br>Ставки: ${data.betCoins}💰 ${data.betXp}⭐`;
     
-    // Если я сейчас в игре (не в лобби, не в меню), добавляем предупреждение
     if (state.roomId && document.getElementById('screen-game').classList.contains('active')) {
         msg += `<br><br><span style="color:#ef233c; font-weight:bold;">ВНИМАНИЕ: Вы покинете текущий бой и потеряете ставку!</span>`;
     }
@@ -719,4 +740,3 @@ window.openInviteModal = () => {
     switchFriendTab('list');
     uiAlert("Выбери друга и нажми ЗОВИ!");
 };
-
