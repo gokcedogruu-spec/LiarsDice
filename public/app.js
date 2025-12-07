@@ -199,7 +199,7 @@ socket.on('profileUpdate', (data) => {
         tg.CloudStorage.setItem('liarsDiceHardcore', JSON.stringify({ 
             xp: data.xp, streak: data.streak, coins: data.coins, 
             wins: data.wins, matches: data.matches, inventory: data.inventory, equipped: data.equipped,
-            friends: friendDataCache.friends.map(f => f.id), // Simple persistence attempt
+            friends: friendDataCache.friends.map(f => f.id),
             requests: friendDataCache.requests.map(r => r.id)
         }));
     }
@@ -406,6 +406,7 @@ window.setTime = (sec) => {
     const container = document.querySelector('#screen-create-settings .time-selector');
     if (container) { Array.from(container.children).forEach(btn => { btn.classList.remove('active'); if (parseInt(btn.textContent) === sec) btn.classList.add('active'); }); }
 };
+// ВАЛИДАЦИЯ: минимум 3 кубика (для UI)
 window.adjSetting = (type, delta) => {
     if (type === 'dice') { 
         state.createDice = Math.max(3, Math.min(10, state.createDice + delta)); 
@@ -472,21 +473,17 @@ socket.on('showPlayerStats', (data) => {
         }
     } else { invGrid.innerHTML = '<div style="grid-column:1/-1; opacity:0.5; font-size:0.8rem;">Пусто</div>'; }
     
-    // ADD FRIEND BUTTON
+    // ADD FRIEND BUTTON (FIXED)
     const btnAdd = document.getElementById('btn-add-friend');
-    // Only show if it's another player (and not bot)
     if (currentProfileId && currentProfileId !== socket.id) {
         btnAdd.style.display = 'block';
+        btnAdd.textContent = 'ДОБАВИТЬ В ДРУЗЬЯ';
+        btnAdd.disabled = false;
         btnAdd.onclick = () => {
-            // currentProfileId is socketID here from requestPlayerStats
-            // We assume server handles socketID in friend request or we need logic update
-            // NOTE: The server 'friendAction' expects userId (integer).
-            // Since we don't have userId here easily without server change, 
-            // this button might not work until we fix server to accept socketId or return userId in stats.
-            // But for now, let's try sending search by name? No, names are not unique.
-            // Let's leave it as is, assuming you might fix server later. 
-            // For now, this button is UI only unless server updated.
-            uiAlert("Чтобы добавить друга, используйте Поиск в меню Команды (по имени).");
+            // Отправляем запрос по ID сокета. Сервер сам найдет нужного юзера.
+            socket.emit('friendAction', { action: 'request', payload: currentProfileId });
+            btnAdd.textContent = 'ЗАПРОС ОТПРАВЛЕН';
+            btnAdd.disabled = true;
         };
     } else {
         btnAdd.style.display = 'none';
@@ -665,12 +662,7 @@ window.inviteFriend = (id) => {
 };
 
 window.removeFriend = (id) => {
-    // Simplified removal via ui confirmation
     uiConfirm("Удалить из друзей?", () => {
-        // Currently server uses 'decline' logic to remove request, 
-        // but real 'remove friend' needs server update. 
-        // For now using 'decline' might only remove request.
-        // Let's assume we just hide it for now or you add 'remove' action to server later.
         socket.emit('friendAction', { action: 'decline', payload: id }); 
     });
 };
