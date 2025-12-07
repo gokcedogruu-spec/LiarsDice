@@ -1099,7 +1099,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('inviteToRoom', (targetId) => {
+     socket.on('inviteToRoom', (targetId) => {
         if (!socket.tgUserId) return;
         const myRoom = getRoomBySocketId(socket.id);
         if (!myRoom || myRoom.status !== 'LOBBY') return; 
@@ -1110,12 +1110,8 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const targetRoom = getRoomBySocketId(targetSocket);
-        if (targetRoom && targetRoom.status === 'PLAYING') {
-            socket.emit('errorMsg', 'Игрок уже в бою.');
-            return;
-        }
-
+        // УБРАЛИ БЛОКИРОВКУ "Игрок в бою". Теперь приглашение приходит всегда.
+        
         const user = getUserData(socket.tgUserId);
         
         io.to(targetSocket).emit('gameInvite', {
@@ -1135,3 +1131,4 @@ setInterval(() => {
 }, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
