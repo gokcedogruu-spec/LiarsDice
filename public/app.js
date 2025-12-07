@@ -667,30 +667,37 @@ window.removeFriend = (id) => {
     });
 };
 
-window.acceptFriend = (id) => socket.emit('friendAction', { action: 'accept', payload: id });
-window.declineFriend = (id) => socket.emit('friendAction', { action: 'decline', payload: id });
+// --- ОБНОВЛЕННЫЕ ФУНКЦИИ ---
 
-socket.on('friendSearchResult', (res) => {
-    const container = document.getElementById('search-result');
-    container.classList.add('active');
-    if (res) {
-        container.innerHTML = `
-            <div class="friend-row" style="border:none; padding:0;">
-                <span class="friend-name">${res.name}</span>
-                <button class="btn-friend-action btn-invite" onclick="sendRequest('${res.id}')">ДРУЖИТЬ</button>
-            </div>`;
-    } else {
-        container.innerHTML = '<span style="opacity:0.6">Не найден</span>';
+window.acceptFriend = (id) => {
+    // Визуально убираем сразу, чтобы не "висело"
+    const btn = event.target; // Получаем нажатую кнопку
+    if(btn) {
+        const row = btn.closest('.friend-row');
+        if(row) row.remove();
     }
-});
-
-window.sendRequest = (id) => {
-    socket.emit('friendAction', { action: 'request', payload: id });
-    document.getElementById('search-result').innerHTML = 'Отправлено!';
+    socket.emit('friendAction', { action: 'accept', payload: id });
 };
 
+window.declineFriend = (id) => {
+    const btn = event.target;
+    if(btn) {
+        const row = btn.closest('.friend-row');
+        if(row) row.remove();
+    }
+    socket.emit('friendAction', { action: 'decline', payload: id });
+};
+
+// --- ОБНОВЛЕННАЯ ОБРАБОТКА ПРИГЛАШЕНИЯ ---
 socket.on('gameInvite', (data) => {
-    uiConfirm(`<b>${data.inviter}</b> зовет в игру!<br>Ставки: ${data.betCoins}💰 ${data.betXp}⭐`, () => {
+    let msg = `<b>${data.inviter}</b> зовет в игру!<br>Ставки: ${data.betCoins}💰 ${data.betXp}⭐`;
+    
+    // Если я сейчас в игре (не в лобби, не в меню), добавляем предупреждение
+    if (state.roomId && document.getElementById('screen-game').classList.contains('active')) {
+        msg += `<br><br><span style="color:#ef233c; font-weight:bold;">ВНИМАНИЕ: Вы покинете текущий бой и потеряете ставку!</span>`;
+    }
+
+    uiConfirm(msg, () => {
         const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
         socket.emit('joinOrCreateRoom', { 
             roomId: data.roomId, 
@@ -712,3 +719,4 @@ window.openInviteModal = () => {
     switchFriendTab('list');
     uiAlert("Выбери друга и нажми ЗОВИ!");
 };
+
