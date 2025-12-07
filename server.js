@@ -729,6 +729,85 @@ function handleSkill(socket, skillType) {
     } catch(e) { console.error(e); socket.emit('errorMsg', 'Ошибка навыка'); }
 }
 
+// --- 4. ADMIN COMMANDS ---
+const bot = token ? new TelegramBot(token, { polling: true }) : null;
+if (bot) {
+    bot.on('message', (msg) => {
+        const chatId = msg.chat.id; const text = (msg.text || '').trim(); const fromId = msg.from.id;
+        
+        if (text.toLowerCase().startsWith('/start')) {
+            bot.sendMessage(chatId, "☠️ Костяшки", { reply_markup: { inline_keyboard: [[{ text: "🎲 ИГРАТЬ", web_app: { url: 'https://liarsdicezmss.onrender.com' } }]] } }); 
+            return;
+        }
+
+        // Admin check
+        if (fromId !== ADMIN_ID) return;
+
+        const args = text.split(' '); const cmd = args[0].toLowerCase();
+        
+        const refreshUser = (uid) => { 
+            pushProfileUpdate(uid); 
+            const socketId = findSocketIdByUserId(uid); 
+            if (socketId) { 
+                const room = getRoomBySocketId(socketId); 
+                if (room) broadcastGameState(room); 
+            } 
+        };
+
+        // Ensure user exists in DB (admin must have logged in at least once)
+        if (!userDB.has(ADMIN_ID)) {
+            if (cmd === '/me') bot.sendMessage(chatId, "⚠️ You are not in game memory. Open the WebApp first!");
+            return;
+        }
+
+        // Commands
+        if (cmd === '/me') {
+            const user = userDB.get(ADMIN_ID);
+            if (args[1] === 'rich') { user.coins = 100000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "💰 You are rich!"); }
+            if (args[1] === 'xp') { user.xp = parseInt(args[2] || 0); userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, `⭐ XP set to ${user.xp}`); }
+        }
+        else if (cmd === '/streak') {
+            if (args.length < 2) return bot.sendMessage(chatId, "/streak N");
+            const user = userDB.get(ADMIN_ID);
+            user.streak = parseInt(args[1]);
+            userDB.set(ADMIN_ID, user);
+            refreshUser(ADMIN_ID);
+            bot.sendMessage(chatId, `🔥 Streak set to ${user.streak}`);
+        }
+        else if (cmd === '/givehat') {
+            if (args.length < 3) return bot.sendMessage(chatId, "/givehat @user hat_id");
+            const uid = findUserIdByUsername(args[1]); 
+            if (!uid) return bot.sendMessage(chatId, "User not found");
+            const user = userDB.get(uid);
+            const hatId = args[2];
+            if (!user.inventory.includes(hatId)) user.inventory.push(hatId);
+            userDB.set(uid, user); refreshUser(uid);
+            bot.sendMessage(chatId, `🎩 Gave ${hatId} to ${user.name}`);
+        }
+        else if (cmd === '/win') {
+            const socketId = findSocketIdByUserId(ADMIN_ID); 
+            if(!socketId) return bot.sendMessage(chatId, "You are not in a room");
+            const room = getRoomBySocketId(socketId); 
+            if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "Not active");
+            
+            // Kill everyone else
+            room.players.forEach(p => { if (p.tgId !== ADMIN_ID) p.diceCount = 0; });
+            checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null);
+            bot.sendMessage(chatId, "🏆 Force Win!");
+        }
+        else if (cmd === '/reset') {
+            if (args.length < 2) return;
+            const uid = findUserIdByUsername(args[1]); if (!uid) return;
+            const user = userDB.get(uid);
+            user.xp = 0; user.coins = 0; user.wins = 0; user.matches = 0; user.streak = 0;
+            user.inventory = ['skin_white', 'bg_default', 'frame_default'];
+            user.equipped = { skin: 'skin_white', bg: 'bg_default', frame: 'frame_default', hat: null };
+            userDB.set(uid, user); refreshUser(uid);
+            bot.sendMessage(chatId, `♻️ Reset: ${user.name}`);
+        }
+    });
+}
+
 // --- 5. SOCKET LISTENERS ---
 io.on('connection', (socket) => {
     socket.on('login', ({ tgUser, savedData }) => {
@@ -740,7 +819,6 @@ io.on('connection', (socket) => {
             ...data, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level 
         });
 
-        // Handle reconnection
         for (const [roomId, room] of rooms) {
             if (room.status === 'PLAYING') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
@@ -932,10 +1010,15 @@ io.on('connection', (socket) => {
         }
 
         else if (action === 'search') {
-            const targetName = payload.trim().toLowerCase();
+            let targetName = payload.trim().toLowerCase();
+            // FIX: Remove @ if present
+            if (targetName.startsWith('@')) targetName = targetName.substring(1);
+
             if (!targetName) return;
+            
             let foundId = null;
             for (const [uid, uData] of userDB.entries()) {
+                // Check not self AND (match username OR match first_name)
                 if (uid !== userId && (uData.username === targetName || uData.name.toLowerCase() === targetName)) {
                     foundId = uid;
                     break;
