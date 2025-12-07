@@ -30,7 +30,8 @@
         <!-- 2. HOME -->
         <div id="screen-home" class="screen center-content">
             <button class="btn-icon btn-rules" onclick="openRules()">?</button>
-            <button class="btn-icon btn-encyclopedia" onclick="openEncyclopedia()">📖</button> <!-- НОВАЯ КНОПКА -->
+            <button class="btn-icon btn-encyclopedia" onclick="openEncyclopedia()">📖</button>
+            <button id="btn-friends-menu" class="btn-icon btn-friends" onclick="openFriends()">👥</button> <!-- НОВАЯ КНОПКА -->
 
             <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             
@@ -186,6 +187,7 @@
             <div class="bottom-controls pop-in">
                 <div class="lobby-btns-row">
                     <button class="btn btn-red" onclick="leaveLobby()" style="flex: 1;">НАЗАД</button>
+                    <button class="btn btn-purple" onclick="openInviteModal()" style="flex: 1;">ЗОВИ!</button> <!-- NEW -->
                     <button id="btn-ready" class="btn btn-blue" style="flex: 2;">Я ГОТОВ</button>
                 </div>
                 <button id="btn-start-game" class="btn btn-green" style="display:none; margin-top:10px;">ПОГНАЛИ!</button>
@@ -268,36 +270,38 @@
         </div>
 
         <!-- 9. PLAYER INFO MODAL -->
-        <div id="modal-player" class="modal-overlay" onclick="closePlayerModal(event)">
-            <div class="modal-content pop-in">
-                <button class="btn-close" onclick="closePlayerModal(null)">✕</button>
-                <div class="modal-header">
-                    <div class="rank-icon-box small">
-                        <img id="info-rank-img" src="" alt="Rank" class="rank-img">
-                    </div>
-                    <h2 id="info-name">Имя Игрока</h2>
-                    <div id="info-rank-name" class="rank-label">Ранг</div>
-                </div>
-                
-                <div class="stats-row">
-                    <div class="stat-box">
-                        <div class="stat-val" id="info-matches">0</div>
-                        <div class="stat-label">Игр</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-val" id="info-wins">0</div>
-                        <div class="stat-label">Побед</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-val" id="info-wr">0%</div>
-                        <div class="stat-label">Винрейт</div>
-                    </div>
-                </div>
-
-                <h3 class="modal-subtitle">Коллекция</h3>
-                <div id="info-inventory" class="inventory-grid-mini"></div>
+<div id="modal-player" class="modal-overlay" onclick="closePlayerModal(event)">
+    <div class="modal-content pop-in">
+        <button class="btn-close" onclick="closePlayerModal(null)">✕</button>
+        
+        <div class="modal-header">
+            <div class="rank-icon-box small">
+                <img id="info-rank-img" src="" alt="Rank" class="rank-img">
+            </div>
+            <h2 id="info-name">Имя Игрока</h2>
+            <div id="info-rank-name" class="rank-label">Ранг</div>
+        </div>
+        
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-val" id="info-matches">0</div>
+                <div class="stat-label">Игр</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="info-wins">0</div>
+                <div class="stat-label">Побед</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="info-wr">0%</div>
+                <div class="stat-label">Винрейт</div>
             </div>
         </div>
+
+        <h3 class="modal-subtitle">Коллекция</h3>
+        <div id="info-inventory" class="inventory-grid-mini"></div>
+        <button id="btn-add-friend" class="btn-add-friend-game" style="display:none;" onclick="sendFriendRequestFromGame()">ДОБАВИТЬ В ДРУЗЬЯ</button>
+    </div>
+</div>
 
         <!-- 10. RULES MODAL -->
         <div id="modal-rules" class="modal-overlay" onclick="closeRules(event)">
@@ -386,9 +390,33 @@
         </div>
 
     </div>
+    <!-- 15. FRIENDS MODAL -->
+<div id="modal-friends" class="modal-overlay" onclick="closeFriends(event)">
+    <div class="modal-content pop-in" style="height: 80%; max-height: 600px; display:flex; flex-direction:column;">
+        <button class="btn-close" onclick="closeFriends(null)">✕</button>
+        <h2 class="modal-title">КОМАНДА</h2>
+        
+        <div class="friend-tabs">
+            <button id="tab-f-list" class="friend-tab active" onclick="switchFriendTab('list')">СВОИ</button>
+            <button id="tab-f-req" class="friend-tab" onclick="switchFriendTab('req')">ЗАПРОСЫ</button>
+            <button id="tab-f-find" class="friend-tab" onclick="switchFriendTab('find')">ПОИСК</button>
+        </div>
+
+        <div id="friend-content-list" class="friend-list-container flex-grow">Loading...</div>
+        
+        <div id="friend-content-req" class="friend-list-container flex-grow hidden"></div>
+        
+        <div id="friend-content-find" class="friend-list-container flex-grow hidden">
+            <input type="text" id="input-friend-search" placeholder="Имя пирата..." style="margin-bottom:10px;">
+            <button class="btn btn-blue" onclick="searchFriend()">ИСКАТЬ</button>
+            <div id="search-result"></div>
+        </div>
+    </div>
+</div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js?v=11"></script>
 </body>
 </html>
+
 
 
