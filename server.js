@@ -740,7 +740,6 @@ if (bot) {
             return;
         }
 
-        // Admin check
         if (fromId !== ADMIN_ID) return;
 
         const args = text.split(' '); const cmd = args[0].toLowerCase();
@@ -754,13 +753,11 @@ if (bot) {
             } 
         };
 
-        // Ensure user exists in DB (admin must have logged in at least once)
         if (!userDB.has(ADMIN_ID)) {
             if (cmd === '/me') bot.sendMessage(chatId, "⚠️ You are not in game memory. Open the WebApp first!");
             return;
         }
 
-        // Commands
         if (cmd === '/me') {
             const user = userDB.get(ADMIN_ID);
             if (args[1] === 'rich') { user.coins = 100000000; userDB.set(ADMIN_ID, user); refreshUser(ADMIN_ID); bot.sendMessage(chatId, "💰 You are rich!"); }
@@ -790,7 +787,6 @@ if (bot) {
             const room = getRoomBySocketId(socketId); 
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "Not active");
             
-            // Kill everyone else
             room.players.forEach(p => { if (p.tgId !== ADMIN_ID) p.diceCount = 0; });
             checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null);
             bot.sendMessage(chatId, "🏆 Force Win!");
@@ -991,6 +987,8 @@ io.on('connection', (socket) => {
         if (action === 'get') {
             const list = user.friends.map(fid => {
                 const fData = getUserData(fid);
+                if (!fData) return { id: fid, name: "Оффлайн (ID: " + fid + ")", status: 'offline' };
+                
                 let status = 'offline';
                 const fSocket = findSocketIdByUserId(fid);
                 if (fSocket) {
@@ -1003,7 +1001,7 @@ io.on('connection', (socket) => {
             
             const reqs = user.requests.map(rid => {
                 const rData = getUserData(rid);
-                return { id: rid, name: rData.name };
+                return { id: rid, name: rData ? rData.name : "Unknown" };
             });
 
             socket.emit('friendUpdate', { friends: list, requests: reqs });
@@ -1011,19 +1009,20 @@ io.on('connection', (socket) => {
 
         else if (action === 'search') {
             let targetName = payload.trim().toLowerCase();
-            // FIX: Remove @ if present
             if (targetName.startsWith('@')) targetName = targetName.substring(1);
-
-            if (!targetName) return;
+            if (!targetName) { socket.emit('friendSearchResult', null); return; }
             
             let foundId = null;
             for (const [uid, uData] of userDB.entries()) {
-                // Check not self AND (match username OR match first_name)
-                if (uid !== userId && (uData.username === targetName || uData.name.toLowerCase() === targetName)) {
+                if (String(uid) === String(userId)) continue; 
+                const dbName = (uData.name || '').toLowerCase();
+                const dbUser = (uData.username || '').toLowerCase();
+                if (dbUser === targetName || dbName === targetName) {
                     foundId = uid;
                     break;
                 }
             }
+            
             if (foundId) {
                 const fData = getUserData(foundId);
                 socket.emit('friendSearchResult', { id: foundId, name: fData.name });
@@ -1045,10 +1044,11 @@ io.on('connection', (socket) => {
             if (targetId === userId || user.friends.includes(targetId)) return;
             
             const target = getUserData(targetId);
-            if (!target.requests.includes(userId)) {
+            if (target && !target.requests.includes(userId)) {
                 target.requests.push(userId);
                 userDB.set(targetId, target);
-                
+                pushProfileUpdate(targetId); 
+
                 const targetSocket = findSocketIdByUserId(targetId);
                 if (targetSocket) {
                     io.to(targetSocket).emit('notification', { type: 'friend_req' });
@@ -1056,7 +1056,7 @@ io.on('connection', (socket) => {
                 }
                 socket.emit('errorMsg', 'Запрос отправлен!');
             } else {
-                socket.emit('errorMsg', 'Уже отправлено.');
+                socket.emit('errorMsg', 'Уже отправлено или игрок не найден.');
             }
         }
 
@@ -1064,18 +1064,23 @@ io.on('connection', (socket) => {
             const targetId = parseInt(payload);
             const target = getUserData(targetId);
             
-            if (!user.friends.includes(targetId)) user.friends.push(targetId);
-            if (!target.friends.includes(userId)) target.friends.push(userId);
-            
-            user.requests = user.requests.filter(r => r !== targetId);
-            
-            userDB.set(userId, user);
-            userDB.set(targetId, target);
-            
-            socket.emit('friendAction', { action: 'get' });
-            
-            const targetSocket = findSocketIdByUserId(targetId);
-            if(targetSocket) io.to(targetSocket).emit('forceFriendUpdate');
+            if (target) {
+                if (!user.friends.includes(targetId)) user.friends.push(targetId);
+                if (!target.friends.includes(userId)) target.friends.push(userId);
+                
+                user.requests = user.requests.filter(r => r !== targetId);
+                
+                userDB.set(userId, user);
+                userDB.set(targetId, target);
+                
+                pushProfileUpdate(userId);
+                pushProfileUpdate(targetId);
+
+                socket.emit('friendAction', { action: 'get' });
+                
+                const targetSocket = findSocketIdByUserId(targetId);
+                if(targetSocket) io.to(targetSocket).emit('forceFriendUpdate');
+            }
         }
 
         else if (action === 'decline') {
@@ -1087,6 +1092,8 @@ io.on('connection', (socket) => {
                 if(target) {
                     target.friends = target.friends.filter(id => id !== userId);
                     userDB.set(targetId, target);
+                    pushProfileUpdate(targetId);
+                    
                     const targetSocket = findSocketIdByUserId(targetId);
                     if(targetSocket) io.to(targetSocket).emit('forceFriendUpdate');
                 }
@@ -1095,11 +1102,13 @@ io.on('connection', (socket) => {
             }
             
             userDB.set(userId, user);
+            pushProfileUpdate(userId);
+            
             socket.emit('friendAction', { action: 'get' });
         }
     });
 
-     socket.on('inviteToRoom', (targetId) => {
+    socket.on('inviteToRoom', (targetId) => {
         if (!socket.tgUserId) return;
         const myRoom = getRoomBySocketId(socket.id);
         if (!myRoom || myRoom.status !== 'LOBBY') return; 
@@ -1110,8 +1119,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // УБРАЛИ БЛОКИРОВКУ "Игрок в бою". Теперь приглашение приходит всегда.
-        
         const user = getUserData(socket.tgUserId);
         
         io.to(targetSocket).emit('gameInvite', {
@@ -1131,4 +1138,3 @@ setInterval(() => {
 }, PING_INTERVAL);
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-
