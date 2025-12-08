@@ -456,7 +456,8 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     r.readyPlayers = new Set(); // Track who clicked READY
 
     // SAVE DATA FOR RECONNECT (NEW LINE)
-    r.revealData = { allDice: allDice, message: msg }; 
+    // FIX: ADDED REMAINING TIME INFO FOR CLIENT
+    r.revealData = { allDice: allDice, message: msg, timeLeft: 30000 }; 
     
     // Add bots to ready immediately
     r.players.forEach(p => { if (p.isBot || p.diceCount === 0) r.readyPlayers.add(p.id); });
@@ -464,7 +465,8 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     // Broadcast REVEAL info
     io.to(r.id).emit('revealPhase', { 
         allDice: allDice, 
-        message: msg 
+        message: msg,
+        timeLeft: 30000 // Send duration to client
     });
 
     // Auto-proceed after 30s
@@ -717,9 +719,8 @@ io.on('connection', (socket) => {
             if (room.status === 'PLAYING' || room.status === 'REVEAL') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
                 
-                // ВОЗВРАЩАЕМ ТОЛЬКО ЕСЛИ ИГРОК ЖИВ (diceCount > 0)
-                // Если он мертв или зритель - не возвращаем его насильно в экран игры
-                if (existingPlayer && existingPlayer.diceCount > 0) {
+                // FIX: Убрана проверка diceCount > 0, чтобы возвращать даже мертвых игроков (зрителей)
+                if (existingPlayer) {
                     existingPlayer.id = socket.id;
                     socket.join(roomId);
                     
