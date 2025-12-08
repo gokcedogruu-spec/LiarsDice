@@ -467,9 +467,13 @@ window.requestMyStats = () => { socket.emit('getPlayerStats', 'me'); };
 // FRIEND LOGIC: SAVING PROFILE ID TO ADD
 let currentProfileId = null;
 window.requestPlayerStats = (socketId) => { 
-    if (socketId && (socketId.toString().startsWith('bot') || socketId.toString().startsWith('CPU'))) { 
+    // Превращаем в строку, чтобы метод startsWith не ломал код, если придет числовой ID
+    const idStr = String(socketId);
+    
+    if (idStr.startsWith('bot') || idStr.startsWith('CPU')) { 
         uiAlert("Это бот. У него нет души."); return; 
     } 
+    
     currentProfileId = socketId; 
     socket.emit('getPlayerStats', socketId); 
 };
@@ -769,6 +773,7 @@ window.openInviteModal = () => {
     switchFriendTab('list');
     uiAlert("Выбери друга и нажми ЗОВИ!");
 };
+
 
 
 
