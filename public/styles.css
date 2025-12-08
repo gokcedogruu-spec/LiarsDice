@@ -220,19 +220,65 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .player-chip.turn { transform: translateY(-3px); box-shadow: 0 0 15px var(--accent); border-color: var(--accent) !important; }
 .player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
-.player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default { border: 2px solid transparent; background-image: none; background-color: var(--surface); }
-.player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood { border: 3px solid #8d6e63; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); }
-.player-chip.frame_silver, .profile-card.frame_silver, .modal-content.frame_silver { border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_serebro.png'); }
-.player-chip.frame_ice, .profile-card.frame_ice, .modal-content.frame_ice { border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_led.png'); }
-.player-chip.frame_neon, .profile-card.frame_neon, .modal-content.frame_neon { border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_neon.png'); }
-.player-chip.frame_gold, .profile-card.frame_gold, .modal-content.frame_gold { border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_zoloto.png'); }
-.player-chip.frame_fire, .profile-card.frame_fire, .modal-content.frame_fire { border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_ogon.png'); }
-.player-chip.frame_royal, .profile-card.frame_royal, .modal-content.frame_royal { border: 4px solid #ffd700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_korolevski.png'); }
-.player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); }
-.player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); }
-.player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); }
+/* Default */
+.player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default, .shop-preview-frame.frame_default { 
+    border: 2px solid transparent; background-image: none; background-color: var(--surface); 
+}
 
-.player-chip.frame_abyss, .profile-card.frame_abyss, .modal-content.frame_abyss { border: 3px solid #4a0072; box-shadow: 0 0 15px #7a00b3; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_bezdna.png'); background-size: cover; }
+/* Wood */
+.player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood, .shop-preview-frame.frame_wood { 
+    border: 3px solid #8d6e63; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); background-size: cover;
+}
+
+/* Silver */
+.player-chip.frame_silver, .profile-card.frame_silver, .modal-content.frame_silver, .shop-preview-frame.frame_silver { 
+    border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_serebro.png'); background-size: cover;
+}
+
+/* Ice */
+.player-chip.frame_ice, .profile-card.frame_ice, .modal-content.frame_ice, .shop-preview-frame.frame_ice { 
+    border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_led.png'); background-size: cover;
+}
+
+/* Neon */
+.player-chip.frame_neon, .profile-card.frame_neon, .modal-content.frame_neon, .shop-preview-frame.frame_neon { 
+    border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_neon.png'); background-size: cover;
+}
+
+/* Gold */
+.player-chip.frame_gold, .profile-card.frame_gold, .modal-content.frame_gold, .shop-preview-frame.frame_gold { 
+    border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_zoloto.png'); background-size: cover;
+}
+
+/* Fire */
+.player-chip.frame_fire, .profile-card.frame_fire, .modal-content.frame_fire, .shop-preview-frame.frame_fire { 
+    border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_ogon.png'); background-size: cover;
+}
+
+/* Royal */
+.player-chip.frame_royal, .profile-card.frame_royal, .modal-content.frame_royal, .shop-preview-frame.frame_royal { 
+    border: 4px solid #ffd700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_korolevski.png'); background-size: cover;
+}
+
+/* Ghost */
+.player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost, .shop-preview-frame.frame_ghost { 
+    border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); background-size: cover;
+}
+
+/* Kraken */
+.player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken, .shop-preview-frame.frame_kraken { 
+    border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); background-size: cover;
+}
+
+/* Captain */
+.player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain, .shop-preview-frame.frame_captain { 
+    border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); background-size: cover;
+}
+
+/* Abyss */
+.player-chip.frame_abyss, .profile-card.frame_abyss, .modal-content.frame_abyss, .shop-preview-frame.frame_abyss { 
+    border: 3px solid #4a0072; box-shadow: 0 0 15px #7a00b3; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_bezdna.png'); background-size: cover; 
+}
 
 .inv-preview.player-chip { min-width: auto; max-width: none; width: 40px; height: 40px; padding: 0; }
 .emote-bubble-img { position: absolute; width: 100px; height: 100px; left: 50%; top: 50%; transform: translate(-50%, -50%); animation: emotePop 3s ease-out forwards; pointer-events: none; z-index: 9999; filter: drop-shadow(0 0 10px rgba(0,0,0,0.8)); object-fit: contain; }
@@ -472,6 +518,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .shop-preview-bg.bg_lvl5 { 
     background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); 
 }
+
 
 
 
