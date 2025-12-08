@@ -16,7 +16,7 @@ const ui = {
     close: function() { this.modal.classList.remove('active'); },
     show: function(titleStr, textStr, hasInput = false, buttonsHTML = '') {
         this.title.textContent = titleStr;
-         this.text.innerHTML = textStr;
+        this.text.innerHTML = textStr;
         if (hasInput) { this.input.classList.remove('hidden'); this.input.value = ''; setTimeout(() => this.input.focus(), 100); } 
         else { this.input.classList.add('hidden'); }
         this.btns.innerHTML = buttonsHTML;
@@ -40,7 +40,7 @@ window.uiPrompt = (text, onSubmit) => {
 };
 
 let state = {
-    username: null, roomId: null,
+    username: null, roomId: null, myId: null,
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30,
     rules: { jokers: false, spot: false, strict: false },
@@ -215,7 +215,7 @@ socket.on('profileUpdate', (data) => {
     }
 });
 
-// --- SHOP ---
+// --- SHOP (SAME AS BEFORE) ---
 const ITEMS_META = {
     'skin_white': { name: 'Классика', price: 0, type: 'skins' },
     'skin_red':   { name: 'Рубин', price: 5000, type: 'skins' },
@@ -258,111 +258,58 @@ function renderShop() {
     const grid = document.getElementById('shop-items');
     if(!grid) return;
     grid.innerHTML = '';
-    
     for (const [id, meta] of Object.entries(ITEMS_META)) {
         if (meta.type !== currentShopTab) continue; 
-        
         const owned = state.inventory.includes(id);
         const equipped = state.equipped.skin === id || state.equipped.bg === id || state.equipped.frame === id;
         
-        // --- ГЕНЕРАЦИЯ ПРЕВЬЮ (НОВАЯ ЧАСТЬ) ---
         let previewHTML = '';
-        
-        if (meta.type === 'skins') {
-            // Показываем грань 6
-            previewHTML = `<div class="shop-preview-die die ${id} face-6"></div>`;
-        } 
-        else if (meta.type === 'frames') {
-            // Показываем рамку с иконкой
-            previewHTML = `<div class="shop-preview-frame ${id}">👤</div>`;
-        } 
-        else if (meta.type === 'bg') {
-            // Показываем фон
-            previewHTML = `<div class="shop-preview-bg ${id}"></div>`;
-        }
-        // ---------------------------------------
+        if (meta.type === 'skins') previewHTML = `<div class="shop-preview-die die ${id} face-6"></div>`;
+        else if (meta.type === 'frames') previewHTML = `<div class="shop-preview-frame ${id}">👤</div>`;
+        else if (meta.type === 'bg') previewHTML = `<div class="shop-preview-bg ${id}"></div>`;
 
         let btnHTML = '';
         if (equipped) btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
         else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
         else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
         
-        grid.innerHTML += `
-            <div class="shop-item ${owned ? 'owned' : ''}">
-                <div class="shop-preview-box">
-                    ${previewHTML}
-                </div>
-                <h4>${meta.name}</h4>
-                ${btnHTML}
-            </div>`;
+        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><div class="shop-preview-box">${previewHTML}</div><h4>${meta.name}</h4>${btnHTML}</div>`;
     }
 }
 
-bindClick('btn-shop', () => {
-    showScreen('shop');
-    const coinEl = document.getElementById('shop-coins');
-    if(coinEl) coinEl.textContent = state.coins;
-    renderShop();
-});
+bindClick('btn-shop', () => { showScreen('shop'); document.getElementById('shop-coins').textContent = state.coins; renderShop(); });
 bindClick('btn-shop-back', () => showScreen('home'));
-
-window.buyItem = (id, price) => {
-    if (state.coins >= price) socket.emit('shopBuy', id);
-    else uiAlert("Не хватает монет!", "УПС...");
-};
+window.buyItem = (id, price) => { if (state.coins >= price) socket.emit('shopBuy', id); else uiAlert("Не хватает монет!", "УПС..."); };
 window.equipItem = (id) => socket.emit('shopEquip', id);
 
-// --- CABIN (HATS) ---
-bindClick('btn-to-cabin', () => {
-    showScreen('cabin');
-    document.getElementById('cabin-coins').textContent = state.coins;
-    renderCabin();
-});
+// --- CABIN ---
+bindClick('btn-to-cabin', () => { showScreen('cabin'); document.getElementById('cabin-coins').textContent = state.coins; renderCabin(); });
 bindClick('btn-cabin-back', () => showScreen('home'));
 
 function renderCabin() {
     const grid = document.getElementById('cabin-items');
     if(!grid) return;
     grid.innerHTML = '';
-
-    const groups = {
-        'rare': 'Редкие',
-        'legendary': 'Легендарные',
-        'mythical': 'Мифические'
-    };
-
+    const groups = { 'rare': 'Редкие', 'legendary': 'Легендарные', 'mythical': 'Мифические' };
     for (const [rarityKey, label] of Object.entries(groups)) {
         const hatsInGroup = Object.entries(HATS_META).filter(([id, meta]) => meta.rarity === rarityKey);
-        
         if (hatsInGroup.length > 0) {
             grid.innerHTML += `<div class="cabin-category-title">${label}</div>`;
-            
             hatsInGroup.forEach(([id, meta]) => {
                 const owned = state.inventory.includes(id);
                 const equipped = state.equipped.hat === id;
                 const cssClass = `rarity-${meta.rarity}`;
                 let imgUrl = getRankImage(null, id);
-                
                 let btnHTML = '';
                 if (equipped) btnHTML = `<button class="shop-btn equipped" onclick="equipHat(null)">СНЯТЬ</button>`;
                 else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipHat('${id}')">НАДЕТЬ</button>`;
                 else btnHTML = `<button class="shop-btn buy" onclick="buyHat('${id}', ${meta.price})">КУПИТЬ (${meta.price.toLocaleString()})</button>`;
-
-                grid.innerHTML += `
-                    <div class="shop-item ${owned ? 'owned' : ''} ${cssClass}">
-                        <img src="${imgUrl}" style="width:60px; height:60px; object-fit:contain; margin-bottom:5px;" class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}">
-                        <h4 style="font-size:0.8rem;">${meta.name}</h4>
-                        ${btnHTML}
-                    </div>`;
+                grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''} ${cssClass}"><img src="${imgUrl}" style="width:60px; height:60px; object-fit:contain; margin-bottom:5px;" class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}"> <h4 style="font-size:0.8rem;">${meta.name}</h4> ${btnHTML}</div>`;
             });
         }
     }
 }
-
-window.buyHat = (id, price) => {
-    if (state.coins >= price) socket.emit('hatBuy', id);
-    else uiAlert("Не хватает золота!", "УПС...");
-};
+window.buyHat = (id, price) => { if (state.coins >= price) socket.emit('hatBuy', id); else uiAlert("Не хватает золота!", "УПС..."); };
 window.equipHat = (id) => socket.emit('hatEquip', id);
 
 // --- ENCYCLOPEDIA ---
@@ -380,42 +327,21 @@ window.openEncyclopedia = () => {
     const modal = document.getElementById('modal-encyclopedia');
     const content = document.getElementById('encyclopedia-content');
     content.innerHTML = '';
-
     let hasEntries = false;
-
     state.inventory.forEach(itemId => {
         if (ENCYCLOPEDIA_DATA[itemId]) {
             const data = ENCYCLOPEDIA_DATA[itemId];
-            // !IMPORTANT для фикса размеров
             let previewHTML = `<div class="die ${itemId} face-6" style="width:40px !important; height:40px !important; min-width:40px; background-size:contain; display:inline-block; margin-right:10px; vertical-align:middle;"></div>`;
-
-            content.innerHTML += `
-                <div class="rules-section" style="margin-bottom:10px; display:flex; align-items:center;">
-                    ${previewHTML}
-                    <div>
-                        <h3 style="margin:0; font-size:1rem;">${data.name}</h3>
-                        <p style="margin:5px 0 0 0; font-size:0.8rem;">${data.desc}</p>
-                    </div>
-                </div>
-            `;
+            content.innerHTML += `<div class="rules-section" style="margin-bottom:10px; display:flex; align-items:center;">${previewHTML}<div><h3 style="margin:0; font-size:1rem;">${data.name}</h3><p style="margin:5px 0 0 0; font-size:0.8rem;">${data.desc}</p></div></div>`;
             hasEntries = true;
         }
     });
-
-    if (!hasEntries) {
-        content.innerHTML = '<div style="text-align:center; opacity:0.6; margin-top:20px;">Здесь пока пусто...<br>Купите особые предметы в Лавке!</div>';
-    }
-
+    if (!hasEntries) content.innerHTML = '<div style="text-align:center; opacity:0.6; margin-top:20px;">Здесь пока пусто...<br>Купите особые предметы в Лавке!</div>';
     modal.classList.add('active');
 };
+window.closeEncyclopedia = (e) => { if (!e || e.target.id === 'modal-encyclopedia' || e.target.classList.contains('btn-close')) document.getElementById('modal-encyclopedia').classList.remove('active'); };
 
-window.closeEncyclopedia = (e) => {
-    if (!e || e.target.id === 'modal-encyclopedia' || e.target.classList.contains('btn-close')) {
-        document.getElementById('modal-encyclopedia').classList.remove('active');
-    }
-};
-
-// --- PVE, SETTINGS, ETC ---
+// --- PVE, SETTINGS ---
 bindClick('btn-to-pve', () => showScreen('pve-settings'));
 bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
@@ -436,13 +362,8 @@ window.setTime = (sec) => {
     const container = document.querySelector('#screen-create-settings .time-selector');
     if (container) { Array.from(container.children).forEach(btn => { btn.classList.remove('active'); if (parseInt(btn.textContent) === sec) btn.classList.add('active'); }); }
 };
-// ВАЛИДАЦИЯ: минимум 3 кубика (для UI)
 window.adjSetting = (type, delta) => {
-    if (type === 'dice') { 
-        state.createDice = Math.max(3, Math.min(10, state.createDice + delta)); 
-        state.pve.dice = state.createDice; 
-        document.querySelectorAll('#set-dice, #pve-dice').forEach(el => el.textContent = state.createDice); 
-    } 
+    if (type === 'dice') { state.createDice = Math.max(3, Math.min(10, state.createDice + delta)); state.pve.dice = state.createDice; document.querySelectorAll('#set-dice, #pve-dice').forEach(el => el.textContent = state.createDice); } 
     else if (type === 'players') { state.createPlayers = Math.max(2, Math.min(10, state.createPlayers + delta)); document.getElementById('set-players').textContent = state.createPlayers; }
     else if (type === 'bots') { state.pve.bots = Math.max(1, Math.min(9, state.pve.bots + delta)); document.getElementById('pve-bots').textContent = state.pve.bots; }
 };
@@ -465,18 +386,12 @@ window.updateBetVal = (type) => {
 window.closeResAlert = () => { document.getElementById('modal-res-alert').classList.remove('active'); };
 window.requestMyStats = () => { socket.emit('getPlayerStats', 'me'); };
 
-// FRIEND LOGIC: SAVING PROFILE ID TO ADD
+// FRIEND LOGIC (SAVED ID)
 let currentProfileId = null;
 window.requestPlayerStats = (socketId) => { 
-    // Превращаем в строку, чтобы метод startsWith не ломал код, если придет числовой ID
     const idStr = String(socketId);
-    
-    if (idStr.startsWith('bot') || idStr.startsWith('CPU')) { 
-        uiAlert("Это бот. У него нет души."); return; 
-    } 
-    
-    currentProfileId = socketId; 
-    socket.emit('getPlayerStats', socketId); 
+    if (idStr.startsWith('bot') || idStr.startsWith('CPU')) { uiAlert("Это бот. У него нет души."); return; } 
+    currentProfileId = socketId; socket.emit('getPlayerStats', socketId); 
 };
 
 socket.on('showPlayerStats', (data) => {
@@ -488,7 +403,6 @@ socket.on('showPlayerStats', (data) => {
     document.getElementById('info-wins').textContent = data.wins;
     document.getElementById('info-wr').textContent = (data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0) + '%';
     const rankImg = document.getElementById('info-rank-img'); if(rankImg) rankImg.src = getRankImage(data.rankName, data.equipped?.hat);
-    
     const invGrid = document.getElementById('info-inventory'); invGrid.innerHTML = '';
     const categories = { 'hats': 'Шляпы', 'skins': 'Кости', 'frames': 'Рамки', 'bg': 'Палуба' };
     const getType = (id) => { if(HATS_META[id]) return 'hats'; if(ITEMS_META[id]) return ITEMS_META[id].type; return null; };
@@ -507,41 +421,17 @@ socket.on('showPlayerStats', (data) => {
         }
     } else { invGrid.innerHTML = '<div style="grid-column:1/-1; opacity:0.5; font-size:0.8rem;">Пусто</div>'; }
     
-    // FRIEND BUTTON LOGIC
+    // FRIEND BUTTON
     const btnAdd = document.getElementById('btn-add-friend');
-    
-    // Проверяем: это не мы сами?
     if (state.myId && data.id !== state.myId) {
-        // Проверяем: этот игрок уже в списке друзей?
-        const isFriend = friendDataCache.friends.some(f => f.id === data.id);
-        
+        const isFriend = friendDataCache.friends.some(f => f.id == data.id);
         if (isFriend) {
-            // УЖЕ ДРУЗЬЯ
-            btnAdd.style.display = 'block';
-            btnAdd.textContent = 'ВЫ ДРУЗЬЯ';
-            btnAdd.disabled = true;
-            btnAdd.style.background = '#06d6a0'; // Зеленый фон
-            btnAdd.style.opacity = '1';
-            btnAdd.onclick = null;
+            btnAdd.style.display = 'block'; btnAdd.textContent = 'ВЫ ДРУЗЬЯ 🤝'; btnAdd.disabled = true; btnAdd.style.background = '#06d6a0'; btnAdd.style.opacity = '1'; btnAdd.onclick = null;
         } else {
-            // ЕЩЕ НЕ ДРУЗЬЯ
-            btnAdd.style.display = 'block';
-            btnAdd.textContent = 'ДОБАВИТЬ В ДРУЗЬЯ';
-            btnAdd.disabled = false;
-            btnAdd.style.background = ''; // Сброс фона (вернется стиль из CSS)
-            
-            btnAdd.onclick = () => {
-                // Отправляем запрос по ID профиля (data.id - это точный ID из базы)
-                socket.emit('friendAction', { action: 'request', payload: data.id });
-                btnAdd.textContent = 'ЗАПРОС ОТПРАВЛЕН';
-                btnAdd.disabled = true;
-            };
+            btnAdd.style.display = 'block'; btnAdd.textContent = 'ДОБАВИТЬ В ДРУЗЬЯ'; btnAdd.disabled = false; btnAdd.style.background = ''; 
+            btnAdd.onclick = () => { socket.emit('friendAction', { action: 'request', payload: data.id }); btnAdd.textContent = 'ЗАПРОС ОТПРАВЛЕН'; btnAdd.disabled = true; };
         }
-    } else {
-        // Это мы сами
-        btnAdd.style.display = 'none';
-    }
-
+    } else { btnAdd.style.display = 'none'; }
     modal.classList.add('active');
 });
 
@@ -568,18 +458,112 @@ socket.on('errorMsg', (msg) => { if (msg === 'NO_FUNDS') { document.getElementBy
 socket.on('roomUpdate', (room) => { state.roomId = room.roomId; if (room.status === 'LOBBY') { showScreen('lobby'); document.getElementById('lobby-room-id').textContent = room.roomId; if (room.config) { document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`; state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp }; let betStr = ''; if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `; if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`; document.getElementById('lobby-bets').textContent = betStr; } const list = document.getElementById('lobby-players'); list.innerHTML = ''; room.players.forEach(p => { list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')"><div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div><span>${p.ready?'✅':'⏳'}</span></div>`; }); const me = room.players.find(p => p.id === socket.id); const startBtn = document.getElementById('btn-start-game'); if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none'; } });
 socket.on('gameEvent', (evt) => { const log = document.getElementById('game-log'); if(log) log.innerHTML = `<div>${evt.text}</div>`; if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning'); });
 socket.on('yourDice', (dice) => { const skin = state.equipped.skin || 'skin_white'; document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join(''); });
-socket.on('gameState', (gs) => { showScreen('game'); document.body.className = gs.activeBackground || 'bg_default'; let rulesText = ''; if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  '; if (gs.activeRules.spot) rulesText += '🎯 В точку'; if (gs.activeRules.strict) rulesText += '🔒 Строго'; document.getElementById('active-rules-display').textContent = rulesText; const bar = document.getElementById('players-bar'); const activeIds = new Set(gs.players.map(p => p.id)); gs.players.forEach(p => { let chip = bar.querySelector(`.player-chip[data-id="${p.id}"]`); const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default'; const turnClass = p.isTurn ? 'turn' : ''; const deadClass = p.isEliminated ? 'dead' : ''; const finalClass = `player-chip ${turnClass} ${deadClass} ${frameClass}`; if (!chip) { chip = document.createElement('div'); chip.setAttribute('data-id', p.id); chip.setAttribute('onclick', `requestPlayerStats('${p.id}')`); bar.appendChild(chip); chip.innerHTML = `<b>${p.name}</b><span class="rank-game">${p.rank}</span><div class="dice-count">🎲 ${p.diceCount}</div>`; } chip.className = finalClass; chip.querySelector('b').textContent = p.name; chip.querySelector('.rank-game').textContent = p.rank; chip.querySelector('.dice-count').textContent = `🎲 ${p.diceCount}`; }); Array.from(bar.children).forEach(child => { if (!activeIds.has(child.getAttribute('data-id'))) child.remove(); }); const bid = document.getElementById('current-bid-display'); if (gs.currentBid) { const bidder = gs.players.find(p => p.id === gs.currentBid.playerId); const skin = bidder?.equipped?.skin || 'skin_white'; bid.innerHTML = `<div class="bid-container"><div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span></div><div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div></div>`; state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs(); } else { const me = gs.players.find(p => p.id === socket.id); if (me?.isTurn) { bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`; } else { const turnPlayer = gs.players.find(p => p.isTurn); const name = turnPlayer ? turnPlayer.name : "Ожидание"; bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`; } state.bidQty = 1; state.bidVal = 2; updateInputs(); } const me = gs.players.find(p => p.id === socket.id); const myTurn = me?.isTurn; const controls = document.getElementById('game-controls'); const spotBtn = document.getElementById('btn-call-spot'); if (spotBtn) { if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule'); else spotBtn.classList.add('hidden-rule'); } const existingSkills = document.querySelector('.skills-bar'); if(existingSkills) existingSkills.remove(); if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) { const skillsDiv = document.createElement('div'); skillsDiv.className = 'skills-bar'; me.availableSkills.forEach(skill => { const btn = document.createElement('button'); btn.className = `btn-skill skill-${skill}`; btn.setAttribute('onclick', `useSkill('${skill}')`); skillsDiv.appendChild(btn); }); document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls); } if(myTurn) { controls.classList.remove('hidden'); controls.classList.add('slide-up'); document.getElementById('btn-call-bluff').disabled = !gs.currentBid; if(spotBtn) spotBtn.disabled = !gs.currentBid; if(tg) tg.HapticFeedback.impactOccurred('medium'); } else { controls.classList.add('hidden'); } if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } });
-window.useSkill = (skillType) => { socket.emit('useSkill', skillType); };
-socket.on('roundResult', (data) => uiAlert(data.message, "ИТОГ"));
-socket.on('gameOver', (data) => { showScreen('result'); document.getElementById('winner-name').textContent = data.winner; });
 
-// --- NEW: MATCH RESULTS REPORT ---
+// --- GAME STATE & REVEAL PHASE ---
+socket.on('gameState', (gs) => { 
+    showScreen('game'); 
+    document.body.className = gs.activeBackground || 'bg_default'; 
+    let rulesText = ''; 
+    if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  '; 
+    if (gs.activeRules.spot) rulesText += '🎯 В точку'; 
+    if (gs.activeRules.strict) rulesText += '🔒 Строго'; 
+    document.getElementById('active-rules-display').textContent = rulesText; 
+    
+    // Clear revealed dice from previous round
+    document.querySelectorAll('.revealed-dice-container').forEach(el => el.remove());
+
+    const bar = document.getElementById('players-bar'); 
+    const activeIds = new Set(gs.players.map(p => p.id)); 
+    gs.players.forEach(p => { 
+        let chip = bar.querySelector(`.player-chip[data-id="${p.id}"]`); 
+        const frameClass = p.equipped && p.equipped.frame ? p.equipped.frame : 'frame_default'; 
+        const turnClass = p.isTurn ? 'turn' : ''; 
+        const deadClass = p.isEliminated ? 'dead' : ''; 
+        const finalClass = `player-chip ${turnClass} ${deadClass} ${frameClass}`; 
+        if (!chip) { 
+            chip = document.createElement('div'); 
+            chip.setAttribute('data-id', p.id); 
+            chip.setAttribute('onclick', `requestPlayerStats('${p.id}')`); 
+            bar.appendChild(chip); 
+            chip.innerHTML = `<b>${p.name}</b><span class="rank-game">${p.rank}</span><div class="dice-count">🎲 ${p.diceCount}</div>`; 
+        } 
+        chip.className = finalClass; 
+        chip.querySelector('b').textContent = p.name; 
+        chip.querySelector('.rank-game').textContent = p.rank; 
+        chip.querySelector('.dice-count').textContent = `🎲 ${p.diceCount}`; 
+    }); 
+    Array.from(bar.children).forEach(child => { if (!activeIds.has(child.getAttribute('data-id'))) child.remove(); }); 
+    
+    const bid = document.getElementById('current-bid-display'); 
+    if (gs.currentBid) { 
+        const bidder = gs.players.find(p => p.id === gs.currentBid.playerId); 
+        const skin = bidder?.equipped?.skin || 'skin_white'; 
+        bid.innerHTML = `<div class="bid-container"><div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span></div><div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div></div>`; 
+        state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs(); 
+    } else { 
+        const me = gs.players.find(p => p.id === socket.id); 
+        if (me?.isTurn) { bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`; } 
+        else { const turnPlayer = gs.players.find(p => p.isTurn); const name = turnPlayer ? turnPlayer.name : "Ожидание"; bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`; } 
+        state.bidQty = 1; state.bidVal = 2; updateInputs(); 
+    } 
+    
+    const me = gs.players.find(p => p.id === socket.id); 
+    const myTurn = me?.isTurn; 
+    const controls = document.getElementById('game-controls'); 
+    const spotBtn = document.getElementById('btn-call-spot'); 
+    if (spotBtn) { if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule'); else spotBtn.classList.add('hidden-rule'); } 
+    const existingSkills = document.querySelector('.skills-bar'); if(existingSkills) existingSkills.remove(); 
+    if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) { 
+        const skillsDiv = document.createElement('div'); skillsDiv.className = 'skills-bar'; 
+        me.availableSkills.forEach(skill => { 
+            const btn = document.createElement('button'); btn.className = `btn-skill skill-${skill}`; btn.setAttribute('onclick', `useSkill('${skill}')`); skillsDiv.appendChild(btn); 
+        }); 
+        document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls); 
+    } 
+    
+    if(myTurn) { 
+        controls.classList.remove('hidden'); controls.classList.add('slide-up'); 
+        document.getElementById('btn-call-bluff').disabled = !gs.currentBid; 
+        if(spotBtn) spotBtn.disabled = !gs.currentBid; 
+        if(tg) tg.HapticFeedback.impactOccurred('medium'); 
+    } else { controls.classList.add('hidden'); } 
+    
+    if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } 
+});
+
+// --- NEW: REVEAL PHASE HANDLER ---
+socket.on('revealPhase', (data) => {
+    // 1. Hide Game Controls
+    document.getElementById('game-controls').classList.add('hidden');
+    document.getElementById('current-bid-display').innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:900;">ВСКРЫТИЕ!</div><div style="font-size:0.9rem;">${data.message}</div><button class="btn btn-green" style="margin-top:10px;" onclick="sendReadyNext()">ГОТОВО</button>`;
+
+    // 2. Show dice for each player
+    for (const [name, info] of Object.entries(data.allDice)) {
+        // info = { dice: [], id: socketId, skin: '...' }
+        const chip = document.querySelector(`.player-chip[data-id="${info.id}"]`);
+        if (chip) {
+            const container = document.createElement('div');
+            container.className = 'revealed-dice-container';
+            info.dice.forEach(d => {
+                const die = document.createElement('div');
+                die.className = `mini-die ${info.skin || 'skin_white'} face-${d}`;
+                container.appendChild(die);
+            });
+            chip.appendChild(container);
+        }
+    }
+});
+
+window.sendReadyNext = () => {
+    const bidDisplay = document.getElementById('current-bid-display');
+    bidDisplay.innerHTML = `<div style="font-size:1.2rem; color:#06d6a0;">Ждем остальных...</div>`;
+    socket.emit('playerReadyNext');
+};
+
 socket.on('matchResults', (res) => {
     const profitEl = document.getElementById('result-profit');
     profitEl.innerHTML = '';
-
     let html = '';
-    
     if (res.coins !== 0 || res.xp !== 0) {
         const color = res.coins >= 0 ? '#06d6a0' : '#ef233c';
         html += `<div style="color:${color}; font-size:1.2rem; margin-bottom:10px;">`;
@@ -587,19 +571,14 @@ socket.on('matchResults', (res) => {
         if(res.xp !== 0) html += `${res.xp > 0 ? '+' : ''}${res.xp}⭐`;
         html += `</div>`;
     }
-
     if (res.rankUp) {
         html += `<div style="color:#ffb703; font-weight:900; font-size:1.1rem; margin-bottom:5px; text-shadow:1px 1px 0 black;">🎉 ПОВЫШЕНИЕ: ${res.rankUp}!</div>`;
     }
-
     if (res.details && res.details.length > 0) {
         html += `<div style="font-size:0.8rem; opacity:0.8; margin-top:5px; line-height:1.4;">`;
-        res.details.forEach(line => {
-            html += `<div>${line}</div>`;
-        });
+        res.details.forEach(line => { html += `<div>${line}</div>`; });
         html += `</div>`;
     }
-
     profitEl.innerHTML = html;
 });
 
@@ -607,201 +586,81 @@ function updateInputs() { document.getElementById('display-qty').textContent = s
 function startVisualTimer(remaining, total) { if (state.timerFrame) cancelAnimationFrame(state.timerFrame); const bar = document.querySelector('.timer-progress'); if (!bar) return; if (remaining <= 0 || !total) { bar.style.width = '0%'; return; } const endTime = Date.now() + remaining; function tick() { const now = Date.now(); const left = endTime - now; if (left <= 0) { bar.style.width = '0%'; return; } const pct = (left / total) * 100; bar.style.width = `${Math.min(100, Math.max(0, pct))}%`; if (pct < 25) bar.style.backgroundColor = '#ef233c'; else if (pct < 50) bar.style.backgroundColor = '#ffb703'; else bar.style.backgroundColor = '#06d6a0'; state.timerFrame = requestAnimationFrame(tick); } tick(); }
 
 // --- FRIEND SYSTEM CLIENT LOGIC ---
-
 let currentFriendTab = 'list';
 let friendDataCache = { friends: [], requests: [] };
 
 window.openFriends = () => {
     document.getElementById('modal-friends').classList.add('active');
-    document.getElementById('btn-friends-menu').classList.remove('blink-anim'); // Stop blinking
+    document.getElementById('btn-friends-menu').classList.remove('blink-anim');
     socket.emit('friendAction', { action: 'get' });
 };
-
 window.closeFriends = (e) => {
     if (!e || e.target.id === 'modal-friends' || e.target.classList.contains('btn-close')) {
         document.getElementById('modal-friends').classList.remove('active');
     }
 };
-
 window.switchFriendTab = (tab) => {
     currentFriendTab = tab;
     document.querySelectorAll('.friend-tab').forEach(b => b.classList.remove('active'));
     document.getElementById(`tab-f-${tab}`).classList.add('active');
-    
     document.getElementById('friend-content-list').classList.add('hidden');
     document.getElementById('friend-content-req').classList.add('hidden');
     document.getElementById('friend-content-find').classList.add('hidden');
-    
     document.getElementById(`friend-content-${tab}`).classList.remove('hidden');
 };
-
 socket.on('friendUpdate', (data) => {
     friendDataCache = data;
     renderFriends();
-    
     const btn = document.getElementById('btn-friends-menu');
-    if (data.requests.length > 0) {
-        btn.classList.add('blink-anim');
-        btn.textContent = `👥 ${data.requests.length}`;
-    } else {
-        btn.classList.remove('blink-anim');
-        btn.textContent = `👥`;
-    }
+    if (data.requests.length > 0) { btn.classList.add('blink-anim'); btn.textContent = `👥 ${data.requests.length}`; } 
+    else { btn.classList.remove('blink-anim'); btn.textContent = `👥`; }
 });
-
-socket.on('forceFriendUpdate', () => {
-    socket.emit('friendAction', { action: 'get' });
-});
+socket.on('forceFriendUpdate', () => { socket.emit('friendAction', { action: 'get' }); });
 
 function renderFriends() {
     const listContainer = document.getElementById('friend-content-list');
     const reqContainer = document.getElementById('friend-content-req');
-    
     listContainer.innerHTML = '';
-    if (friendDataCache.friends.length === 0) {
-        listContainer.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пока никого...</div>';
-    } else {
+    if (friendDataCache.friends.length === 0) { listContainer.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пока никого...</div>'; } 
+    else {
         friendDataCache.friends.forEach(f => {
             let statusClass = 'status-offline';
             let inviteBtn = '';
+            if (f.status === 'online') { statusClass = 'status-online'; } 
+            else if (f.status === 'ingame') { statusClass = 'status-ingame'; }
             
-            // 1. Цвет статуса
-            if (f.status === 'online') {
-                statusClass = 'status-online';
-            } else if (f.status === 'ingame') {
-                statusClass = 'status-ingame';
-            }
+            if (state.roomId) { inviteBtn = `<button class="btn-friend-action btn-invite" onclick="inviteFriend('${f.id}')">ЗОВИ</button>`; }
 
-            // 2. Кнопка "ЗОВИ" (Показываем ВСЕГДА, если мы в комнате)
-            if (state.roomId) { 
-                inviteBtn = `<button class="btn-friend-action btn-invite" onclick="inviteFriend('${f.id}')">ЗОВИ</button>`;
-            }
-
-            // 3. Отрисовка
-            listContainer.innerHTML += `
-                <div class="friend-row">
-                    <div style="display:flex; align-items:center;">
-                        <div class="friend-status ${statusClass}"></div>
-                        <span class="friend-name clickable" onclick="requestPlayerStats('${f.id}')">${f.name}</span>
-                    </div>
-                    <div class="friend-actions">
-                        ${inviteBtn}
-                        <button class="btn-friend-action btn-decline" onclick="removeFriend('${f.id}')">X</button>
-                    </div>
-                </div>`;
+            listContainer.innerHTML += `<div class="friend-row"><div style="display:flex; align-items:center;"><div class="friend-status ${statusClass}"></div><span class="friend-name clickable" onclick="requestPlayerStats('${f.id}')">${f.name}</span></div><div class="friend-actions">${inviteBtn}<button class="btn-friend-action btn-decline" onclick="removeFriend('${f.id}')">X</button></div></div>`;
         });
     }
-
-    // Отрисовка запросов (без изменений)
     reqContainer.innerHTML = '';
-    if (friendDataCache.requests.length === 0) {
-        reqContainer.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пусто</div>';
-    } else {
+    if (friendDataCache.requests.length === 0) { reqContainer.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пусто</div>'; } 
+    else {
         friendDataCache.requests.forEach(r => {
-            reqContainer.innerHTML += `
-                <div class="friend-row">
-                    <span class="friend-name clickable" onclick="requestPlayerStats('${r.id}')">${r.name}</span>
-                    <div class="friend-actions">
-                        <button class="btn-friend-action btn-accept" onclick="acceptFriend('${r.id}')">ДА</button>
-                        <button class="btn-friend-action btn-decline" onclick="declineFriend('${r.id}')">НЕТ</button>
-                    </div>
-                </div>`;
+            reqContainer.innerHTML += `<div class="friend-row"><span class="friend-name clickable" onclick="requestPlayerStats('${r.id}')">${r.name}</span><div class="friend-actions"><button class="btn-friend-action btn-accept" onclick="acceptFriend('${r.id}')">ДА</button><button class="btn-friend-action btn-decline" onclick="declineFriend('${r.id}')">НЕТ</button></div></div>`;
         });
     }
 }
 
-window.searchFriend = () => {
-    const val = document.getElementById('input-friend-search').value;
-    if (val) socket.emit('friendAction', { action: 'search', payload: val });
-};
-
-window.inviteFriend = (id) => {
-    socket.emit('inviteToRoom', id);
-};
-
-window.removeFriend = (id) => {
-    uiConfirm("Удалить из друзей?", () => {
-        // Visually remove immediately
-        const btn = event.target;
-        if(btn) {
-            const row = btn.closest('.friend-row');
-            if(row) row.remove();
-        }
-        socket.emit('friendAction', { action: 'decline', payload: id }); 
-    });
-};
-
-window.acceptFriend = (id) => {
-    const btn = event.target;
-    if(btn) {
-        const row = btn.closest('.friend-row');
-        if(row) row.remove();
-    }
-    socket.emit('friendAction', { action: 'accept', payload: id });
-};
-
-window.declineFriend = (id) => {
-    const btn = event.target;
-    if(btn) {
-        const row = btn.closest('.friend-row');
-        if(row) row.remove();
-    }
-    socket.emit('friendAction', { action: 'decline', payload: id });
-};
+window.searchFriend = () => { const val = document.getElementById('input-friend-search').value; if (val) socket.emit('friendAction', { action: 'search', payload: val }); };
+window.inviteFriend = (id) => { socket.emit('inviteToRoom', id); };
+window.removeFriend = (id) => { uiConfirm("Удалить из друзей?", () => { const btn = event.target; if(btn) { const row = btn.closest('.friend-row'); if(row) row.remove(); } socket.emit('friendAction', { action: 'decline', payload: id }); }); };
+window.acceptFriend = (id) => { const btn = event.target; if(btn) { const row = btn.closest('.friend-row'); if(row) row.remove(); } socket.emit('friendAction', { action: 'accept', payload: id }); };
+window.declineFriend = (id) => { const btn = event.target; if(btn) { const row = btn.closest('.friend-row'); if(row) row.remove(); } socket.emit('friendAction', { action: 'decline', payload: id }); };
 
 socket.on('friendSearchResult', (res) => {
     const container = document.getElementById('search-result');
     container.classList.add('active');
-    if (res) {
-        container.innerHTML = `
-            <div class="friend-row" style="border:none; padding:0;">
-                <span class="friend-name">${res.name}</span>
-                <button class="btn-friend-action btn-invite" onclick="sendRequest('${res.id}')">ДРУЖИТЬ</button>
-            </div>`;
-    } else {
-        container.innerHTML = '<span style="opacity:0.6">Не найден</span>';
-    }
+    if (res) { container.innerHTML = `<div class="friend-row" style="border:none; padding:0;"><span class="friend-name">${res.name}</span><button class="btn-friend-action btn-invite" onclick="sendRequest('${res.id}')">ДРУЖИТЬ</button></div>`; } 
+    else { container.innerHTML = '<span style="opacity:0.6">Не найден</span>'; }
 });
-
-window.sendRequest = (id) => {
-    socket.emit('friendAction', { action: 'request', payload: id });
-    document.getElementById('search-result').innerHTML = 'Отправлено!';
-};
+window.sendRequest = (id) => { socket.emit('friendAction', { action: 'request', payload: id }); document.getElementById('search-result').innerHTML = 'Отправлено!'; };
 
 socket.on('gameInvite', (data) => {
     let msg = `<b>${data.inviter}</b> зовет в игру!<br>Ставки: ${data.betCoins}💰 ${data.betXp}⭐`;
-    
-    if (state.roomId && document.getElementById('screen-game').classList.contains('active')) {
-        msg += `<br><br><span style="color:#ef233c; font-weight:bold;">ВНИМАНИЕ: Вы покинете текущий бой и потеряете ставку!</span>`;
-    }
-
-    uiConfirm(msg, () => {
-        const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username };
-        socket.emit('joinOrCreateRoom', { 
-            roomId: data.roomId, 
-            tgUser: userPayload 
-        });
-    });
+    if (state.roomId && document.getElementById('screen-game').classList.contains('active')) { msg += `<br><br><span style="color:#ef233c; font-weight:bold;">ВНИМАНИЕ: Вы покинете текущий бой и потеряете ставку!</span>`; }
+    uiConfirm(msg, () => { const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username }; socket.emit('joinOrCreateRoom', { roomId: data.roomId, tgUser: userPayload }); });
 });
-
-socket.on('notification', (data) => {
-    if (data.type === 'friend_req') {
-        const btn = document.getElementById('btn-friends-menu');
-        btn.classList.add('blink-anim');
-        if(tg) tg.HapticFeedback.notificationOccurred('success');
-    }
-});
-
-window.openInviteModal = () => {
-    openFriends();           // Открываем модальное окно
-    switchFriendTab('list'); // Переключаемся на список друзей
-};
-
-
-
-
-
-
-
-
-
+socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
+window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
