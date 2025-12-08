@@ -519,6 +519,11 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); 
 }
 
+/* Исправление: Карточка игрока всегда поверх списка друзей */
+#modal-player {
+    z-index: 2147483649 !important; /* На 1 больше, чем у остальных модалок */
+}
+
 
 
 
