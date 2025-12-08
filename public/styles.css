@@ -23,7 +23,7 @@ body {
   transition: background-image 0.3s ease;
 }
 
-/* ФОНЫ (Яркость 0.3) */
+/* ФОНЫ */
 body.bg_default { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
 body.bg_lvl1 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
 body.bg_lvl2 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
@@ -42,49 +42,18 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* --- ЛОГОТИП (ПОДНЯТ НА 5px) --- */
-.game-logo {
-    width: 95%; 
-    max-width: 500px; 
-    height: auto; 
-    margin-bottom: 0; 
-    margin-top: -5px; /* <--- ПОДНЯЛ */
-    filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6));
-    transition: transform 0.3s;
-}
+/* --- ЛОГОТИП --- */
+.game-logo { width: 95%; max-width: 500px; height: auto; margin-bottom: 0; margin-top: -5px; filter: drop-shadow(0 0 2px rgba(0,0,0,0.8)) drop-shadow(0 10px 20px rgba(0,0,0,0.6)); transition: transform 0.3s; }
 .float-anim { animation: floatLogo 3s ease-in-out infinite; }
-@keyframes floatLogo {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
+@keyframes floatLogo { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-.title-text {
-    font-family: var(--font); font-size: 2rem; color: var(--accent); 
-    text-align: center; text-shadow: 2px 2px 0 #d90429; margin-bottom: 20px; font-weight: 800;
-}
-
-.title-text-cabin {
-    font-family: var(--font); font-size: 2.2rem; color: var(--purple);
-    text-align: center; margin-bottom: 20px; font-weight: 900;
-    text-shadow: 3px 3px 0 #000;
-}
-
+.title-text { font-family: var(--font); font-size: 2rem; color: var(--accent); text-align: center; text-shadow: 2px 2px 0 #d90429; margin-bottom: 20px; font-weight: 800; }
+.title-text-cabin { font-family: var(--font); font-size: 2.2rem; color: var(--purple); text-align: center; margin-bottom: 20px; font-weight: 900; text-shadow: 3px 3px 0 #000; }
 .subtitle { font-family: var(--font); font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 
 /* --- КНОПКИ --- */
-.btn { 
-    width: 100%; 
-    padding: 8px; 
-    border: none; border-radius: 15px; 
-    font-family: var(--font); 
-    font-size: 0.9rem; 
-    font-weight: 800; cursor: pointer; margin-top: 0; 
-    transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); 
-    min-height: 40px; 
-    display: flex; align-items: center; justify-content: center;
-}
+.btn { width: 100%; padding: 8px; border: none; border-radius: 15px; font-family: var(--font); font-size: 0.9rem; font-weight: 800; cursor: pointer; margin-top: 0; transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); min-height: 40px; display: flex; align-items: center; justify-content: center; }
 .btn:active { transform: translateY(4px); box-shadow: none !important; }
-
 .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 0 #d90429; }
 .btn-orange { background: #fb8500; color: #2b2d42; box-shadow: 0 4px 0 #c46900; }
 .btn-blue { background: var(--blue); color: white; box-shadow: 0 4px 0 #075f7a; }
@@ -92,27 +61,18 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .btn-red { background: var(--primary); color: white; box-shadow: 0 4px 0 #d90429; }
 .btn-gray { background: var(--surface); color: var(--secondary); box-shadow: 0 4px 0 #2b2d42; }
 .btn-purple { background: var(--purple); color: white; box-shadow: 0 4px 0 #5a189a; }
-
 #btn-pve-back, #btn-back-home, #btn-shop-back, #btn-cabin-back { margin-top: 10px !important; }
 
 /* --- МЕНЮ --- */
-.menu-buttons {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    width: 100%; max-width: 340px; 
-    margin-top: -10px; 
-}
-
+.menu-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 340px; margin-top: -10px; }
 #btn-to-create, #btn-to-pve, #btn-join-room { grid-column: span 2; }
-
 .btn-mini { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--surface); color: white; font-size: 1.2rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,0.3); cursor: pointer; }
 .btn-mini:active { transform: translateY(3px); box-shadow: none; }
-
 .btn-icon { position: absolute; top: 15px; width: 40px; height: 40px; background: var(--surface); color: var(--accent); border: 2px solid var(--accent); border-radius: 50%; font-size: 1.5rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; display: flex; align-items: center; justify-content: center; }
 .btn-icon:active { transform: scale(0.9); }
 .btn-rules { right: 15px; }
-/* КНОПКИ МЕНЮ (НОВЫЕ ПОЗИЦИИ) */
 .btn-encyclopedia { right: 65px; color: var(--blue); border-color: var(--blue); }
-.btn-friends { right: 115px; color: var(--success); border-color: var(--success); } /* НОВАЯ КНОПКА */
+.btn-friends { right: 115px; color: var(--success); border-color: var(--success); }
 .btn-lobby-back { top: 15px; left: 15px; position: absolute; }
 .btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
 
@@ -120,56 +80,22 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
 input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: none; background: rgba(0,0,0,0.3); color: white; font-family: var(--font); font-size: 1.1rem; text-align: center; outline: none; font-weight: 600; }
 
-/* --- ПРОФИЛЬ (ПОДНЯТ НА 5px) --- */
-.profile-card { 
-    background: var(--surface); 
-    border-radius: 20px; 
-    padding: 10px 20px;          
-    width: 100%; 
-    max-width: 340px;      
-    text-align: center; 
-    margin-bottom: 10px; 
-    margin-top: 55px !important; /* БЫЛО 75px -> СТАЛО 70px */      
-    border: 3px solid var(--blue); 
-    box-shadow: var(--shadow-card); 
-    position: relative; 
-    background-size: cover; background-position: center; 
-    text-shadow: 1px 1px 2px black;
-    overflow: visible !important; 
-    z-index: 5;
-}
-
-.rank-icon-box { 
-    width: 140px; height: 140px; 
-    margin: -90px auto 5px; 
-    display: flex; justify-content: center; align-items: center; 
-    z-index: 10; 
-    position: relative; 
-    overflow: visible !important; 
-}
-
-/* ШЛЯПЫ */
-.rank-img { 
-    width: 100%; height: 100%; object-fit: contain; 
-    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); 
-    transition: transform 0.3s ease;
-    position: relative;
-    z-index: 15;
-}
-
+/* --- ПРОФИЛЬ --- */
+.profile-card { background: var(--surface); border-radius: 20px; padding: 10px 20px; width: 100%; max-width: 340px; text-align: center; margin-bottom: 10px; margin-top: 55px !important; border: 3px solid var(--blue); box-shadow: var(--shadow-card); position: relative; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; overflow: visible !important; z-index: 5; }
+.rank-icon-box { width: 140px; height: 140px; margin: -90px auto 5px; display: flex; justify-content: center; align-items: center; z-index: 10; position: relative; overflow: visible !important; }
+.rank-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); transition: transform 0.3s ease; position: relative; z-index: 15; }
 .rank-img.hat-legendary { transform: scale(2.5) translateY(-12px); transform-origin: bottom center; }
 .rank-img.hat-mythical { transform: scale(3.0) translateY(-18px); transform-origin: bottom center; }
-
-/* ТЕКСТ ПРОФИЛЯ */
-.profile-card h2 { font-size: 1.8rem; margin: 5px 0 2px; font-weight: 900; } 
+.profile-card h2 { font-size: 1.8rem; margin: 5px 0 2px; font-weight: 900; }
 .rank-label { background: var(--blue); color: white; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 1rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
 .streak-label { color: var(--primary); font-weight: 800; margin-bottom: 4px; font-size: 1.1rem; text-shadow: 1px 1px 0 black; }
 .coins-row { font-size: 1.4rem; font-weight: bold; color: var(--accent); margin-bottom: 6px; text-shadow: 1px 1px 0 black; }
-.xp-track { background: rgba(0,0,0,0.6); height: 22px; border-radius: 11px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); margin-top: 5px;}
+.xp-track { background: rgba(0,0,0,0.6); height: 22px; border-radius: 11px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); margin-top: 5px; }
 .xp-bar { width: 100%; height: 100%; }
 .xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #ff9f1c); transition: width 0.5s ease; border-radius: 12px; }
 .xp-text { position: absolute; width: 100%; height: 100%; top: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; text-shadow: 1px 1px 0 rgba(0,0,0,0.8); color: white; }
 
+/* --- SHOP & CABIN --- */
 .shop-balance { font-size: 2rem; color: var(--accent); font-weight: 800; margin-bottom: 20px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 .shop-tabs { display: flex; gap: 5px; margin-bottom: 10px; width: 100%; justify-content: center; }
 .tab-btn { padding: 8px 15px; border: none; background: rgba(0,0,0,0.3); color: #8d99ae; border-radius: 10px; font-weight: bold; cursor: pointer; }
@@ -182,15 +108,14 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .shop-btn.buy { background: var(--accent); color: var(--bg-color); }
 .shop-btn.equip { background: var(--blue); color: white; }
 .shop-btn.equipped { background: var(--success); color: #2b2d42; }
-
 .cabin-category-title { grid-column: 1 / -1; color: white; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid rgba(255,255,255,0.1); margin-top: 15px; margin-bottom: 10px; text-shadow: 1px 1px 0 black; padding-left: 5px; }
 .shop-item.rarity-rare { border: 2px solid #4cc9f0; box-shadow: 0 0 10px rgba(76, 201, 240, 0.3); }
 .shop-item.rarity-legendary { border: 2px solid #ffb703; box-shadow: 0 0 15px rgba(255, 183, 3, 0.4); }
 .shop-item.rarity-mythical { border: 2px solid #f72585; box-shadow: 0 0 20px rgba(247, 37, 133, 0.6); }
-
 .pulse-mythic { animation: mythicPulse 2s infinite; }
 @keyframes mythicPulse { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.05); filter: brightness(1.3); } 100% { transform: scale(1); filter: brightness(1); } }
 
+/* --- SETTINGS --- */
 .setting-group { margin-bottom: 15px; }
 .setting-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: var(--secondary); font-weight: 700; }
 .stepper-row { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 16px; }
@@ -209,82 +134,37 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .player-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; border-left: 4px solid var(--secondary); }
 .rank-sub { font-size: 0.7rem; color: var(--accent); margin-left: 5px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 6px; font-weight: 700; }
 
+/* --- GAME --- */
 .game-layout { padding: 10px; }
 .rivals-bar-container { background: rgba(0,0,0,0.2); border-radius: 16px; padding: 8px; margin-bottom: 10px; overflow: visible; margin-top: 45px; }
 .rivals-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; padding-top: 40px; margin-top: -40px; }
-
-.player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 75px; max-width: 75px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; box-shadow: 0 4px 0 rgba(0,0,0,0.2); z-index: 1; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
-.player-chip b { display: block; font-size: 0.7rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.player-chip { background: var(--surface); border-radius: 12px; padding: 6px; min-width: 80px; max-width: 150px; text-align: center; border: 2px solid transparent; transition: all 0.2s; flex-shrink: 0; position: relative; box-shadow: 0 4px 0 rgba(0,0,0,0.2); z-index: 1; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; display: flex; flex-direction: column; align-items: center; height: auto; min-height: 60px; }
+.player-chip b { display: block; font-size: 0.7rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; width: 100%; }
 .player-chip .rank-game { font-size: 0.6rem; color: var(--secondary); display: block; line-height: 1; margin-top: 2px; font-weight: 700; color: rgba(255,255,255,0.8); }
 .player-chip .dice-count { font-size: 0.9rem; font-weight: 800; color: white; margin-top: 2px; }
 .player-chip.turn { transform: translateY(-3px); box-shadow: 0 0 15px var(--accent); border-color: var(--accent) !important; }
 .player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
-/* Default */
-.player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default, .shop-preview-frame.frame_default { 
-    border: 2px solid transparent; background-image: none; background-color: var(--surface); 
-}
-
-/* Wood */
-.player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood, .shop-preview-frame.frame_wood { 
-    border: 3px solid #8d6e63; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); background-size: cover;
-}
-
-/* Silver */
-.player-chip.frame_silver, .profile-card.frame_silver, .modal-content.frame_silver, .shop-preview-frame.frame_silver { 
-    border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_serebro.png'); background-size: cover;
-}
-
-/* Ice */
-.player-chip.frame_ice, .profile-card.frame_ice, .modal-content.frame_ice, .shop-preview-frame.frame_ice { 
-    border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_led.png'); background-size: cover;
-}
-
-/* Neon */
-.player-chip.frame_neon, .profile-card.frame_neon, .modal-content.frame_neon, .shop-preview-frame.frame_neon { 
-    border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_neon.png'); background-size: cover;
-}
-
-/* Gold */
-.player-chip.frame_gold, .profile-card.frame_gold, .modal-content.frame_gold, .shop-preview-frame.frame_gold { 
-    border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_zoloto.png'); background-size: cover;
-}
-
-/* Fire */
-.player-chip.frame_fire, .profile-card.frame_fire, .modal-content.frame_fire, .shop-preview-frame.frame_fire { 
-    border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_ogon.png'); background-size: cover;
-}
-
-/* Royal */
-.player-chip.frame_royal, .profile-card.frame_royal, .modal-content.frame_royal, .shop-preview-frame.frame_royal { 
-    border: 4px solid #ffd700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_korolevski.png'); background-size: cover;
-}
-
-/* Ghost */
-.player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost, .shop-preview-frame.frame_ghost { 
-    border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); background-size: cover;
-}
-
-/* Kraken */
-.player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken, .shop-preview-frame.frame_kraken { 
-    border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); background-size: cover;
-}
-
-/* Captain */
-.player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain, .shop-preview-frame.frame_captain { 
-    border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); background-size: cover;
-}
-
-/* Abyss */
-.player-chip.frame_abyss, .profile-card.frame_abyss, .modal-content.frame_abyss, .shop-preview-frame.frame_abyss { 
-    border: 3px solid #4a0072; box-shadow: 0 0 15px #7a00b3; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_bezdna.png'); background-size: cover; 
-}
+/* FRAMES */
+.player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default, .shop-preview-frame.frame_default { border: 2px solid transparent; background-image: none; background-color: var(--surface); }
+.player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood, .shop-preview-frame.frame_wood { border: 3px solid #8d6e63; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); background-size: cover; }
+.player-chip.frame_silver, .profile-card.frame_silver, .modal-content.frame_silver, .shop-preview-frame.frame_silver { border: 3px solid #ced4da; box-shadow: 0 0 8px #ced4da; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_serebro.png'); background-size: cover; }
+.player-chip.frame_ice, .profile-card.frame_ice, .modal-content.frame_ice, .shop-preview-frame.frame_ice { border: 3px solid #00b4d8; box-shadow: 0 0 10px #90e0ef; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_led.png'); background-size: cover; }
+.player-chip.frame_neon, .profile-card.frame_neon, .modal-content.frame_neon, .shop-preview-frame.frame_neon { border: 3px solid #f72585; box-shadow: 0 0 15px #f72585; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_neon.png'); background-size: cover; }
+.player-chip.frame_gold, .profile-card.frame_gold, .modal-content.frame_gold, .shop-preview-frame.frame_gold { border: 3px solid #FFD700; box-shadow: 0 0 10px #FFD700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_zoloto.png'); background-size: cover; }
+.player-chip.frame_fire, .profile-card.frame_fire, .modal-content.frame_fire, .shop-preview-frame.frame_fire { border: 3px solid #FF4500; box-shadow: 0 0 10px #FF4500; animation: pulse 1s infinite; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_ogon.png'); background-size: cover; }
+.player-chip.frame_royal, .profile-card.frame_royal, .modal-content.frame_royal, .shop-preview-frame.frame_royal { border: 4px solid #ffd700; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_korolevski.png'); background-size: cover; }
+.player-chip.frame_ghost, .profile-card.frame_ghost, .modal-content.frame_ghost, .shop-preview-frame.frame_ghost { border: 3px solid rgba(255,255,255,0.5); opacity: 0.9; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_prizrak.png'); background-size: cover; }
+.player-chip.frame_kraken, .profile-card.frame_kraken, .modal-content.frame_kraken, .shop-preview-frame.frame_kraken { border: 3px solid #3a0ca3; box-shadow: 0 0 10px #4cc9f0; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kraken.png'); background-size: cover; }
+.player-chip.frame_captain, .profile-card.frame_captain, .modal-content.frame_captain, .shop-preview-frame.frame_captain { border: 4px solid #d90429; box-shadow: 0 0 15px #d90429; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_kapitanskaya.png'); background-size: cover; }
+.player-chip.frame_abyss, .profile-card.frame_abyss, .modal-content.frame_abyss, .shop-preview-frame.frame_abyss { border: 3px solid #4a0072; box-shadow: 0 0 15px #7a00b3; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_bezdna.png'); background-size: cover; }
 
 .inv-preview.player-chip { min-width: auto; max-width: none; width: 40px; height: 40px; padding: 0; }
 .emote-bubble-img { position: absolute; width: 100px; height: 100px; left: 50%; top: 50%; transform: translate(-50%, -50%); animation: emotePop 3s ease-out forwards; pointer-events: none; z-index: 9999; filter: drop-shadow(0 0 10px rgba(0,0,0,0.8)); object-fit: contain; }
 @keyframes emotePop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 15% { transform: translate(-50%, -50%) scale(1); } 70% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -60%) scale(1.1); } }
 
-.table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+/* --- TABLE CENTER --- */
+.table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; width: 100%; }
 .timer-capsule { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; width: 80%; margin-bottom: 15px; }
 .timer-track { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
 .timer-progress { height: 100%; background: var(--success); width: 100%; border-radius: 5px; transition: width 0.1s linear, background-color 0.3s; }
@@ -292,17 +172,20 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .bid-bubble::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: var(--bg-color) transparent transparent transparent; }
 .bid-qty { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
 .bid-face { font-size: 2rem; background: var(--bg-color); color: white; padding: 2px 8px; border-radius: 8px; }
-.game-log-box { margin-top: 20px; font-size: 0.9rem; color: var(--text); text-shadow: 1px 1px 0 black; text-align: center; height: 20px; font-weight: 700; white-space: nowrap; }
+
+/* НОВЫЙ СТИЛЬ ТЕКСТА СТАВКИ (КРУПНЕЕ И С ТЕНЬЮ) */
+.game-log-box-large { margin-bottom: 10px; font-size: 1.2rem; color: white; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(0,0,0,0.5); text-align: center; height: 30px; font-weight: 900; white-space: nowrap; letter-spacing: 1px; z-index: 5; }
+
 .my-controls-area { width: 100%; }
 .emotes-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
 .emotes-bar button { background: none; border: none; cursor: pointer; transition: transform 0.1s; padding: 0; }
 .emotes-bar button img { width: 70px; height: 70px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
 .emotes-bar button:active { transform: scale(1.2); }
-
 .my-dice-panel { text-align: center; margin-bottom: 5px; }
 .panel-label { font-size: 0.7rem; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; text-shadow: 1px 1px 0 black; }
 .my-dice-row { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; max-width: 100%; padding: 0 10px; }
 
+/* --- DICE --- */
 .die { width: var(--die-size); height: var(--die-size); border-radius: 8px; display: block; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); transition: transform 0.1s; border: none; background-color: transparent; box-shadow: none; }
 .face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice1.png'); }
 .face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice2.png'); }
@@ -310,6 +193,8 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice4.png'); }
 .face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice5.png'); }
 .face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/default/default_dice6.png'); }
+
+/* GOLD */
 .skin_gold.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice1.png'); }
 .skin_gold.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice2.png'); }
 .skin_gold.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice3.png'); }
@@ -317,59 +202,57 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .skin_gold.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice5.png'); }
 .skin_gold.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/gold/golden_dice6.png'); }
 
+/* WHITE SHADOW */
 .skin_white { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); }
 
-/* РУБИН */
+/* RUBY */
 .skin_red.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice1.png'); }
 .skin_red.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice2.png'); }
 .skin_red.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice3.png'); }
 .skin_red.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice4.png'); }
 .skin_red.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice5.png'); }
 .skin_red.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/ruby/ruby_dice6.png'); }
-/* ЧЕРНАЯ МЕТКА */
+
+/* CURSED */
 .skin_black.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice1.png'); }
 .skin_black.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice2.png'); }
 .skin_black.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice3.png'); }
 .skin_black.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice4.png'); }
 .skin_black.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice5.png'); }
 .skin_black.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/cursed/cursed_dice6.png'); }
-/* ЯД */
+
+/* POISON */
 .skin_green.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice1.png'); }
 .skin_green.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice2.png'); }
 .skin_green.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice3.png'); }
 .skin_green.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice4.png'); }
 .skin_green.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice5.png'); }
 .skin_green.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/poison/poison_dice6.png'); }
-/* МОРЕ */
+
+/* SEA */
 .skin_blue.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice1.png'); }
 .skin_blue.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice2.png'); }
 .skin_blue.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice3.png'); }
 .skin_blue.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice4.png'); }
 .skin_blue.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice5.png'); }
 .skin_blue.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice6.png'); }
-/* МАГИЯ ВУДУ */
-.skin_purple.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice1.png'); }
-.skin_purple.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice2.png'); }
-.skin_purple.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice3.png'); }
-.skin_purple.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice4.png'); }
-.skin_purple.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice5.png'); }
-.skin_purple.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice6.png'); }
 
+.skin_purple{ filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(260deg); }
 .skin_cyber { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) invert(1) hue-rotate(90deg); }
 .skin_bone  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) sepia(0.5); }
 
 .action-panel { background: var(--surface); border-radius: 16px 16px 0 0; padding: 10px; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
-.hidden { display: none; }
+.hidden { display: none !important; }
 .bid-controls { display: flex; gap: 6px; margin-bottom: 6px; }
 .bid-stepper { flex: 1; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; text-align: center; }
 .bid-stepper label { font-size: 0.5rem; color: var(--secondary); font-weight: 700; display: block; margin-bottom: 1px; }
-.stepper-row { padding: 2px; }
 .bid-val { font-size: 1rem; min-width: 20px; }
 .dice-face { font-size: 1rem; padding: 0 4px; border-radius: 4px; }
 .main-actions { display: flex; gap: 6px; }
 .main-actions button { margin: 0; padding: 6px 4px; font-size: 0.75rem; margin-top: 0; border-radius: 10px; min-height: auto; }
 #btn-call-spot.hidden-rule { display: none !important; }
 
+/* --- SKILLS --- */
 .skills-bar { display: flex; justify-content: center; gap: 15px; margin-top: 15px; flex-wrap: wrap; margin-bottom: 5px; }
 .btn-skill { width: 35px; height: 35px; border: none; border-radius: 8px; cursor: pointer; background-color: transparent; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.6)); transition: transform 0.1s ease, filter 0.1s ease; box-shadow: none; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 .btn-skill:active { transform: translateY(4px); filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
@@ -378,6 +261,7 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .skill-kill { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/skills/kill.png'); }
 @keyframes popIn { 0% { opacity: 0; transform: scale(0.5) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
 
+/* --- MODALS --- */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 99999 !important; display: none; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
 .modal-overlay.active { display: flex; }
 .modal-content { background: var(--surface); border-radius: 24px; padding: 30px 20px; width: 100%; max-width: 340px; position: relative; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; background-size: cover; background-position: center; text-shadow: 1px 1px 2px black; }
@@ -395,7 +279,6 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .inv-preview { width: 30px; height: 30px; border-radius: 6px; }
 .clickable-card { cursor: pointer; transition: transform 0.2s; }
 .clickable-card:active { transform: scale(0.98); }
-
 .modal-title { font-size: 1.8rem; color: var(--accent); margin-bottom: 15px; text-transform: uppercase; font-weight: 800; text-shadow: 2px 2px 0 #d90429; }
 .scrollable-content { max-height: 80vh; overflow-y: auto; text-align: left; }
 .rules-section { margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 16px; }
@@ -413,32 +296,46 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .bid-die-icon { width: 45px !important; height: 45px !important; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.6)); }
 #screen-result .slide-up-delay { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin-top: 25px; }
 
-/* АДАПТИВНОСТЬ */
-@media (max-height: 750px) {
-    .game-logo { max-width: 300px; margin-bottom: 5px; }
-    .profile-card { margin-top: 45px !important; }
-    .menu-buttons { margin-top: -5px; }
+/* --- EFFECTS (RED FLASH & BLUFF CLOUD) --- */
+.red-flash-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: red; opacity: 0; pointer-events: none; z-index: 9000;
 }
-@media (max-height: 600px) {
-    .game-logo { max-width: 220px; }
-    .title-text { font-size: 1.5rem; margin-bottom: 10px; }
-    .profile-card { margin-top: 45px; transform: scale(0.9); }
+.red-flash-active { animation: redFlash 1s ease-out forwards; }
+@keyframes redFlash { 0% { opacity: 0.4; } 100% { opacity: 0; } }
+
+.bluff-cloud {
+    position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, #d90429, #8d0018);
+    color: white; padding: 20px 40px; border-radius: 50px;
+    font-size: 2.5rem; font-weight: 900; text-transform: uppercase;
+    box-shadow: 0 0 30px rgba(217, 4, 41, 0.8), inset 0 0 10px rgba(0,0,0,0.5);
+    border: 4px solid white; z-index: 9500;
+    text-shadow: 2px 2px 0 black;
+    white-space: nowrap;
+}
+.bluff-cloud-active { animation: bluffPop 2.5s ease-out forwards; display: block !important; }
+@keyframes bluffPop {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    10% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    15% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+    20% { transform: translate(-50%, -50%) scale(1) rotate(5deg); }
+    25% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+    30% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+    80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
 }
 
-/* ... (ДРУЗЬЯ) ... */
+/* ADAPTIVE */
+@media (max-height: 750px) { .game-logo { max-width: 300px; margin-bottom: 5px; } .profile-card { margin-top: 45px !important; } .menu-buttons { margin-top: -5px; } }
+@media (max-height: 600px) { .game-logo { max-width: 220px; } .title-text { font-size: 1.5rem; margin-bottom: 10px; } .profile-card { margin-top: 45px; transform: scale(0.9); } }
 
-/* МИГАНИЕ (ДЛЯ УВЕДОМЛЕНИЙ) */
 .blink-anim { animation: blink 1s infinite; }
-@keyframes blink {
-    0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--success); }
-    50% { opacity: 0.5; box-shadow: none; }
-}
+@keyframes blink { 0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--success); } 50% { opacity: 0.5; box-shadow: none; } }
 
-/* МОДАЛЬНОЕ ОКНО ДРУЗЕЙ */
 .friend-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
 .friend-tab { flex: 1; background: none; border: none; color: var(--secondary); font-weight: 700; padding: 8px; border-radius: 10px; cursor: pointer; }
 .friend-tab.active { background: rgba(255,255,255,0.1); color: white; }
-
 .friend-list-container { max-height: 300px; overflow-y: auto; text-align: left; }
 .friend-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .friend-name { font-weight: bold; font-size: 0.9rem; }
@@ -446,128 +343,27 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .status-online { background: var(--success); box-shadow: 0 0 5px var(--success); }
 .status-offline { background: var(--secondary); }
 .status-ingame { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
-
 .friend-actions { display: flex; gap: 5px; }
 .btn-friend-action { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; border: none; font-weight: bold; cursor: pointer; }
 .btn-accept { background: var(--success); color: #2b2d42; }
 .btn-decline { background: var(--primary); color: white; }
 .btn-invite { background: var(--blue); color: white; }
-
 #search-result { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 10px; display: none; }
 #search-result.active { display: block; }
+.btn-add-friend-game { width: 100%; margin-top: 10px; background: var(--success); color: #2b2d42; border: none; padding: 8px; border-radius: 10px; font-weight: bold; cursor: pointer; }
 
-/* ДОБАВИТЬ В ДРУЗЬЯ (В МАТЧЕ) */
-.btn-add-friend-game { 
-    width: 100%; margin-top: 10px; background: var(--success); 
-    color: #2b2d42; border: none; padding: 8px; border-radius: 10px; font-weight: bold; cursor: pointer; 
-}
+/* SHOP PREVIEWS */
+.shop-preview-box { height: 70px; display: flex; justify-content: center; align-items: center; margin-bottom: 8px; background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; }
+.shop-preview-die { width: 50px !important; height: 50px !important; background-size: contain; background-repeat: no-repeat; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); }
+.shop-preview-frame { width: 55px; height: 55px; border-radius: 12px; background-color: var(--surface); display: flex; justify-content: center; align-items: center; font-size: 25px; }
+.shop-preview-bg { width: 100%; height: 100%; background-size: cover; background-position: center; }
+.shop-preview-bg.bg_default { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); }
+.shop-preview-bg.bg_lvl1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); }
+.shop-preview-bg.bg_lvl2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); }
+.shop-preview-bg.bg_lvl3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); }
+.shop-preview-bg.bg_lvl4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); }
+.shop-preview-bg.bg_lvl5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); }
 
-/* --- ПРЕВЬЮ В МАГАЗИНЕ (SHOP PREVIEWS) --- */
-
-/* Контейнер для превью */
-.shop-preview-box {
-    height: 70px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 8px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-/* 1. КУБИКИ (Используют те же классы, что и в игре) */
-.shop-preview-die {
-    width: 50px !important;
-    height: 50px !important;
-    background-size: contain;
-    background-repeat: no-repeat;
-    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
-}
-
-/* 2. РАМКИ (Имитация фишки игрока) */
-.shop-preview-frame {
-    width: 55px;
-    height: 55px;
-    border-radius: 12px;
-    background-color: var(--surface);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 25px;
-}
-
-/* 3. ФОНЫ (СЮДА ВСТАВЛЯТЬ ССЫЛКИ НА ФОНЫ ДЛЯ МАГАЗИНА) */
-.shop-preview-bg {
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-}
-
-/* ССЫЛКИ ФОНОВ ДЛЯ ОТОБРАЖЕНИЯ В МАГАЗИНЕ */
-.shop-preview-bg.bg_default { 
-    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); 
-}
-.shop-preview-bg.bg_lvl1 { 
-    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); 
-}
-.shop-preview-bg.bg_lvl2 { 
-    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); 
-}
-.shop-preview-bg.bg_lvl3 { 
-    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); 
-}
-.shop-preview-bg.bg_lvl4 { 
-    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); 
-}
-.shop-preview-bg.bg_lvl5 { 
-    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); 
-}
-
-/* Исправление: Карточка игрока всегда поверх списка друзей */
-#modal-player {
-    z-index: 2147483649 !important; /* На 1 больше, чем у остальных модалок */
-}
-
-/* --- ФАЗА ВСКРЫТИЯ (REVEAL PHASE) --- */
-
-/* Карточка игрока (Базовая) */
-.player-chip {
-    transition: all 0.3s ease;
-    height: auto; 
-    min-height: 60px;
-    /* Разрешаем расширение */
-    max-width: 150px !important; /* Увеличили макс ширину */
-    min-width: 80px;             /* Увеличили мин ширину */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-/* Контейнер кубиков (Вскрытие) */
-.revealed-dice-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 2px;
-    margin-top: 4px;
-    flex-wrap: wrap; /* Перенос на новую строку */
-    width: 100%;
-    background: rgba(0,0,0,0.3); /* Подложка для читаемости */
-    padding: 2px;
-    border-radius: 6px;
-}
-
-/* Маленький кубик */
-.mini-die {
-    width: 22px; /* Чуть меньше, чтобы влезло больше */
-    height: 22px;
-    border-radius: 4px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    flex-shrink: 0; /* Запрещаем сжимать кубики */
-}
-
-
+#modal-player { z-index: 2147483649 !important; }
+.revealed-dice-container { display: flex; justify-content: center; align-items: center; gap: 2px; margin-top: 4px; flex-wrap: wrap; width: 100%; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 6px; }
+.mini-die { width: 22px; height: 22px; border-radius: 4px; background-size: contain; background-repeat: no-repeat; box-shadow: 0 1px 2px rgba(0,0,0,0.5); flex-shrink: 0; }
