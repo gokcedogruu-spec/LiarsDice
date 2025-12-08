@@ -257,15 +257,43 @@ function renderShop() {
     const grid = document.getElementById('shop-items');
     if(!grid) return;
     grid.innerHTML = '';
+    
     for (const [id, meta] of Object.entries(ITEMS_META)) {
         if (meta.type !== currentShopTab) continue; 
+        
         const owned = state.inventory.includes(id);
         const equipped = state.equipped.skin === id || state.equipped.bg === id || state.equipped.frame === id;
+        
+        // --- ГЕНЕРАЦИЯ ПРЕВЬЮ (НОВАЯ ЧАСТЬ) ---
+        let previewHTML = '';
+        
+        if (meta.type === 'skins') {
+            // Показываем грань 6
+            previewHTML = `<div class="shop-preview-die die ${id} face-6"></div>`;
+        } 
+        else if (meta.type === 'frames') {
+            // Показываем рамку с иконкой
+            previewHTML = `<div class="shop-preview-frame ${id}">👤</div>`;
+        } 
+        else if (meta.type === 'bg') {
+            // Показываем фон
+            previewHTML = `<div class="shop-preview-bg ${id}"></div>`;
+        }
+        // ---------------------------------------
+
         let btnHTML = '';
         if (equipped) btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
         else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
         else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
-        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><h4>${meta.name}</h4>${btnHTML}</div>`;
+        
+        grid.innerHTML += `
+            <div class="shop-item ${owned ? 'owned' : ''}">
+                <div class="shop-preview-box">
+                    ${previewHTML}
+                </div>
+                <h4>${meta.name}</h4>
+                ${btnHTML}
+            </div>`;
     }
 }
 
@@ -740,4 +768,5 @@ window.openInviteModal = () => {
     switchFriendTab('list');
     uiAlert("Выбери друга и нажми ЗОВИ!");
 };
+
 
