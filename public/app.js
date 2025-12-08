@@ -215,7 +215,7 @@ socket.on('profileUpdate', (data) => {
     }
 });
 
-// --- SHOP (SAME AS BEFORE) ---
+// --- SHOP ---
 const ITEMS_META = {
     'skin_white': { name: 'Классика', price: 0, type: 'skins' },
     'skin_red':   { name: 'Рубин', price: 5000, type: 'skins' },
@@ -451,6 +451,8 @@ bindClick('btn-call-spot', () => socket.emit('callSpot'));
 bindClick('btn-restart', () => socket.emit('requestRestart'));
 bindClick('btn-home', () => location.reload());
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
+window.useSkill = (type) => { socket.emit('useSkill', type); }; // FIX: ADDED GLOBAL FUNCTION FOR SKILLS
+
 socket.on('emoteReceived', (data) => { const el = document.querySelector(`.player-chip[data-id='${data.id}']`); if (el) { const img = document.createElement('img'); img.className = 'emote-bubble-img'; img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`; el.appendChild(img); setTimeout(() => { if(img.parentNode) img.remove(); }, 3000); if(tg) tg.HapticFeedback.selectionChanged(); } });
 socket.on('skillResult', (data) => { const modal = document.getElementById('modal-skill-alert'); const iconEl = document.getElementById('skill-alert-title'); let icon = '⚡'; if (data.type === 'ears') icon = '👂'; else if (data.type === 'lucky') icon = '🎲'; else if (data.type === 'kill') icon = '🔫'; iconEl.textContent = icon; document.getElementById('skill-alert-text').textContent = data.text; modal.classList.add('active'); });
 window.closeSkillAlert = () => { document.getElementById('modal-skill-alert').classList.remove('active'); };
@@ -535,39 +537,21 @@ socket.on('gameState', (gs) => {
     if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } 
 });
 
-// --- NEW: BLUFF EFFECT HANDLER ---
 socket.on('bluffEffect', (data) => {
-    // 1. VIBRATION
     if(tg) {
-        tg.HapticFeedback.notificationOccurred('error'); // Strong vibration
-        // Simulate 1s vibration by pulsing
+        tg.HapticFeedback.notificationOccurred('error');
         setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 300);
         setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 600);
         setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 900);
     }
-
-    // 2. RED FLASH
     const flash = document.getElementById('red-flash-overlay');
     flash.classList.add('red-flash-active');
     setTimeout(() => flash.classList.remove('red-flash-active'), 1000);
 
-    // 3. CLOUD
     const cloud = document.getElementById('bluff-cloud');
-    // Find target position (player who called bluff)
     const chip = document.querySelector(`.player-chip[data-id='${data.playerId}']`);
-    if(chip) {
-        const rect = chip.getBoundingClientRect();
-        // Position cloud relative to screen, above chip
-        // Default is centered via CSS, but let's keep it centered for dramatic effect
-        // Or if you want it over the player: 
-        // cloud.style.top = (rect.top - 60) + 'px';
-        // cloud.style.left = (rect.left + rect.width/2) + 'px';
-        // cloud.style.transform = 'translate(-50%, -50%)';
-    }
-    
     cloud.classList.remove('hidden');
     cloud.classList.add('bluff-cloud-active');
-    
     setTimeout(() => {
         cloud.classList.remove('bluff-cloud-active');
         cloud.classList.add('hidden');
@@ -583,7 +567,6 @@ socket.on('revealPhase', (data) => {
 
     document.querySelectorAll('.revealed-dice-container').forEach(el => el.remove());
 
-    // --- DELAY REVEAL IF ANIMATION PLAYING ---
     const delay = data.animate ? 2500 : 0;
 
     setTimeout(() => {
@@ -716,4 +699,3 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
-
