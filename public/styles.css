@@ -347,8 +347,14 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .skin_blue.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice4.png'); }
 .skin_blue.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice5.png'); }
 .skin_blue.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/sea/sea_dice6.png'); }
+/* МАГИЯ ВУДУ */
+.skin_purple.face-1 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice1.png'); }
+.skin_purple.face-2 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice2.png'); }
+.skin_purple.face-3 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice3.png'); }
+.skin_purple.face-4 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice4.png'); }
+.skin_purple.face-5 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice5.png'); }
+.skin_purple.face-6 { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/dices/voodoo/voodoo_dice6.png'); }
 
-.skin_purple{ filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) hue-rotate(260deg); }
 .skin_cyber { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) invert(1) hue-rotate(90deg); }
 .skin_bone  { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) sepia(0.5); }
 
@@ -563,4 +569,5 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     box-shadow: 0 1px 2px rgba(0,0,0,0.5);
     flex-shrink: 0; /* Запрещаем сжимать кубики */
 }
+
 
