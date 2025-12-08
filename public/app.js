@@ -645,22 +645,19 @@ function renderFriends() {
             let statusClass = 'status-offline';
             let inviteBtn = '';
             
+            // 1. Определяем цвет статуса
             if (f.status === 'online') {
                 statusClass = 'status-online';
             } else if (f.status === 'ingame') {
                 statusClass = 'status-ingame';
             }
 
-            // ИЗМЕНЕНИЕ: Кнопка "ЗОВИ" показывается ВСЕГДА, если я в лобби
-            // Сервер сам разберется (отправит пуш или запишет в БД)
+            // 2. Определяем, показывать ли кнопку (ВСЕГДА, если я создатель/в комнате)
             if (state.roomId) { 
                 inviteBtn = `<button class="btn-friend-action btn-invite" onclick="inviteFriend('${f.id}')">ЗОВИ</button>`;
             }
-            } else if (f.status === 'ingame') {
-                statusClass = 'status-ingame';
-            }
 
-            // ИЗМЕНЕНИЕ: Добавлен класс clickable и onclick на имя
+            // 3. Рисуем HTML
             listContainer.innerHTML += `
                 <div class="friend-row">
                     <div style="display:flex; align-items:center;">
@@ -773,6 +770,7 @@ socket.on('notification', (data) => {
         if(tg) tg.HapticFeedback.notificationOccurred('success');
     }
 });
+
 
 
 
