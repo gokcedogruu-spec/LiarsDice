@@ -545,7 +545,15 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
                     io.to(room.id).emit('gameOver', { winner: winner.name });
                 } else { broadcastGameState(room); }
             }
-        } else { io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' }); }
+        } else { 
+            // FIX: DISCONNECT DURING REVEAL SHOULD AUTO-READY
+            if (room.status === 'REVEAL') {
+               if(!room.readyPlayers) room.readyPlayers = new Set();
+               room.readyPlayers.add(player.id);
+               if(room.readyPlayers.size >= room.players.length) finalizeRound(room);
+            }
+            io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' }); 
+        }
     } else {
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂‍ ${player.name} ушел!`, type: 'error' });
         room.players.splice(i, 1);
@@ -996,9 +1004,8 @@ io.on('connection', (socket) => {
         if(r && r.status === 'REVEAL') {
             if(!r.readyPlayers) r.readyPlayers = new Set();
             r.readyPlayers.add(socket.id);
-            // If all active players ready
-            const activeCount = r.players.filter(p => p.diceCount > 0).length;
-            if(r.readyPlayers.size >= activeCount) finalizeRound(r);
+            // FIX: Check against room size (includes dead/bots) to ensure we only wait for active living humans
+            if(r.readyPlayers.size >= r.players.length) finalizeRound(r);
         }
     });
 
