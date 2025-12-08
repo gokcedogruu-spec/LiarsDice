@@ -748,7 +748,7 @@ io.on('connection', (socket) => {
         }
         if (userData) { 
             const rank = getRankInfo(userData.xp, userData.streak); 
-            socket.emit('showPlayerStats', { name: userData.name, rankName: rank.current.name, matches: userData.matches, wins: userData.wins, inventory: userData.inventory, equipped: userData.equipped }); 
+            socket.emit('showPlayerStats', { id: userData.id, name: userData.name, rankName: rank.current.name, matches: userData.matches, wins: userData.wins, inventory: userData.inventory, equipped: userData.equipped }); 
         }
     });
 
