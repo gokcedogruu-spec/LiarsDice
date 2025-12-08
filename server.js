@@ -393,7 +393,9 @@ function finalizeRound(room, forcedLoser = null, forcedWinner = null) {
         if (!loser.isBot && loser.tgId) {
             updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0).then(res => { if(res) { pushProfileUpdate(loser.tgId); io.to(loser.id).emit('matchResults', res); } });
         }
-        io.to(room.id).emit('gameEvent', { text: `💀 ${loser.name} выбывает!`, type: 'error' });
+        // Используем имя из объекта loser, если оно есть (фикс для admin force)
+        const loserName = loser.name || "Игрок";
+        io.to(room.id).emit('gameEvent', { text: `💀 ${loserName} выбывает!`, type: 'error' });
     }
 
     const active = room.players.filter(p => p.diceCount > 0);
@@ -430,7 +432,8 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     r.players.forEach(p => { 
         if (p.diceCount > 0) { 
             p.dice.forEach(d => { if (d === targetFace) total++; else if (r.config.jokers && d === 1 && targetFace !== 1) total++; }); 
-            allDice[p.name] = { dice: p.dice, id: p.id, skin: p.equipped.skin }; 
+            // FIX: Использование ID вместо имени для уникальности ботов
+            allDice[p.id] = { dice: p.dice, id: p.id, skin: p.equipped.skin, name: p.name }; 
         } 
     });
     
@@ -453,7 +456,7 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     r.readyPlayers = new Set(); // Track who clicked READY
 
     // SAVE DATA FOR RECONNECT (NEW LINE)
-    r.revealData = { allDice: allDice, message: msg }; // <--- ДОБАВИТЬ ЭТО
+    r.revealData = { allDice: allDice, message: msg }; 
     
     // Add bots to ready immediately
     r.players.forEach(p => { if (p.isBot || p.diceCount === 0) r.readyPlayers.add(p.id); });
@@ -522,7 +525,10 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
         if (isVoluntary) {
             io.to(room.id).emit('gameEvent', { text: `🏃‍♂‍ ${player.name} сдался и покинул стол!`, type: 'error' });
             if (player.diceCount > 0) { player.diceCount = 0; if (!player.isBot && player.tgId) { updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp).then(res => { if(res) io.to(player.id).emit('matchResults', res); }); } }
-            room.players.splice(i, 1);
+            // Не удаляем игрока из массива сразу в игре, чтобы не ломать индексы ходов, но помечаем как мертвого
+            // Однако в LOBBY удаляем.
+            // Здесь мы оставляем его как мертвого (diceCount=0)
+            
             // Handle logic if leaving during reveal? Just force finalize?
             if(room.status === 'REVEAL') finalizeRound(room); 
             else {
@@ -676,7 +682,8 @@ if (bot) {
             const room = getRoomBySocketId(socketId); 
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "Not active");
             room.players.forEach(p => { if (p.tgId !== ADMIN_ID) p.diceCount = 0; });
-            checkEliminationAndContinue(room, {diceCount:0, isBot:true}, null);
+            // Fix: передаем объект с именем для корректного лога
+            checkEliminationAndContinue(room, {diceCount:0, isBot:true, name: "Админская кара"}, null);
             bot.sendMessage(chatId, "🏆 Force Win!");
         }
         else if (cmd === '/reset') {
@@ -936,6 +943,15 @@ io.on('connection', (socket) => {
             });
         }
     });
+    
+    // NEW: Handle voluntary leave
+    socket.on('leaveRoom', () => {
+        const room = getRoomBySocketId(socket.id);
+        if (room) {
+            // true indicates voluntary leave
+            handlePlayerDisconnect(socket.id, room, true);
+        }
+    });
 
     socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
         const old = getRoomBySocketId(socket.id); if (old) handlePlayerDisconnect(socket.id, old, true);
@@ -996,4 +1012,3 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-
