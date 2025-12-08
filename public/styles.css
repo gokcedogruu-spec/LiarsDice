@@ -526,33 +526,41 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 
 /* --- ФАЗА ВСКРЫТИЯ (REVEAL PHASE) --- */
 
-/* Контейнер для кубиков внутри карточки игрока */
-.revealed-dice-container {
-    display: flex;
-    justify-content: center;
-    gap: 2px;
-    margin-top: 4px;
-    flex-wrap: wrap;
-    width: 100%;
-}
-
-/* Маленький кубик (25px) */
-.mini-die {
-    width: 25px;
-    height: 25px;
-    border-radius: 4px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    box-shadow: 0 2px 2px rgba(0,0,0,0.5);
-}
-
-/* Увеличиваем высоту карточки игрока, чтобы влезли кубики */
+/* Карточка игрока (Базовая) */
 .player-chip {
-    transition: height 0.3s;
-    /* Делаем авто-высоту, но с мин-высотой */
+    transition: all 0.3s ease;
     height: auto; 
     min-height: 60px;
+    /* Разрешаем расширение */
+    max-width: 150px !important; /* Увеличили макс ширину */
+    min-width: 80px;             /* Увеличили мин ширину */
     display: flex;
     flex-direction: column;
     align-items: center;
 }
+
+/* Контейнер кубиков (Вскрытие) */
+.revealed-dice-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    margin-top: 4px;
+    flex-wrap: wrap; /* Перенос на новую строку */
+    width: 100%;
+    background: rgba(0,0,0,0.3); /* Подложка для читаемости */
+    padding: 2px;
+    border-radius: 6px;
+}
+
+/* Маленький кубик */
+.mini-die {
+    width: 22px; /* Чуть меньше, чтобы влезло больше */
+    height: 22px;
+    border-radius: 4px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    flex-shrink: 0; /* Запрещаем сжимать кубики */
+}
+
