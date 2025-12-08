@@ -577,6 +577,11 @@ socket.on('revealPhase', (data) => {
             console.warn("Chip not found for player:", info.id);
         }
     });
+    
+    // FIX: START VISUAL TIMER FOR REVEAL PHASE (AUTO-READY FEEL)
+    if(data.timeLeft) {
+        startVisualTimer(data.timeLeft, data.timeLeft);
+    }
 });
 
 window.sendReadyNext = () => {
