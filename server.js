@@ -450,27 +450,38 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     // Decrement dice immediately logic kept in finalizeRound, here we just prep
     loser.diceCount--; 
 
-    // SET ROOM STATE TO REVEAL
-    r.status = 'REVEAL';
-    r.pendingResult = { loser, winner: winnerOfRound };
-    r.readyPlayers = new Set(); // Track who clicked READY
-
-    // SAVE DATA FOR RECONNECT (NEW LINE)
-    // FIX: ADDED REMAINING TIME INFO FOR CLIENT
-    r.revealData = { allDice: allDice, message: msg, timeLeft: 30000 }; 
-    
-    // Add bots to ready immediately
-    r.players.forEach(p => { if (p.isBot || p.diceCount === 0) r.readyPlayers.add(p.id); });
-
-    // Broadcast REVEAL info
-    io.to(r.id).emit('revealPhase', { 
-        allDice: allDice, 
-        message: msg,
-        timeLeft: 30000 // Send duration to client
+    // FIX: NEW DELAYED ANIMATION LOGIC
+    // 1. TRIGGER CLIENT ANIMATION (RED FLASH, CLOUD, VIBRATION)
+    io.to(r.id).emit('bluffEffect', { 
+        playerId: challenger.id, 
+        type: type 
     });
 
-    // Auto-proceed after 30s
-    r.timerId = setTimeout(() => finalizeRound(r), 30000);
+    // 2. SET TIMEOUT FOR ACTUAL REVEAL
+    setTimeout(() => {
+        // SET ROOM STATE TO REVEAL
+        r.status = 'REVEAL';
+        r.pendingResult = { loser, winner: winnerOfRound };
+        r.readyPlayers = new Set(); // Track who clicked READY
+
+        // SAVE DATA FOR RECONNECT (NEW LINE)
+        // FIX: ADDED REMAINING TIME INFO FOR CLIENT
+        r.revealData = { allDice: allDice, message: msg, timeLeft: 30000, animate: true }; 
+        
+        // Add bots to ready immediately
+        r.players.forEach(p => { if (p.isBot || p.diceCount === 0) r.readyPlayers.add(p.id); });
+
+        // Broadcast REVEAL info
+        io.to(r.id).emit('revealPhase', { 
+            allDice: allDice, 
+            message: msg,
+            timeLeft: 30000, // Send duration to client
+            animate: true // Flag to tell client to animate reveal
+        });
+
+        // Auto-proceed after 30s
+        r.timerId = setTimeout(() => finalizeRound(r), 30000);
+    }, 2500); // 2.5 seconds delay for animation
 }
 
 function handleBotMove(room) {
@@ -550,6 +561,7 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
             if (room.status === 'REVEAL') {
                if(!room.readyPlayers) room.readyPlayers = new Set();
                room.readyPlayers.add(player.id);
+               // FIX: Check against room size (includes dead/bots) to ensure we only wait for active living humans
                if(room.readyPlayers.size >= room.players.length) finalizeRound(room);
             }
             io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' }); 
