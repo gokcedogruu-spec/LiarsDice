@@ -650,11 +650,12 @@ function renderFriends() {
                 statusClass = 'status-ingame';
             }
 
+            // ИЗМЕНЕНИЕ: Добавлен класс clickable и onclick на имя
             listContainer.innerHTML += `
                 <div class="friend-row">
                     <div style="display:flex; align-items:center;">
                         <div class="friend-status ${statusClass}"></div>
-                        <span class="friend-name">${f.name}</span>
+                        <span class="friend-name clickable" onclick="requestPlayerStats('${f.id}')">${f.name}</span>
                     </div>
                     <div class="friend-actions">
                         ${inviteBtn}
@@ -671,7 +672,7 @@ function renderFriends() {
         friendDataCache.requests.forEach(r => {
             reqContainer.innerHTML += `
                 <div class="friend-row">
-                    <span class="friend-name">${r.name}</span>
+                    <span class="friend-name clickable" onclick="requestPlayerStats('${r.id}')">${r.name}</span>
                     <div class="friend-actions">
                         <button class="btn-friend-action btn-accept" onclick="acceptFriend('${r.id}')">ДА</button>
                         <button class="btn-friend-action btn-decline" onclick="declineFriend('${r.id}')">НЕТ</button>
@@ -768,5 +769,6 @@ window.openInviteModal = () => {
     switchFriendTab('list');
     uiAlert("Выбери друга и нажми ЗОВИ!");
 };
+
 
 
