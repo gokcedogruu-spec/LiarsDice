@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@300..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body class="bg_default">
     <div id="app">
@@ -149,6 +149,13 @@
                         <button class="btn-time" onclick="setTime(45)">45с</button>
                         <button class="btn-time" onclick="setTime(60)">60с</button>
                     </div>
+                </div>
+
+                <!-- FIX: ADDED RULES BUTTONS HERE -->
+                <div class="setting-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="btn-rule-jokers" class="btn-time" onclick="toggleRule('jokers')">🃏 Джокеры</button>
+                    <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
+                    <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
                 </div>
 
                 <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
