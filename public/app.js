@@ -459,14 +459,12 @@ socket.on('roomUpdate', (room) => { state.roomId = room.roomId; if (room.status 
 socket.on('gameEvent', (evt) => { const log = document.getElementById('game-log'); if(log) log.innerHTML = `<div>${evt.text}</div>`; if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning'); });
 socket.on('yourDice', (dice) => { const skin = state.equipped.skin || 'skin_white'; document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join(''); });
 
-// --- NEW HANDLER FOR GAME OVER ---
 socket.on('gameOver', (data) => {
     showScreen('result');
     document.getElementById('winner-name').textContent = data.winner;
     if(tg) tg.HapticFeedback.notificationOccurred('success');
 });
 
-// --- GAME STATE & REVEAL PHASE ---
 socket.on('gameState', (gs) => { 
     showScreen('game'); 
     document.body.className = gs.activeBackground || 'bg_default'; 
@@ -476,7 +474,6 @@ socket.on('gameState', (gs) => {
     if (gs.activeRules.strict) rulesText += '🔒 Строго'; 
     document.getElementById('active-rules-display').textContent = rulesText; 
     
-    // Clear revealed dice from previous round
     document.querySelectorAll('.revealed-dice-container').forEach(el => el.remove());
 
     const bar = document.getElementById('players-bar'); 
@@ -509,7 +506,7 @@ socket.on('gameState', (gs) => {
         state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs(); 
     } else { 
         const me = gs.players.find(p => p.id === socket.id); 
-        if (me?.isTurn) { bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход! (Начните ставку)</div>`; } 
+        if (me?.isTurn) { bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход!</div>`; } 
         else { const turnPlayer = gs.players.find(p => p.isTurn); const name = turnPlayer ? turnPlayer.name : "Ожидание"; bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`; } 
         state.bidQty = 1; state.bidVal = 2; updateInputs(); 
     } 
@@ -538,50 +535,75 @@ socket.on('gameState', (gs) => {
     if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } 
 });
 
-// --- REVEAL PHASE HANDLER ---
+// --- NEW: BLUFF EFFECT HANDLER ---
+socket.on('bluffEffect', (data) => {
+    // 1. VIBRATION
+    if(tg) {
+        tg.HapticFeedback.notificationOccurred('error'); // Strong vibration
+        // Simulate 1s vibration by pulsing
+        setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 300);
+        setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 600);
+        setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 900);
+    }
+
+    // 2. RED FLASH
+    const flash = document.getElementById('red-flash-overlay');
+    flash.classList.add('red-flash-active');
+    setTimeout(() => flash.classList.remove('red-flash-active'), 1000);
+
+    // 3. CLOUD
+    const cloud = document.getElementById('bluff-cloud');
+    // Find target position (player who called bluff)
+    const chip = document.querySelector(`.player-chip[data-id='${data.playerId}']`);
+    if(chip) {
+        const rect = chip.getBoundingClientRect();
+        // Position cloud relative to screen, above chip
+        // Default is centered via CSS, but let's keep it centered for dramatic effect
+        // Or if you want it over the player: 
+        // cloud.style.top = (rect.top - 60) + 'px';
+        // cloud.style.left = (rect.left + rect.width/2) + 'px';
+        // cloud.style.transform = 'translate(-50%, -50%)';
+    }
+    
+    cloud.classList.remove('hidden');
+    cloud.classList.add('bluff-cloud-active');
+    
+    setTimeout(() => {
+        cloud.classList.remove('bluff-cloud-active');
+        cloud.classList.add('hidden');
+    }, 2500);
+});
+
 socket.on('revealPhase', (data) => {
-    // 1. Hide Game Controls & Show Message
     document.getElementById('game-controls').classList.add('hidden');
     document.getElementById('current-bid-display').innerHTML = 
         `<div style="font-size:1.2rem; color:#ef233c; font-weight:900;">ВСКРЫТИЕ!</div>
          <div style="font-size:0.9rem;">${data.message}</div>
          <button class="btn btn-green" style="margin-top:10px;" onclick="sendReadyNext()">ГОТОВО</button>`;
 
-    // 2. Clear previous revealed dice just in case
     document.querySelectorAll('.revealed-dice-container').forEach(el => el.remove());
 
-    // 3. Show dice for EACH player from the list sent by server
-    Object.values(data.allDice).forEach(info => {
-        // Find chip by ID
-        const chip = document.querySelector(`.player-chip[data-id="${info.id}"]`);
-        
-        if (chip) {
-            // Create Container
-            const container = document.createElement('div');
-            container.className = 'revealed-dice-container';
-            
-            // Add Dice
-            if (info.dice && info.dice.length > 0) {
-                info.dice.forEach(d => {
-                    const die = document.createElement('div');
-                    die.className = `mini-die ${info.skin || 'skin_white'} face-${d}`;
-                    container.appendChild(die);
-                });
-            } else {
-                // If no dice (0 count)
-                container.innerHTML = '<span style="font-size:0.6rem; opacity:0.7">Пусто</span>';
+    // --- DELAY REVEAL IF ANIMATION PLAYING ---
+    const delay = data.animate ? 2500 : 0;
+
+    setTimeout(() => {
+        Object.values(data.allDice).forEach(info => {
+            const chip = document.querySelector(`.player-chip[data-id="${info.id}"]`);
+            if (chip) {
+                const container = document.createElement('div');
+                container.className = 'revealed-dice-container';
+                if (info.dice && info.dice.length > 0) {
+                    info.dice.forEach(d => {
+                        const die = document.createElement('div');
+                        die.className = `mini-die ${info.skin || 'skin_white'} face-${d}`;
+                        container.appendChild(die);
+                    });
+                } else { container.innerHTML = '<span style="font-size:0.6rem; opacity:0.7">Пусто</span>'; }
+                chip.appendChild(container);
             }
-            
-            chip.appendChild(container);
-        } else {
-            console.warn("Chip not found for player:", info.id);
-        }
-    });
-    
-    // FIX: START VISUAL TIMER FOR REVEAL PHASE (AUTO-READY FEEL)
-    if(data.timeLeft) {
-        startVisualTimer(data.timeLeft, data.timeLeft);
-    }
+        });
+        if(data.timeLeft) startVisualTimer(data.timeLeft, data.timeLeft);
+    }, delay);
 });
 
 window.sendReadyNext = () => {
