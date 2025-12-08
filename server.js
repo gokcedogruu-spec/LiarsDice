@@ -536,6 +536,7 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
     
     if (room.status === 'PLAYING' || room.status === 'REVEAL') {
         if (isVoluntary) {
+            player.hasLeft = true; // FIX: MARK PLAYER AS LEFT SO THEY DON'T REJOIN
             io.to(room.id).emit('gameEvent', { text: `🏃‍♂‍ ${player.name} сдался и покинул стол!`, type: 'error' });
             if (player.diceCount > 0) { player.diceCount = 0; if (!player.isBot && player.tgId) { updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp).then(res => { if(res) io.to(player.id).emit('matchResults', res); }); } }
             // Не удаляем игрока из массива сразу в игре, чтобы не ломать индексы ходов, но помечаем как мертвого
@@ -739,8 +740,8 @@ io.on('connection', (socket) => {
             if (room.status === 'PLAYING' || room.status === 'REVEAL') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
                 
-                // FIX: Убрана проверка diceCount > 0, чтобы возвращать даже мертвых игроков (зрителей)
-                if (existingPlayer) {
+                // FIX: Check if player voluntarily left before rejoining
+                if (existingPlayer && !existingPlayer.hasLeft) {
                     existingPlayer.id = socket.id;
                     socket.join(roomId);
                     
@@ -1016,8 +1017,9 @@ io.on('connection', (socket) => {
         if(r && r.status === 'REVEAL') {
             if(!r.readyPlayers) r.readyPlayers = new Set();
             r.readyPlayers.add(socket.id);
-            // FIX: Check against room size (includes dead/bots) to ensure we only wait for active living humans
-            if(r.readyPlayers.size >= r.players.length) finalizeRound(r);
+            // If all active players ready
+            const activeCount = r.players.filter(p => p.diceCount > 0).length;
+            if(r.readyPlayers.size >= activeCount) finalizeRound(r);
         }
     });
 
