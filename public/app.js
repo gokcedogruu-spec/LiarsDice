@@ -533,25 +533,45 @@ socket.on('gameState', (gs) => {
 
 // --- NEW: REVEAL PHASE HANDLER ---
 socket.on('revealPhase', (data) => {
-    // 1. Hide Game Controls
+    // 1. Hide Game Controls & Show Message
     document.getElementById('game-controls').classList.add('hidden');
-    document.getElementById('current-bid-display').innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:900;">ВСКРЫТИЕ!</div><div style="font-size:0.9rem;">${data.message}</div><button class="btn btn-green" style="margin-top:10px;" onclick="sendReadyNext()">ГОТОВО</button>`;
+    document.getElementById('current-bid-display').innerHTML = 
+        `<div style="font-size:1.2rem; color:#ef233c; font-weight:900;">ВСКРЫТИЕ!</div>
+         <div style="font-size:0.9rem;">${data.message}</div>
+         <button class="btn btn-green" style="margin-top:10px;" onclick="sendReadyNext()">ГОТОВО</button>`;
 
-    // 2. Show dice for each player
-    for (const [name, info] of Object.entries(data.allDice)) {
-        // info = { dice: [], id: socketId, skin: '...' }
+    // 2. Clear previous revealed dice just in case
+    document.querySelectorAll('.revealed-dice-container').forEach(el => el.remove());
+
+    // 3. Show dice for EACH player from the list sent by server
+    // data.allDice is object: { "PlayerName": { dice: [1,2], id: "socketId", skin: "..." } }
+    
+    Object.values(data.allDice).forEach(info => {
+        // Find chip by ID
         const chip = document.querySelector(`.player-chip[data-id="${info.id}"]`);
+        
         if (chip) {
+            // Create Container
             const container = document.createElement('div');
             container.className = 'revealed-dice-container';
-            info.dice.forEach(d => {
-                const die = document.createElement('div');
-                die.className = `mini-die ${info.skin || 'skin_white'} face-${d}`;
-                container.appendChild(die);
-            });
+            
+            // Add Dice
+            if (info.dice && info.dice.length > 0) {
+                info.dice.forEach(d => {
+                    const die = document.createElement('div');
+                    die.className = `mini-die ${info.skin || 'skin_white'} face-${d}`;
+                    container.appendChild(die);
+                });
+            } else {
+                // If no dice (0 count)
+                container.innerHTML = '<span style="font-size:0.6rem; opacity:0.7">Пусто</span>';
+            }
+            
             chip.appendChild(container);
+        } else {
+            console.warn("Chip not found for player:", info.id);
         }
-    }
+    });
 });
 
 window.sendReadyNext = () => {
@@ -664,3 +684,4 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
