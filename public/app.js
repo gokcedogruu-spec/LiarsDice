@@ -645,19 +645,19 @@ function renderFriends() {
             let statusClass = 'status-offline';
             let inviteBtn = '';
             
-            // 1. Определяем цвет статуса
+            // 1. Цвет статуса
             if (f.status === 'online') {
                 statusClass = 'status-online';
             } else if (f.status === 'ingame') {
                 statusClass = 'status-ingame';
             }
 
-            // 2. Определяем, показывать ли кнопку (ВСЕГДА, если я создатель/в комнате)
+            // 2. Кнопка "ЗОВИ" (Показываем ВСЕГДА, если мы в комнате)
             if (state.roomId) { 
                 inviteBtn = `<button class="btn-friend-action btn-invite" onclick="inviteFriend('${f.id}')">ЗОВИ</button>`;
             }
 
-            // 3. Рисуем HTML
+            // 3. Отрисовка
             listContainer.innerHTML += `
                 <div class="friend-row">
                     <div style="display:flex; align-items:center;">
@@ -672,6 +672,7 @@ function renderFriends() {
         });
     }
 
+    // Отрисовка запросов (без изменений)
     reqContainer.innerHTML = '';
     if (friendDataCache.requests.length === 0) {
         reqContainer.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пусто</div>';
@@ -770,6 +771,12 @@ socket.on('notification', (data) => {
         if(tg) tg.HapticFeedback.notificationOccurred('success');
     }
 });
+
+window.openInviteModal = () => {
+    openFriends();           // Открываем модальное окно
+    switchFriendTab('list'); // Переключаемся на список друзей
+};
+
 
 
 
