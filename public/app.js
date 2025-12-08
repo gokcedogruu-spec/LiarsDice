@@ -459,6 +459,13 @@ socket.on('roomUpdate', (room) => { state.roomId = room.roomId; if (room.status 
 socket.on('gameEvent', (evt) => { const log = document.getElementById('game-log'); if(log) log.innerHTML = `<div>${evt.text}</div>`; if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning'); });
 socket.on('yourDice', (dice) => { const skin = state.equipped.skin || 'skin_white'; document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join(''); });
 
+// --- NEW HANDLER FOR GAME OVER ---
+socket.on('gameOver', (data) => {
+    showScreen('result');
+    document.getElementById('winner-name').textContent = data.winner;
+    if(tg) tg.HapticFeedback.notificationOccurred('success');
+});
+
 // --- GAME STATE & REVEAL PHASE ---
 socket.on('gameState', (gs) => { 
     showScreen('game'); 
@@ -531,7 +538,7 @@ socket.on('gameState', (gs) => {
     if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } 
 });
 
-// --- NEW: REVEAL PHASE HANDLER ---
+// --- REVEAL PHASE HANDLER ---
 socket.on('revealPhase', (data) => {
     // 1. Hide Game Controls & Show Message
     document.getElementById('game-controls').classList.add('hidden');
@@ -544,8 +551,6 @@ socket.on('revealPhase', (data) => {
     document.querySelectorAll('.revealed-dice-container').forEach(el => el.remove());
 
     // 3. Show dice for EACH player from the list sent by server
-    // data.allDice is object: { "PlayerName": { dice: [1,2], id: "socketId", skin: "..." } }
-    
     Object.values(data.allDice).forEach(info => {
         // Find chip by ID
         const chip = document.querySelector(`.player-chip[data-id="${info.id}"]`);
@@ -684,4 +689,3 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
-
