@@ -137,6 +137,7 @@ function getRankImage(rankName, hatId = null) {
 }
 
 socket.on('profileUpdate', (data) => {
+    state.myId = data.id;
     if(document.getElementById('screen-loading')?.classList.contains('active') || 
        document.getElementById('screen-login')?.classList.contains('active')) { showScreen('home'); }
     
@@ -506,19 +507,38 @@ socket.on('showPlayerStats', (data) => {
         }
     } else { invGrid.innerHTML = '<div style="grid-column:1/-1; opacity:0.5; font-size:0.8rem;">Пусто</div>'; }
     
-    // ADD FRIEND BUTTON (FIXED)
+    // FRIEND BUTTON LOGIC
     const btnAdd = document.getElementById('btn-add-friend');
-    if (currentProfileId && currentProfileId !== socket.id) {
-        btnAdd.style.display = 'block';
-        btnAdd.textContent = 'ДОБАВИТЬ В ДРУЗЬЯ';
-        btnAdd.disabled = false;
-        btnAdd.onclick = () => {
-            // Отправляем запрос по ID сокета. Сервер сам найдет нужного юзера.
-            socket.emit('friendAction', { action: 'request', payload: currentProfileId });
-            btnAdd.textContent = 'ЗАПРОС ОТПРАВЛЕН';
+    
+    // Проверяем: это не мы сами?
+    if (state.myId && data.id !== state.myId) {
+        // Проверяем: этот игрок уже в списке друзей?
+        const isFriend = friendDataCache.friends.some(f => f.id === data.id);
+        
+        if (isFriend) {
+            // УЖЕ ДРУЗЬЯ
+            btnAdd.style.display = 'block';
+            btnAdd.textContent = 'ВЫ ДРУЗЬЯ';
             btnAdd.disabled = true;
-        };
+            btnAdd.style.background = '#06d6a0'; // Зеленый фон
+            btnAdd.style.opacity = '1';
+            btnAdd.onclick = null;
+        } else {
+            // ЕЩЕ НЕ ДРУЗЬЯ
+            btnAdd.style.display = 'block';
+            btnAdd.textContent = 'ДОБАВИТЬ В ДРУЗЬЯ';
+            btnAdd.disabled = false;
+            btnAdd.style.background = ''; // Сброс фона (вернется стиль из CSS)
+            
+            btnAdd.onclick = () => {
+                // Отправляем запрос по ID профиля (data.id - это точный ID из базы)
+                socket.emit('friendAction', { action: 'request', payload: data.id });
+                btnAdd.textContent = 'ЗАПРОС ОТПРАВЛЕН';
+                btnAdd.disabled = true;
+            };
+        }
     } else {
+        // Это мы сами
         btnAdd.style.display = 'none';
     }
 
@@ -776,6 +796,7 @@ window.openInviteModal = () => {
     openFriends();           // Открываем модальное окно
     switchFriendTab('list'); // Переключаемся на список друзей
 };
+
 
 
 
