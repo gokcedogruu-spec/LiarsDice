@@ -451,6 +451,9 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     r.status = 'REVEAL';
     r.pendingResult = { loser, winner: winnerOfRound };
     r.readyPlayers = new Set(); // Track who clicked READY
+
+    // SAVE DATA FOR RECONNECT (NEW LINE)
+    r.revealData = { allDice: allDice, message: msg }; // <--- ДОБАВИТЬ ЭТО
     
     // Add bots to ready immediately
     r.players.forEach(p => { if (p.isBot || p.diceCount === 0) r.readyPlayers.add(p.id); });
@@ -704,14 +707,27 @@ io.on('connection', (socket) => {
             user.pendingInvites = []; await saveUser(tgUser.id);
         }
         for (const [roomId, room] of rooms) {
-            if (room.status === 'PLAYING') {
+            if (room.status === 'PLAYING' || room.status === 'REVEAL') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
-                if (existingPlayer) {
+                
+                // ВОЗВРАЩАЕМ ТОЛЬКО ЕСЛИ ИГРОК ЖИВ (diceCount > 0)
+                // Если он мертв или зритель - не возвращаем его насильно в экран игры
+                if (existingPlayer && existingPlayer.diceCount > 0) {
                     existingPlayer.id = socket.id;
                     socket.join(roomId);
-                    if(existingPlayer.diceCount > 0) socket.emit('yourDice', existingPlayer.dice);
+                    
+                    // Send Dice
+                    socket.emit('yourDice', existingPlayer.dice);
+                    
+                    // Send State
                     broadcastGameState(room);
-                    socket.emit('gameEvent', { text: '🔄 Вы вернулись!', type: 'info' });
+                    
+                    // If in Reveal Phase, send reveal data immediately
+                    if (room.status === 'REVEAL' && room.revealData) {
+                        socket.emit('revealPhase', room.revealData);
+                    }
+
+                    socket.emit('gameEvent', { text: '🔄 Вы вернулись в бой!', type: 'info' });
                 }
             }
         }
@@ -980,3 +996,4 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
