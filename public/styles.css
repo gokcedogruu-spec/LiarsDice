@@ -410,6 +410,68 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     color: #2b2d42; border: none; padding: 8px; border-radius: 10px; font-weight: bold; cursor: pointer; 
 }
 
+/* --- ПРЕВЬЮ В МАГАЗИНЕ (SHOP PREVIEWS) --- */
+
+/* Контейнер для превью */
+.shop-preview-box {
+    height: 70px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* 1. КУБИКИ (Используют те же классы, что и в игре) */
+.shop-preview-die {
+    width: 50px !important;
+    height: 50px !important;
+    background-size: contain;
+    background-repeat: no-repeat;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
+}
+
+/* 2. РАМКИ (Имитация фишки игрока) */
+.shop-preview-frame {
+    width: 55px;
+    height: 55px;
+    border-radius: 12px;
+    background-color: var(--surface);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 25px;
+}
+
+/* 3. ФОНЫ (СЮДА ВСТАВЛЯТЬ ССЫЛКИ НА ФОНЫ ДЛЯ МАГАЗИНА) */
+.shop-preview-bg {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+}
+
+/* ССЫЛКИ ФОНОВ ДЛЯ ОТОБРАЖЕНИЯ В МАГАЗИНЕ */
+.shop-preview-bg.bg_default { 
+    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'); 
+}
+.shop-preview-bg.bg_lvl1 { 
+    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl1.jpeg'); 
+}
+.shop-preview-bg.bg_lvl2 { 
+    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl2.png'); 
+}
+.shop-preview-bg.bg_lvl3 { 
+    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl3.png'); 
+}
+.shop-preview-bg.bg_lvl4 { 
+    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl4.png'); 
+}
+.shop-preview-bg.bg_lvl5 { 
+    background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_lvl5.png'); 
+}
 
 
 
