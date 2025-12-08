@@ -647,9 +647,15 @@ function renderFriends() {
             
             if (f.status === 'online') {
                 statusClass = 'status-online';
-                if (state.roomId) { 
-                    inviteBtn = `<button class="btn-friend-action btn-invite" onclick="inviteFriend('${f.id}')">ЗОВИ</button>`;
-                }
+            } else if (f.status === 'ingame') {
+                statusClass = 'status-ingame';
+            }
+
+            // ИЗМЕНЕНИЕ: Кнопка "ЗОВИ" показывается ВСЕГДА, если я в лобби
+            // Сервер сам разберется (отправит пуш или запишет в БД)
+            if (state.roomId) { 
+                inviteBtn = `<button class="btn-friend-action btn-invite" onclick="inviteFriend('${f.id}')">ЗОВИ</button>`;
+            }
             } else if (f.status === 'ingame') {
                 statusClass = 'status-ingame';
             }
@@ -768,11 +774,7 @@ socket.on('notification', (data) => {
     }
 });
 
-window.openInviteModal = () => {
-    openFriends();
-    switchFriendTab('list');
-    uiAlert("Выбери друга и нажми ЗОВИ!");
-};
+
 
 
 
