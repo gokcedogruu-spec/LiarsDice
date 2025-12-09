@@ -1023,6 +1023,37 @@ io.on('connection', (socket) => {
              socket.emit('friendUpdate', { friends: list, requests: reqs });
         }
     });
+    
+    // --- LEADERBOARD ---
+    socket.on('getLeaderboard', async () => {
+        try {
+            // Ищем топ 50 по XP (убывание)
+            // Возвращаем только нужные поля: id, name, xp, wins, rankName (вычислим)
+            const topUsers = await User.find({})
+                .sort({ xp: -1 })
+                .limit(50)
+                .select('id name xp wins streak equipped'); // Берем equipped для отображения рамки/шляпы если захочешь
+
+            // Преобразуем для клиента
+            const leaderboard = topUsers.map((u, index) => {
+                const rInfo = getRankInfo(u.xp, u.streak || 0);
+                return {
+                    rank: index + 1,
+                    id: u.id,
+                    name: u.name,
+                    xp: u.xp,
+                    wins: u.wins,
+                    rankName: rInfo.current.name,
+                    frame: u.equipped?.frame || 'frame_default'
+                };
+            });
+
+            socket.emit('leaderboardData', leaderboard);
+        } catch (e) {
+            console.error(e);
+            socket.emit('errorMsg', 'Ошибка загрузки топа');
+        }
+    });
 
     socket.on('inviteToRoom', (targetId) => {
         if (!socket.tgUserId) return;
@@ -1191,6 +1222,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
