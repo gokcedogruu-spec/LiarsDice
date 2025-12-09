@@ -778,7 +778,7 @@ if (bot) {
                 inline_keyboard: [[
                     {
                         text: "ВОЙТИ В КОМНАТУ",
-                        url: `https://t.me/DicePiratBot/game?startapp=${roomId}` 
+                        url: `https://t.me/zmssliarsbot/game?startapp=${roomId}` 
                     }
                 ]]
             }
@@ -1245,6 +1245,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
