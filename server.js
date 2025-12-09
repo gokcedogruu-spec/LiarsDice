@@ -488,24 +488,57 @@ function handleBotMove(room) {
     if (room.status !== 'PLAYING') return;
     const bot = room.players[room.currentTurn];
     if (!bot || bot.diceCount === 0) { nextTurn(room); return; }
+    
     const lastBid = room.currentBid;
     let totalDiceInGame = 0; room.players.forEach(p => totalDiceInGame += p.diceCount);
-    const myHand = {}; bot.dice.forEach(d => myHand[d] = (myHand[d] || 0) + 1);
+    
+    const myHand = {}; 
+    bot.dice.forEach(d => myHand[d] = (myHand[d] || 0) + 1);
+    
     const diff = room.config.difficulty;
-    if (!lastBid) { makeBidInternal(room, bot, 1, bot.dice[0] || Math.floor(Math.random()*6)+1); return; }
-    const needed = lastBid.quantity; const face = lastBid.faceValue;
-    const inHand = myHand[face] || 0; const inHandJokers = room.config.jokers ? (myHand[1] || 0) : 0;
+
+    // Первый ход
+    if (!lastBid) { 
+        makeBidInternal(room, bot, 1, bot.dice[0] || Math.floor(Math.random()*6)+1); 
+        return; 
+    }
+
+    const needed = lastBid.quantity; 
+    const face = lastBid.faceValue;
+    const inHand = myHand[face] || 0; 
+    const inHandJokers = room.config.jokers ? (myHand[1] || 0) : 0;
     const mySupport = (face === 1 && room.config.jokers) ? inHand : (inHand + (face !== 1 ? inHandJokers : 0));
     const unknownDice = totalDiceInGame - bot.diceCount;
     const probPerDie = room.config.jokers ? (face===1 ? 1/6 : 2/6) : 1/6;
     const expectedTotal = mySupport + (unknownDice * probPerDie);
+    
     let threshold = diff === 'easy' ? 2.0 : diff === 'medium' ? 0.5 : -0.5;
-    if (needed > expectedTotal + threshold) {
-        if (diff === 'pirate' && Math.abs(expectedTotal - needed) < 0.5 && room.config.spot && Math.random() > 0.7) handleCall(null, 'spot', room, bot);
-        else handleCall(null, 'bluff', room, bot);
+
+    // --- FIX: PIRATE SMART LOGIC ---
+    // Если бот Пират, и ставка всего 1, а кубиков в игре много (>2) -> НИКОГДА не вскрывать.
+    let forceRaise = false;
+    if (diff === 'pirate' && needed === 1 && totalDiceInGame > 2) {
+        forceRaise = true;
+    }
+
+    if (!forceRaise && needed > expectedTotal + threshold) {
+        // Бот хочет вскрыть
+        if (diff === 'pirate' && Math.abs(expectedTotal - needed) < 0.5 && room.config.spot && Math.random() > 0.7) {
+            handleCall(null, 'spot', room, bot);
+        } else {
+            handleCall(null, 'bluff', room, bot);
+        }
     } else {
-        let nextQty = lastBid.quantity; let nextFace = lastBid.faceValue + 1;
-        if (room.config.strict) { nextQty = lastBid.quantity + 1; nextFace = Math.floor(Math.random() * 6) + 1; } else { if (nextFace > 6) { nextFace = 2; nextQty++; } }
+        // Бот повышает
+        let nextQty = lastBid.quantity; 
+        let nextFace = lastBid.faceValue + 1;
+        
+        if (room.config.strict) { 
+            nextQty = lastBid.quantity + 1; 
+            nextFace = Math.floor(Math.random() * 6) + 1; 
+        } else { 
+            if (nextFace > 6) { nextFace = 2; nextQty++; } 
+        }
         makeBidInternal(room, bot, nextQty, nextFace);
     }
 }
@@ -1034,3 +1067,4 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
