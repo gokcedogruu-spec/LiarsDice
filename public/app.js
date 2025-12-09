@@ -307,6 +307,51 @@ bindClick('btn-shop-back', () => showScreen('home'));
 window.buyItem = (id, price) => { if (state.coins >= price) socket.emit('shopBuy', id); else uiAlert("Не хватает монет!", "УПС..."); };
 window.equipItem = (id) => socket.emit('shopEquip', id);
 
+// --- LEADERBOARD ---
+window.openLeaderboard = () => {
+    document.getElementById('modal-leaderboard').classList.add('active');
+    document.getElementById('leaderboard-list').innerHTML = '<div style="text-align:center; margin-top:20px;">Загрузка...</div>';
+    socket.emit('getLeaderboard');
+};
+
+window.closeLeaderboard = (e) => {
+    if (!e || e.target.id === 'modal-leaderboard' || e.target.classList.contains('btn-close')) {
+        document.getElementById('modal-leaderboard').classList.remove('active');
+    }
+};
+
+socket.on('leaderboardData', (list) => {
+    const container = document.getElementById('leaderboard-list');
+    container.innerHTML = '';
+    
+    if (!list || list.length === 0) {
+        container.innerHTML = '<div style="text-align:center; opacity:0.5; margin-top:20px;">Пусто...</div>';
+        return;
+    }
+
+    list.forEach(p => {
+        let rankClass = '';
+        if (p.rank === 1) rankClass = 'top-1';
+        if (p.rank === 2) rankClass = 'top-2';
+        if (p.rank === 3) rankClass = 'top-3';
+
+        // Иконка ранга (не картинка, а просто текст или эмодзи, чтобы не грузить)
+        // Но мы можем использовать класс p.rankName
+        
+        container.innerHTML += `
+            <div class="lb-row" onclick="requestPlayerStats('${p.id}')">
+                <div class="lb-rank ${rankClass}">${p.rank}</div>
+                <div class="lb-name-box">
+                    <span class="lb-name ${p.frame}">${p.name}</span>
+                    <span class="lb-sub">${p.rankName}</span>
+                </div>
+                <div class="lb-stat lb-xp">${p.xp}</div>
+                <div class="lb-stat lb-win">${p.wins}</div>
+            </div>
+        `;
+    });
+});
+
 // --- SHARE FUNCTION ---
 window.shareRoomNative = () => {
     // Проверяем, есть ли WebApp и ID комнаты
@@ -740,4 +785,5 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
