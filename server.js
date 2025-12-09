@@ -767,21 +767,18 @@ if (bot) {
 
         // Формируем красивую карточку
         const results = [{
-            type: 'article',
-            id: 'invite_' + roomId, // Уникальный ID результата
-            title: '🏴‍☠️ Присоединиться к игре!',
-            description: `Комната: ${roomId}`,
-            thumb_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png',
-            input_message_content: {
-                message_text: `☠️ Го в Костяшки! \nКод комнаты: <b>${roomId}</b>`,
-                parse_mode: 'HTML'
-            },
+            type: 'photo', // ТЕПЕРЬ ЭТО ФОТО
+            id: 'invite_' + roomId,
+            photo_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png', // Большая картинка
+            thumb_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png', // Маленькая превью
+            title: '🏴‍☠️ Присоединиться',
+            caption: `☠️ Го в костяшки! \nКод комнаты: <b>${roomId}</b>`, // Текст теперь тут
+            parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [[
                     {
-                        text: "ЗАЙТИ В КОМНАТУ",
-                        // ССЫЛКА НА ЗАПУСК WEB APP С ПАРАМЕТРОМ
-                        url: `https://t.me/zmssliarsbot/game?startapp=${roomId}` 
+                        text: "ВОЙТИ В КОМНАТУ",
+                        url: `https://t.me/DicePiratBot/game?startapp=${roomId}` 
                     }
                 ]]
             }
@@ -1042,35 +1039,156 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
-        const old = getRoomBySocketId(socket.id); if (old) handlePlayerDisconnect(socket.id, old, true);
+        socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
+        // 1. Чистим текущий сокет, если он был где-то еще
+        const old = getRoomBySocketId(socket.id); 
+        if (old) handlePlayerDisconnect(socket.id, old, true);
+
+        // 2. УБИВАЕМ КЛОНОВ (по Telegram ID) во всех комнатах
+        // Это предотвращает дублирование игрока при перезаходе
+        for (const [rId, r] of rooms) {
+            const cloneIdx = r.players.findIndex(p => p.tgId === tgUser.id && !p.isBot);
+            if (cloneIdx !== -1) {
+                r.players.splice(cloneIdx, 1); // Удаляем старую запись
+                if(r.players.length === 0) rooms.delete(rId); // Удаляем пустую комнату
+                else broadcastRoomUpdate(r); // Обновляем список для остальных
+            }
+        }
+
         if (!tgUser) return;
         const userId = tgUser.id; 
         const uData = userCache.get(userId);
         const rInfo = getRankInfo(uData.xp, uData.streak);
         
+        // Валидация ставок (если переданы)
         if (options && options.dice < 3) options.dice = 3;
-        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
+        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) { 
+            socket.emit('errorMsg', 'NO_FUNDS'); 
+            return; 
+        }
 
-        let room; let isCreator = false;
+        let room; 
+        let isCreator = false;
+
+        // --- РЕЖИМ PVE (С БОТОМ) ---
         if (mode === 'pve') {
             const newId = 'CPU_' + Math.random().toString(36).substring(2,6);
-            room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: { dice: Math.max(3, options.dice), players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty }, isPvE: true };
-            rooms.set(newId, room); isCreator = true;
-            room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: true, isCreator: true, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
+            room = { 
+                id: newId, 
+                players: [], 
+                status: 'LOBBY', 
+                currentTurn: 0, 
+                currentBid: null, 
+                history: [], 
+                timerId: null, 
+                turnDeadline: 0, 
+                config: { 
+                    dice: Math.max(3, options.dice), 
+                    players: options.players, 
+                    time: 30, 
+                    jokers: options.jokers, 
+                    spot: options.spot, 
+                    strict: options.strict, 
+                    difficulty: options.difficulty 
+                }, 
+                isPvE: true 
+            };
+            rooms.set(newId, room); 
+            isCreator = true;
+            
+            // Добавляем игрока
+            room.players.push({ 
+                id: socket.id, 
+                tgId: userId, 
+                name: uData.name, 
+                rank: rInfo.current.name, 
+                dice: [], 
+                diceCount: room.config.dice, 
+                ready: true, 
+                isCreator: true, 
+                equipped: uData.equipped, 
+                skillsUsed: [], 
+                rankLevel: rInfo.current.level 
+            });
+            
+            // Добавляем ботов
             const botNames = ['Джек', 'Барбосса', 'Уилл', 'Дейви Джонс', 'Тич', 'Гиббс'];
-            for(let i=0; i<options.players-1; i++) { room.players.push({ id: 'bot_' + Math.random(), name: `${botNames[i%botNames.length]} (Бот)`, rank: options.difficulty === 'pirate' ? 'Капитан' : 'Матрос', dice: [], diceCount: room.config.dice, ready: true, isCreator: false, isBot: true, equipped: { frame: 'frame_default' }, rankLevel: 0 }); }
-            socket.join(newId); startNewRound(room, true); return;
+            for(let i=0; i<options.players-1; i++) { 
+                room.players.push({ 
+                    id: 'bot_' + Math.random(), 
+                    name: `${botNames[i%botNames.length]} (Бот)`, 
+                    rank: options.difficulty === 'pirate' ? 'Капитан' : 'Матрос', 
+                    dice: [], 
+                    diceCount: room.config.dice, 
+                    ready: true, 
+                    isCreator: false, 
+                    isBot: true, 
+                    equipped: { frame: 'frame_default' }, 
+                    rankLevel: 0 
+                }); 
+            }
+            socket.join(newId); 
+            startNewRound(room, true); 
+            return;
         }
-        if (roomId) { 
-            room = rooms.get(roomId); 
-            if (!room || room.status !== 'LOBBY' || room.players.length >= room.config.players) { socket.emit('errorMsg', 'Ошибка входа'); return; } 
-            if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
-        }
-        else { const newId = generateRoomId(); const st = options || { dice: 5, players: 10, time: 30 }; if(st.dice < 3) st.dice = 3; room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: st, isPvE: false }; rooms.set(newId, room); roomId = newId; isCreator = true; }
         
-        room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: false, isCreator: isCreator, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
-        socket.join(roomId); broadcastRoomUpdate(room);
+        // --- РЕЖИМ PVP (МУЛЬТИПЛЕЕР) ---
+        if (roomId) { 
+            // Вход в существующую
+            room = rooms.get(roomId); 
+            if (!room || room.status !== 'LOBBY' || room.players.length >= room.config.players) { 
+                socket.emit('errorMsg', 'Ошибка входа'); 
+                return; 
+            } 
+            if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) { 
+                socket.emit('errorMsg', 'NO_FUNDS'); 
+                return; 
+            }
+        } else { 
+            // Создание новой
+            const newId = generateRoomId(); 
+            const st = options || { dice: 5, players: 10, time: 30 }; 
+            if(st.dice < 3) st.dice = 3; 
+            room = { 
+                id: newId, 
+                players: [], 
+                status: 'LOBBY', 
+                currentTurn: 0, 
+                currentBid: null, 
+                history: [], 
+                timerId: null, 
+                turnDeadline: 0, 
+                config: st, 
+                isPvE: false 
+            }; 
+            rooms.set(newId, room); 
+            roomId = newId; 
+            isCreator = true; 
+        }
+        
+        // ЛОГИКА ЛИДЕРСТВА: Если в комнате нет лидера (например, он вышел и зашел снова),
+        // то входящий игрок становится лидером.
+        if (!isCreator) {
+            const hasActiveCreator = room.players.some(p => p.isCreator);
+            if (!hasActiveCreator) isCreator = true;
+        }
+
+        room.players.push({ 
+            id: socket.id, 
+            tgId: userId, 
+            name: uData.name, 
+            rank: rInfo.current.name, 
+            dice: [], 
+            diceCount: room.config.dice, 
+            ready: false, 
+            isCreator: isCreator, 
+            equipped: uData.equipped, 
+            skillsUsed: [], 
+            rankLevel: rInfo.current.level 
+        });
+        
+        socket.join(roomId); 
+        broadcastRoomUpdate(room);
     });
 
     socket.on('setReady', (isReady) => { const r = getRoomBySocketId(socket.id); if (r?.status === 'LOBBY') { const p = r.players.find(x => x.id === socket.id); if (p) { p.ready = isReady; broadcastRoomUpdate(r); } } });
@@ -1127,6 +1245,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
