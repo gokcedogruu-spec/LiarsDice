@@ -32,6 +32,7 @@
             <button class="btn-icon btn-rules" onclick="openRules()">?</button>
             <button class="btn-icon btn-encyclopedia" onclick="openEncyclopedia()">📖</button>
             <button id="btn-friends-menu" class="btn-icon btn-friends" onclick="openFriends()">👥</button>
+            <button class="btn-icon btn-leaderboard" onclick="openLeaderboard()">🏆</button>
 
             <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             
@@ -417,11 +418,29 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 16. LEADERBOARD MODAL -->
+<div id="modal-leaderboard" class="modal-overlay" onclick="closeLeaderboard(event)">
+    <div class="modal-content pop-in" style="height: 80%; max-height: 600px; display:flex; flex-direction:column;">
+        <button class="btn-close" onclick="closeLeaderboard(null)">✕</button>
+        <h2 class="modal-title" style="color:#ffb703;">ТОП 50</h2>
+        
+        <div class="leaderboard-header">
+            <span>#</span>
+            <span style="flex:1; text-align:left; padding-left:10px;">ПИРАТ</span>
+            <span>XP</span>
+            <span>WIN</span>
+        </div>
+
+        <div id="leaderboard-list" class="friend-list-container flex-grow">Loading...</div>
+    </div>
+</div>
 
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js?v=15"></script>
 </body>
 </html>
+
 
 
