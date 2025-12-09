@@ -75,6 +75,51 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .btn-friends { right: 115px; color: var(--success); border-color: var(--success); }
 .btn-lobby-back { top: 15px; left: 15px; position: absolute; }
 .btn-game-leave { position: absolute; top: 10px; left: 10px; background: #d90429; color: white; border: 2px solid rgba(255,255,255,0.2); z-index: 20; }
+/* КНОПКА РЕЙТИНГА (СЛЕВА) */
+.btn-leaderboard { left: 15px; color: #ffb703; border-color: #ffb703; }
+
+/* ЗАГОЛОВОК ТАБЛИЦЫ */
+.leaderboard-header {
+    display: flex; 
+    padding: 10px; 
+    border-bottom: 2px solid rgba(255,255,255,0.2); 
+    font-weight: 900; 
+    color: var(--secondary); 
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+/* СТРОКА ИГРОКА */
+.lb-row {
+    display: flex; 
+    align-items: center; 
+    padding: 12px 10px; 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.lb-row:active { background: rgba(255,255,255,0.1); }
+
+/* ПОЗИЦИЯ */
+.lb-rank { 
+    width: 30px; 
+    font-weight: 900; 
+    color: var(--secondary); 
+    text-align: center;
+}
+.lb-rank.top-1 { color: #ffb703; font-size: 1.2rem; } /* Золото */
+.lb-rank.top-2 { color: #c0c0c0; font-size: 1.1rem; } /* Серебро */
+.lb-rank.top-3 { color: #cd7f32; font-size: 1.1rem; } /* Бронза */
+
+/* ИМЯ */
+.lb-name-box { flex: 1; text-align: left; padding-left: 10px; overflow: hidden; }
+.lb-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-size: 0.9rem; }
+.lb-sub { font-size: 0.7rem; opacity: 0.7; }
+
+/* СТАТЫ */
+.lb-stat { width: 50px; text-align: center; font-weight: bold; font-size: 0.9rem; }
+.lb-xp { color: #4cc9f0; }
+.lb-win { color: #06d6a0; }
 
 .lobby-btns-row { display: flex; gap: 10px; width: 100%; margin-top: 15px; }
 .card { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; box-shadow: var(--shadow-card); border: 2px solid rgba(255,255,255,0.05); }
@@ -401,3 +446,4 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .menu-buttons {
     padding-bottom: 10px;
 }
+
