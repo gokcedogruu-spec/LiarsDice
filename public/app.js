@@ -80,13 +80,38 @@ bindClick('btn-login', () => {
 });
 
 function loginSuccess() {
+    // Данные пользователя
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
+    
+    // ПРОВЕРКА: Есть ли параметр start_param (это ID комнаты из ссылки)
+    const startParam = tg?.initDataUnsafe?.start_param;
+
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
             let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
+            
+            // 1. Логинимся
             socket.emit('login', { tgUser: userPayload, savedData });
+
+            // 2. Если пришли по ссылке — предлагаем войти
+            if (startParam) {
+                // Небольшая задержка для красоты
+                setTimeout(() => {
+                    uiConfirm(`Войти в комнату ${startParam}?`, () => {
+                        socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
+                    });
+                }, 800);
+            }
         });
-    } else { socket.emit('login', { tgUser: userPayload, savedData: null }); }
+    } else { 
+        // Логика для браузера (тесты)
+        socket.emit('login', { tgUser: userPayload, savedData: null });
+        if (startParam) {
+             setTimeout(() => {
+                socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
+            }, 800);
+        }
+    }
 }
 
 // --- HATS DATA ---
@@ -282,6 +307,21 @@ bindClick('btn-shop-back', () => showScreen('home'));
 window.buyItem = (id, price) => { if (state.coins >= price) socket.emit('shopBuy', id); else uiAlert("Не хватает монет!", "УПС..."); };
 window.equipItem = (id) => socket.emit('shopEquip', id);
 
+// --- SHARE FUNCTION ---
+window.shareRoomNative = () => {
+    // Проверяем, есть ли WebApp и ID комнаты
+    if (window.Telegram?.WebApp && state.roomId) {
+        // Открывает нативный выбор чата в Telegram
+        // Вставляет текст: @bot_name ROOM_ID
+        window.Telegram.WebApp.switchInlineQuery(state.roomId, ['users', 'groups']); 
+    } else {
+        // Если открыто в браузере — просто копируем код
+        navigator.clipboard.writeText(state.roomId)
+            .then(() => uiAlert('Код скопирован!'))
+            .catch(() => uiAlert('Ошибка копирования'));
+    }
+};
+
 // --- CABIN ---
 bindClick('btn-to-cabin', () => { showScreen('cabin'); document.getElementById('cabin-coins').textContent = state.coins; renderCabin(); });
 bindClick('btn-cabin-back', () => showScreen('home'));
@@ -444,6 +484,7 @@ bindClick('btn-join-room', () => { uiPrompt("Введи код комнаты:",
 bindClick('share-btn', () => { const code = state.roomId; navigator.clipboard.writeText(code).then(() => uiAlert('Код скопирован!')).catch(() => { uiPrompt("Код комнаты (скопируй вручную):", () => {}); document.getElementById('sys-input').value = code; }); });
 bindClick('btn-ready', function() { const isReady = this.textContent === "Я ГОТОВ"; socket.emit('setReady', isReady); this.textContent = isReady ? "НЕ ГОТОВ" : "Я ГОТОВ"; this.className = isReady ? "btn btn-green" : "btn btn-blue"; });
 bindClick('btn-start-game', () => socket.emit('startGame'));
+bindClick('btn-share-native', () => window.shareRoomNative());
 window.adjBid = (type, delta) => { if (type === 'qty') { state.bidQty = Math.max(1, state.bidQty + delta); document.getElementById('display-qty').textContent = state.bidQty; } else { state.bidVal = Math.max(1, Math.min(6, state.bidVal + delta)); document.getElementById('display-val').textContent = state.bidVal; } };
 bindClick('btn-make-bid', () => socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal }));
 bindClick('btn-call-bluff', () => socket.emit('callBluff'));
@@ -699,3 +740,4 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
