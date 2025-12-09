@@ -1059,12 +1059,38 @@ io.on('connection', (socket) => {
     socket.on('requestRestart', async () => { 
         const r = getRoomBySocketId(socket.id); 
         if (r?.status === 'FINISHED') { 
+            // Обновляем профили игроков (на всякий случай, если еще не обновились)
             for(const p of r.players) { if (!p.isBot && p.tgId) await pushProfileUpdate(p.tgId); }
-            if (r.isPvE) { r.status = 'PLAYING'; r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; startNewRound(r, true); } 
-            else { r.status = 'LOBBY'; r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; broadcastRoomUpdate(r); } 
+            
+            if (r.isPvE) { 
+                // PVE: Сразу перезапуск (как было)
+                r.status = 'PLAYING'; 
+                r.players.forEach(p => { 
+                    p.diceCount = r.config.dice; 
+                    p.dice = []; 
+                    p.skillsUsed = []; 
+                }); 
+                r.currentBid = null; 
+                startNewRound(r, true); 
+            } 
+            else { 
+                // PVP: Переход в ЛОББИ для проверки готовности
+                r.status = 'LOBBY'; 
+                r.players.forEach(p => { 
+                    p.diceCount = r.config.dice; 
+                    p.ready = false; // Сбрасываем готовность!
+                    p.dice = []; 
+                    p.skillsUsed = []; 
+                    // Если игрок был создателем, он им и остается
+                }); 
+                r.currentBid = null; 
+                
+                // Отправляем всех на экран Лобби
+                broadcastRoomUpdate(r); 
+            } 
         } 
     });
-});
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
