@@ -93,7 +93,10 @@ function loginSuccess() {
             // 1. Логинимся
             socket.emit('login', { tgUser: userPayload, savedData });
 
-            // 2. Если пришли по ссылке — предлагаем войти
+            // 2. ЗАГРУЖАЕМ ДРУЗЕЙ
+            socket.emit('friendAction', { action: 'get' });
+
+            // 3. Если пришли по ссылке — предлагаем войти
             if (startParam) {
                 // Небольшая задержка для красоты
                 setTimeout(() => {
@@ -106,6 +109,10 @@ function loginSuccess() {
     } else { 
         // Логика для браузера (тесты)
         socket.emit('login', { tgUser: userPayload, savedData: null });
+
+        // ЗАГРУЖАЕМ ДРУЗЕЙ (FIX для браузера)
+        socket.emit('friendAction', { action: 'get' });
+        
         if (startParam) {
              setTimeout(() => {
                 socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
@@ -785,5 +792,6 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
