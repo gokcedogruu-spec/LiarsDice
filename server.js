@@ -769,7 +769,7 @@ if (bot) {
         const results = [{
             type: 'photo', // ТЕПЕРЬ ЭТО ФОТО
             id: 'invite_' + roomId,
-            photo_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogotg.png', // Большая картинка
+            photo_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png', // Большая картинка
             thumb_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png', // Маленькая превью
             title: '🏴‍☠️ Присоединиться',
             caption: `☠️ Го в костяшки! \nКод комнаты: <b>${roomId}</b>`, // Текст теперь тут
@@ -1245,6 +1245,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
