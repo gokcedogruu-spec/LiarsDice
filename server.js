@@ -757,6 +757,40 @@ if (bot) {
     });
 }
 
+// --- INLINE QUERY HANDLER (SHARE GAME) ---
+if (bot) {
+    bot.on('inline_query', (query) => {
+        const roomId = query.query.trim(); // Получаем то, что передал клиент (ID комнаты)
+        
+        // Если ID пустой, ничего не делаем
+        if (!roomId) return;
+
+        // Формируем красивую карточку
+        const results = [{
+            type: 'article',
+            id: 'invite_' + roomId, // Уникальный ID результата
+            title: '🏴‍☠️ Присоединиться к игре!',
+            description: `Комната: ${roomId}`,
+            thumb_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png',
+            input_message_content: {
+                message_text: `☠️ Го в Костяшки! \nКод комнаты: <b>${roomId}</b>`,
+                parse_mode: 'HTML'
+            },
+            reply_markup: {
+                inline_keyboard: [[
+                    {
+                        text: "ЗАЙТИ В КОМНАТУ",
+                        // ССЫЛКА НА ЗАПУСК WEB APP С ПАРАМЕТРОМ
+                        url: `https://t.me/zmssliarsbot/game?startapp=${roomId}` 
+                    }
+                ]]
+            }
+        }];
+
+        bot.answerInlineQuery(query.id, results, { cache_time: 0 });
+    });
+}
+
 // --- SOCKET ---
 io.on('connection', (socket) => {
     socket.on('login', async ({ tgUser }) => {
@@ -1093,6 +1127,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
