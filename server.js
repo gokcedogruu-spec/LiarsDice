@@ -497,9 +497,17 @@ function handleBotMove(room) {
     
     const diff = room.config.difficulty;
 
-    // Первый ход
+    // --- ПЕРВЫЙ ХОД ---
     if (!lastBid) { 
-        makeBidInternal(room, bot, 1, bot.dice[0] || Math.floor(Math.random()*6)+1); 
+        // Пират ходит уверенно: ставит то, чего у него больше всего
+        let bestFace = 6; 
+        let maxCount = 0;
+        for(let f=2; f<=6; f++) { if((myHand[f]||0) > maxCount) { maxCount = myHand[f]; bestFace = f; } }
+        
+        // Иногда начинает с джокера (1) для запутывания
+        if (room.config.jokers && Math.random() < 0.15 && myHand[1] > 0) bestFace = 1;
+
+        makeBidInternal(room, bot, Math.max(1, maxCount), bestFace); 
         return; 
     }
 
@@ -507,40 +515,92 @@ function handleBotMove(room) {
     const face = lastBid.faceValue;
     const inHand = myHand[face] || 0; 
     const inHandJokers = room.config.jokers ? (myHand[1] || 0) : 0;
+    
+    // Поддержка в руке (с учетом джокеров)
     const mySupport = (face === 1 && room.config.jokers) ? inHand : (inHand + (face !== 1 ? inHandJokers : 0));
+    
     const unknownDice = totalDiceInGame - bot.diceCount;
+    // Вероятность на 1 неизвестный кубик
     const probPerDie = room.config.jokers ? (face===1 ? 1/6 : 2/6) : 1/6;
+    
+    // Ожидаемое кол-во на столе (Математическое ожидание)
     const expectedTotal = mySupport + (unknownDice * probPerDie);
     
-    let threshold = diff === 'easy' ? 2.0 : diff === 'medium' ? 0.5 : -0.5;
+    // --- НАСТРОЙКА ХАРАКТЕРА (ПОРОГ РИСКА) ---
+    // Чем ниже порог, тем раньше бот скажет "Не верю"
+    let threshold = 0;
+    if (diff === 'easy') threshold = 2.5; // Очень доверчивый
+    else if (diff === 'medium') threshold = 0.8; // Нормальный
+    else if (diff === 'pirate') threshold = -0.2; // Подозрительный (ПРОФИ)
 
-    // --- FIX: PIRATE SMART LOGIC ---
-    // Если бот Пират, и ставка всего 1, а кубиков в игре много (>2) -> НИКОГДА не вскрывать.
-    let forceRaise = false;
-    if (diff === 'pirate' && needed === 1 && totalDiceInGame > 2) {
-        forceRaise = true;
+    // Если "В точку" включено, Пират пытается угадать
+    if (diff === 'pirate' && room.config.spot) {
+        // Если математика говорит, что число ОЧЕНЬ близко к ставке (разница < 0.4)
+        if (Math.abs(expectedTotal - needed) < 0.4 && Math.random() < 0.4) {
+            handleCall(null, 'spot', room, bot);
+            return;
+        }
     }
 
-    if (!forceRaise && needed > expectedTotal + threshold) {
-        // Бот хочет вскрыть
-        if (diff === 'pirate' && Math.abs(expectedTotal - needed) < 0.5 && room.config.spot && Math.random() > 0.7) {
-            handleCall(null, 'spot', room, bot);
+    // --- РЕШЕНИЕ: ВЕРИТЬ ИЛИ НЕТ ---
+    // Если ставка (needed) сильно превышает ожидание -> БЛЕФ
+    if (needed > expectedTotal + threshold) {
+        // Умная защита: Если ставка маленькая (1-2), Пират почти всегда повышает, даже если не верит
+        if (diff === 'pirate' && needed <= 2 && totalDiceInGame > 4 && Math.random() < 0.85) {
+             // FORCED RAISE (БЛЕФУЕМ В ОТВЕТ)
+             makeBotRaise(room, bot, lastBid, myHand);
         } else {
-            handleCall(null, 'bluff', room, bot);
+             handleCall(null, 'bluff', room, bot);
         }
     } else {
-        // Бот повышает
-        let nextQty = lastBid.quantity; 
-        let nextFace = lastBid.faceValue + 1;
-        
-        if (room.config.strict) { 
-            nextQty = lastBid.quantity + 1; 
-            nextFace = Math.floor(Math.random() * 6) + 1; 
-        } else { 
-            if (nextFace > 6) { nextFace = 2; nextQty++; } 
-        }
-        makeBidInternal(room, bot, nextQty, nextFace);
+        // --- РЕШЕНИЕ: ПОВЫШАТЬ ---
+        makeBotRaise(room, bot, lastBid, myHand);
     }
+}
+
+// Вспомогательная функция для повышения ставки ботом
+function makeBotRaise(room, bot, lastBid, myHand) {
+    let nextQty = lastBid.quantity; 
+    let nextFace = lastBid.faceValue + 1;
+    
+    // 1. Пытаемся найти номинал, который есть у бота
+    let bestFaceToBid = null;
+    if (!room.config.strict) {
+        for (let f = lastBid.faceValue + 1; f <= 6; f++) {
+            const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
+            if (count >= 1) { bestFaceToBid = f; break; }
+        }
+    }
+
+    if (bestFaceToBid) {
+        // Повышаем номинал (количество то же)
+        nextFace = bestFaceToBid;
+    } else {
+        // Если хорошего номинала нет, повышаем количество
+        // Но ставим на то, чего у нас больше всего (или рандом, если ничего нет)
+        nextQty = lastBid.quantity + 1;
+        
+        // Выбираем лучший номинал для ставки
+        let maxCount = -1;
+        let targetF = 2;
+        for(let f=2; f<=6; f++) {
+             const c = (myHand[f]||0) + (room.config.jokers ? (myHand[1] || 0) : 0);
+             if(c > maxCount) { maxCount = c; targetF = f; }
+        }
+        nextFace = targetF;
+    }
+
+    // Коррекция для строгого режима
+    if (room.config.strict) { 
+        nextQty = lastBid.quantity + 1; 
+        nextFace = Math.floor(Math.random() * 6) + 1; 
+    } 
+    
+    // Финальная проверка валидности (чтобы не поставить face > 6)
+    if (nextFace > 6) { nextFace = 2; nextQty = lastBid.quantity + 1; }
+    if (nextQty <= lastBid.quantity && nextFace <= lastBid.faceValue) { nextQty = lastBid.quantity + 1; }
+
+    makeBidInternal(room, bot, nextQty, nextFace);
 }
 
 function handleTimeout(room) {
@@ -1222,6 +1282,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
