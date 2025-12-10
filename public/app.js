@@ -479,20 +479,23 @@ bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
     
-    // Обновляем активные кнопки
-    document.querySelectorAll('#screen-pve-settings .btn-time').forEach(b => b.classList.remove('active')); 
+    // 1. Сбрасываем активность только у кнопок СЛОЖНОСТИ (внутри time-selector)
+    // Раньше тут был код, который сбрасывал вообще все кнопки, включая правила. Исправили.
     const container = document.querySelector('#screen-pve-settings .time-selector');
     if(container) { 
         Array.from(container.children).forEach(btn => { 
-            if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active'); 
+            btn.classList.remove('active'); // Снимаем актив со всех кнопок сложности
+            if(btn.getAttribute('onclick').includes(`'${diff}'`)) {
+                btn.classList.add('active'); // Ставим актив на выбранную
+            }
         }); 
     }
     
-    // Обновляем текст наград
+    // 2. Обновляем текст наград
     const desc = { 
         'medium': '100 XP / 100 монет', 
         'pirate': '500 XP / 500 монет', 
-        'legend': '🏆 1000 XP / 1000 монет' 
+        'legend': '🏆 1000 XP / 1000 монет (ХАРДКОР!)' 
     };
     document.getElementById('diff-desc').textContent = desc[diff] || '';
 };
@@ -844,6 +847,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
