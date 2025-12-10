@@ -85,7 +85,7 @@ let state = {
     createDice: 5, createPlayers: 10, createTime: 30,
     rules: { jokers: false, spot: false, strict: false },
     currentRoomBets: { coins: 0, xp: 0 },
-    pve: { difficulty: 'easy', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
+    pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
     coins: 0, inventory: [], equipped: {}
 };
 
@@ -478,11 +478,23 @@ bindClick('btn-to-pve', () => showScreen('pve-settings'));
 bindClick('btn-pve-back', () => showScreen('home'));
 window.setDiff = (diff) => {
     state.pve.difficulty = diff;
-    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active')); 
+    
+    // Обновляем активные кнопки
+    document.querySelectorAll('#screen-pve-settings .btn-time').forEach(b => b.classList.remove('active')); 
     const container = document.querySelector('#screen-pve-settings .time-selector');
-    if(container) { Array.from(container.children).forEach(btn => { if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active'); }); }
-    const desc = { 'easy': '0 XP / 0 монет', 'medium': '10 XP / 10 монет', 'pirate': '40 XP / 40 монет' };
-    document.getElementById('diff-desc').textContent = desc[diff];
+    if(container) { 
+        Array.from(container.children).forEach(btn => { 
+            if(btn.getAttribute('onclick').includes(`'${diff}'`)) btn.classList.add('active'); 
+        }); 
+    }
+    
+    // Обновляем текст наград
+    const desc = { 
+        'medium': '100 XP / 100 монет', 
+        'pirate': '500 XP / 500 монет', 
+        'legend': '🏆 1000 XP / 1000 монет' 
+    };
+    document.getElementById('diff-desc').textContent = desc[diff] || '';
 };
 bindClick('btn-start-pve', () => {
     socket.emit('joinOrCreateRoom', { roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123, first_name:state.username}, mode: 'pve', options: { dice: state.pve.dice, players: state.pve.bots + 1, jokers: state.pve.jokers, spot: state.pve.spot, strict: state.pve.strict, difficulty: state.pve.difficulty } });
@@ -832,6 +844,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
