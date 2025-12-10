@@ -190,6 +190,65 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .player-chip.turn { transform: translateY(-3px); box-shadow: 0 0 15px var(--accent); border-color: var(--accent) !important; }
 .player-chip.dead { opacity: 0.3; filter: grayscale(1); transform: scale(0.9); }
 
+/* КНОПКА ОТКРЫТИЯ ЭМОДЗИ (ОБНОВЛЕННАЯ) */
+.btn-emoji-toggle {
+    width: 50px; /* Чуть побольше */
+    height: 50px;
+    border-radius: 50%;
+    background: transparent; /* Убрали фон */
+    border: none; /* Убрали рамку */
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 50;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); /* Тень для красоты */
+}
+.btn-emoji-toggle:active { transform: scale(0.9); }
+
+/* ПАНЕЛЬ ЭМОДЗИ */
+.emoji-panel {
+    position: absolute;
+    bottom: 50px; /* Появляется над кнопкой */
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6); /* Полупрозрачный черный */
+    backdrop-filter: blur(10px); /* Эффект размытия фона */
+    padding: 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    width: 280px;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: fadeUp 0.3s ease-out;
+}
+
+.emoji-panel.hidden { display: none; }
+
+/* СЕТКА ЭМОДЗИ */
+.emoji-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.emoji-grid img {
+    width: 50px; height: 50px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.emoji-grid img:active { transform: scale(1.2); }
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* FRAMES */
 .player-chip.frame_default, .profile-card.frame_default, .modal-content.frame_default, .shop-preview-frame.frame_default { border: 2px solid transparent; background-image: none; background-color: var(--surface); }
 .player-chip.frame_wood, .profile-card.frame_wood, .modal-content.frame_wood, .shop-preview-frame.frame_wood { border: 3px solid #8d6e63; background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/Ramki/rama_derevo.png'); background-size: cover; }
@@ -446,4 +505,5 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .menu-buttons {
     padding-bottom: 10px;
 }
+
 
