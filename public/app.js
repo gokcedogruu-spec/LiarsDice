@@ -39,6 +39,30 @@ window.uiPrompt = (text, onSubmit) => {
     document.getElementById('sys-btn-ok').onclick = () => { const val = ui.input.value.trim(); if(val) { ui.close(); onSubmit(val); } };
 };
 
+// Открыть/Закрыть панель
+window.toggleEmojiPanel = () => {
+    const panel = document.getElementById('emoji-panel');
+    panel.classList.toggle('hidden');
+};
+
+// Отправить и закрыть
+window.sendEmoteAndClose = (name) => {
+    socket.emit('sendEmote', name); // Отправляем на сервер
+    document.getElementById('emoji-panel').classList.add('hidden'); // Закрываем
+    
+    // Вибрация для тактильного отклика
+    if(tg) tg.HapticFeedback.selectionChanged();
+};
+
+// Закрыть панель, если кликнули мимо (для удобства)
+document.addEventListener('click', (e) => {
+    const panel = document.getElementById('emoji-panel');
+    const btn = document.querySelector('.btn-emoji-toggle');
+    if (panel && !panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn) {
+        panel.classList.add('hidden');
+    }
+});
+
 let state = {
     username: null, roomId: null, myId: null,
     bidQty: 1, bidVal: 2, timerFrame: null,
@@ -792,6 +816,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
