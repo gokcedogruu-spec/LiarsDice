@@ -196,8 +196,9 @@ async function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp
 
     let baseWinXP = 65; let baseWinCoins = 50;
     if (type === 'win_pve') {
-        if (difficulty === 'medium') { baseWinXP = 10; baseWinCoins = 10; }
-        else if (difficulty === 'pirate') { baseWinXP = 40; baseWinCoins = 40; }
+        if (difficulty === 'medium') { baseWinXP = 100; baseWinCoins = 100; }
+        else if (difficulty === 'pirate') { baseWinXP = 500; baseWinCoins = 500; }
+        else if (difficulty === 'legend') { baseWinXP = 1000; baseWinCoins = 1000; } // НОВАЯ НАГРАДА
     }
 
     let potCoins = 0; let potXP = 0;
@@ -497,106 +498,140 @@ function handleBotMove(room) {
     
     const diff = room.config.difficulty;
 
+    // --- НАСТРОЙКИ ПОВЕДЕНИЯ ---
+    let threshold = 0.8; // Medium (обычный порог)
+    if (diff === 'pirate') threshold = -0.2; // Подозрительный
+    if (diff === 'legend') threshold = -0.8; // Параноик (вскрывает почти всегда, если есть сомнения)
+
     // --- ПЕРВЫЙ ХОД ---
     if (!lastBid) { 
-        // Пират ходит уверенно: ставит то, чего у него больше всего
         let bestFace = 6; 
         let maxCount = 0;
-        for(let f=2; f<=6; f++) { if((myHand[f]||0) > maxCount) { maxCount = myHand[f]; bestFace = f; } }
         
-        // Иногда начинает с джокера (1) для запутывания
-        if (room.config.jokers && Math.random() < 0.15 && myHand[1] > 0) bestFace = 1;
+        // Легенда никогда не начинает с 1 (джокера), это слабость
+        const startFace = (diff === 'legend') ? 2 : 1;
 
-        makeBidInternal(room, bot, Math.max(1, maxCount), bestFace); 
+        for(let f=startFace; f<=6; f++) { 
+            if((myHand[f]||0) > maxCount) { maxCount = myHand[f]; bestFace = f; } 
+        }
+        
+        // Пират иногда блефует джокером, Легенда играет жестко от номинала
+        if (diff !== 'legend' && room.config.jokers && Math.random() < 0.15 && myHand[1] > 0) bestFace = 1;
+
+        // Легенда начинает с высокой планки (сразу 2 или 3 куба, если есть), чтобы задавить
+        let startQty = Math.max(1, maxCount);
+        if (diff === 'legend' && maxCount >= 2 && Math.random() < 0.5) {
+             // Иногда он даже завышает старт (блеф)
+             startQty = Math.min(startQty + 1, Math.floor(totalDiceInGame / 3)); 
+        }
+
+        makeBidInternal(room, bot, startQty, bestFace); 
         return; 
     }
 
+    // --- АНАЛИЗ ---
     const needed = lastBid.quantity; 
     const face = lastBid.faceValue;
     const inHand = myHand[face] || 0; 
     const inHandJokers = room.config.jokers ? (myHand[1] || 0) : 0;
     
-    // Поддержка в руке (с учетом джокеров)
+    // Поддержка в руке
+    // Легенда в режиме "Джокеры" считает единицы как золото
     const mySupport = (face === 1 && room.config.jokers) ? inHand : (inHand + (face !== 1 ? inHandJokers : 0));
     
     const unknownDice = totalDiceInGame - bot.diceCount;
-    // Вероятность на 1 неизвестный кубик
     const probPerDie = room.config.jokers ? (face===1 ? 1/6 : 2/6) : 1/6;
     
-    // Ожидаемое кол-во на столе (Математическое ожидание)
+    // Математическое ожидание
     const expectedTotal = mySupport + (unknownDice * probPerDie);
     
-    // --- НАСТРОЙКА ХАРАКТЕРА (ПОРОГ РИСКА) ---
-    // Чем ниже порог, тем раньше бот скажет "Не верю"
-    let threshold = 0;
-    if (diff === 'easy') threshold = 2.5; // Очень доверчивый
-    else if (diff === 'medium') threshold = 0.8; // Нормальный
-    else if (diff === 'pirate') threshold = -0.2; // Подозрительный (ПРОФИ)
-
-    // Если "В точку" включено, Пират пытается угадать
-    if (diff === 'pirate' && room.config.spot) {
-        // Если математика говорит, что число ОЧЕНЬ близко к ставке (разница < 0.4)
-        if (Math.abs(expectedTotal - needed) < 0.4 && Math.random() < 0.4) {
-            handleCall(null, 'spot', room, bot);
-            return;
+    // --- ЛОГИКА "В ТОЧКУ" (SPOT) ---
+    // Легенда читает "В точку" идеально
+    if ((diff === 'pirate' || diff === 'legend') && room.config.spot) {
+        // Если ожидание почти равно ставке (разница < 0.3)
+        // Легенда рискует чаще (50% шанс), если видит идеальное совпадение
+        if (Math.abs(expectedTotal - needed) < 0.35) {
+            const risk = diff === 'legend' ? 0.6 : 0.3;
+            if (Math.random() < risk) {
+                handleCall(null, 'spot', room, bot);
+                return;
+            }
         }
     }
 
     // --- РЕШЕНИЕ: ВЕРИТЬ ИЛИ НЕТ ---
-    // Если ставка (needed) сильно превышает ожидание -> БЛЕФ
+    // Если ставка (needed) превышает ожидание + порог -> БЛЕФ
     if (needed > expectedTotal + threshold) {
-        // Умная защита: Если ставка маленькая (1-2), Пират почти всегда повышает, даже если не верит
-        if (diff === 'pirate' && needed <= 2 && totalDiceInGame > 4 && Math.random() < 0.85) {
-             // FORCED RAISE (БЛЕФУЕМ В ОТВЕТ)
-             makeBotRaise(room, bot, lastBid, myHand);
+        // УМНАЯ ЗАЩИТА (Легенда и Пират)
+        // Если ставка мелкая (1-2), не вскрываем, а давим
+        if ((diff === 'pirate' || diff === 'legend') && needed <= 2 && totalDiceInGame > 4) {
+             makeBotRaise(room, bot, lastBid, myHand, diff);
         } else {
+             // Легенда чувствует блеф лучше
              handleCall(null, 'bluff', room, bot);
         }
     } else {
         // --- РЕШЕНИЕ: ПОВЫШАТЬ ---
-        makeBotRaise(room, bot, lastBid, myHand);
+        makeBotRaise(room, bot, lastBid, myHand, diff);
     }
 }
 
-// Вспомогательная функция для повышения ставки ботом
-function makeBotRaise(room, bot, lastBid, myHand) {
+// Улучшенная функция повышения
+function makeBotRaise(room, bot, lastBid, myHand, diff) {
     let nextQty = lastBid.quantity; 
     let nextFace = lastBid.faceValue + 1;
     
-    // 1. Пытаемся найти номинал, который есть у бота
+    // ЛЕГЕНДА: Пытается "утопить" игрока
+    // Если у Легенды много кубов одного вида, он сразу задирает ставку на них
+    if (diff === 'legend' && !room.config.strict && Math.random() < 0.4) {
+        // Ищем номинал, которого у нас дофига (3+)
+        for(let f=2; f<=6; f++) {
+            const count = (myHand[f]||0) + (room.config.jokers ? (myHand[1]||0) : 0);
+            if (count >= 3 && (lastBid.quantity < count + 1)) {
+                // БАМ! Ставим сразу много, заставляя игрока паниковать
+                makeBidInternal(room, bot, count + 1, f);
+                return;
+            }
+        }
+    }
+
+    // Стандартное умное повышение (как у Пирата)
     let bestFaceToBid = null;
     if (!room.config.strict) {
         for (let f = lastBid.faceValue + 1; f <= 6; f++) {
             const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
-            if (count >= 1) { bestFaceToBid = f; break; }
+            // Легенда повышает только если есть хотя бы 2 куба поддержки (надежность)
+            // Пират - если хотя бы 1
+            const minSupport = (diff === 'legend') ? 2 : 1;
+            if (count >= minSupport) { bestFaceToBid = f; break; }
         }
     }
 
     if (bestFaceToBid) {
-        // Повышаем номинал (количество то же)
         nextFace = bestFaceToBid;
     } else {
-        // Если хорошего номинала нет, повышаем количество
-        // Но ставим на то, чего у нас больше всего (или рандом, если ничего нет)
+        // Повышаем количество
         nextQty = lastBid.quantity + 1;
-        
-        // Выбираем лучший номинал для ставки
+        // Ищем лучший номинал (где больше всего кубов)
         let maxCount = -1;
         let targetF = 2;
-        for(let f=2; f<=6; f++) {
+        // Легенда старается избегать единиц в ставках
+        const startSearch = (diff === 'legend') ? 2 : 1; 
+        
+        for(let f=startSearch; f<=6; f++) {
+             // Легенда не считает джокеров в ставку (чтобы не подставиться), если не режим джокеров
              const c = (myHand[f]||0) + (room.config.jokers ? (myHand[1] || 0) : 0);
              if(c > maxCount) { maxCount = c; targetF = f; }
         }
         nextFace = targetF;
     }
 
-    // Коррекция для строгого режима
+    // Коррекции
     if (room.config.strict) { 
         nextQty = lastBid.quantity + 1; 
         nextFace = Math.floor(Math.random() * 6) + 1; 
     } 
     
-    // Финальная проверка валидности (чтобы не поставить face > 6)
     if (nextFace > 6) { nextFace = 2; nextQty = lastBid.quantity + 1; }
     if (nextQty <= lastBid.quantity && nextFace <= lastBid.faceValue) { nextQty = lastBid.quantity + 1; }
 
@@ -1182,14 +1217,91 @@ io.on('connection', (socket) => {
         let isCreator = false;
 
         // --- PVE ---
-        if (mode === 'pve') {
+         if (mode === 'pve') {
             const newId = 'CPU_' + Math.random().toString(36).substring(2,6);
-            room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: { dice: Math.max(3, options.dice), players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty }, isPvE: true };
-            rooms.set(newId, room); isCreator = true;
-            room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: true, isCreator: true, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
-            const botNames = ['Джек', 'Барбосса', 'Уилл', 'Дейви Джонс', 'Тич', 'Гиббс'];
-            for(let i=0; i<options.players-1; i++) { room.players.push({ id: 'bot_' + Math.random(), name: `${botNames[i%botNames.length]} (Бот)`, rank: options.difficulty === 'pirate' ? 'Капитан' : 'Матрос', dice: [], diceCount: room.config.dice, ready: true, isCreator: false, isBot: true, equipped: { frame: 'frame_default' }, rankLevel: 0 }); }
-            socket.join(newId); startNewRound(room, true); return;
+            room = { 
+                id: newId, 
+                players: [], 
+                status: 'LOBBY', 
+                currentTurn: 0, 
+                currentBid: null, 
+                history: [], 
+                timerId: null, 
+                turnDeadline: 0, 
+                config: { 
+                    dice: Math.max(3, options.dice), 
+                    players: options.players, 
+                    time: 30, 
+                    jokers: options.jokers, 
+                    spot: options.spot, 
+                    strict: options.strict, 
+                    difficulty: options.difficulty 
+                }, 
+                isPvE: true 
+            };
+            rooms.set(newId, room); 
+            isCreator = true;
+            
+            // Добавляем игрока (Создателя)
+            room.players.push({ 
+                id: socket.id, 
+                tgId: userId, 
+                name: uData.name, 
+                rank: rInfo.current.name, 
+                dice: [], 
+                diceCount: room.config.dice, 
+                ready: true, 
+                isCreator: true, 
+                equipped: uData.equipped, 
+                skillsUsed: [], 
+                rankLevel: rInfo.current.level 
+            });
+            
+            // --- СПИСКИ ИМЕН ПО СЛОЖНОСТИ (по 9 имен) ---
+            const namesMedium = [
+                'Гиббс', 'Пинтел', 'Раджетти', 'Марти', 'Коттон', 'Малрой', 'Скрам', 'Мёртогг', 'Попугай' // Матросы
+            ];
+            
+            const namesPirate = [
+                'Джек Воробей', 'Уилл Тернер', 'Элизабет', 'Капитан Тиг', 'Сяо Фэнь', 'Флинт', 'Джон Сильвер', 'Прихлоп Билл', 'Анжелика' // Пираты
+            ];
+            
+            const namesLegend = [
+                'Дейви Джонс', 'Черная Борода', 'Барбосса', 'Шри Сумбаджи', 'Салазар', 'Калипсо', 'Капитан Крюк', 'Чёрный Барт', 'Амман Корсар' // Легенды
+            ];
+
+            // Выбираем список и ранг
+            let targetNames = namesMedium;
+            let botRank = 'Матрос';
+
+            if (options.difficulty === 'pirate') {
+                targetNames = namesPirate;
+                botRank = 'Капитан';
+            }
+            if (options.difficulty === 'legend') {
+                targetNames = namesLegend;
+                botRank = 'Легенда морей';
+            }
+            
+            // Создаем ботов
+            for(let i=0; i<options.players-1; i++) { 
+                room.players.push({ 
+                    id: 'bot_' + Math.random(), 
+                    // Берем имя из выбранного списка по кругу
+                    name: `${targetNames[i % targetNames.length]}`, 
+                    rank: botRank, 
+                    dice: [], 
+                    diceCount: room.config.dice, 
+                    ready: true, 
+                    isCreator: false, 
+                    isBot: true, 
+                    equipped: { frame: 'frame_default' }, 
+                    rankLevel: 0 
+                }); 
+            }
+            socket.join(newId); 
+            startNewRound(room, true); 
+            return;
         }
         
         // --- PVP ---
@@ -1282,6 +1394,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
