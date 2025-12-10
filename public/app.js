@@ -39,26 +39,42 @@ window.uiPrompt = (text, onSubmit) => {
     document.getElementById('sys-btn-ok').onclick = () => { const val = ui.input.value.trim(); if(val) { ui.close(); onSubmit(val); } };
 };
 
-// Открыть/Закрыть панель
+// --- EMOJI LOGIC ---
+
+// 1. Функция переключения (Открыть/Закрыть)
 window.toggleEmojiPanel = () => {
     const panel = document.getElementById('emoji-panel');
-    panel.classList.toggle('hidden');
+    // Если есть класс hidden - убираем (показываем), если нет - добавляем (скрываем)
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+    } else {
+        panel.classList.add('hidden');
+    }
 };
 
-// Отправить и закрыть
+// 2. Отправить и закрыть
 window.sendEmoteAndClose = (name) => {
-    socket.emit('sendEmote', name); // Отправляем на сервер
-    document.getElementById('emoji-panel').classList.add('hidden'); // Закрываем
-    
-    // Вибрация для тактильного отклика
+    socket.emit('sendEmote', name); 
+    document.getElementById('emoji-panel').classList.add('hidden'); 
     if(tg) tg.HapticFeedback.selectionChanged();
 };
 
-// Закрыть панель, если кликнули мимо (для удобства)
+// 3. Закрыть при клике в пустоту (ИСПРАВЛЕНО)
 document.addEventListener('click', (e) => {
     const panel = document.getElementById('emoji-panel');
     const btn = document.querySelector('.btn-emoji-toggle');
-    if (panel && !panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn) {
+
+    // Если панели или кнопки нет - выходим
+    if (!panel || !btn) return;
+
+    // Проверяем:
+    // 1. Панель открыта?
+    // 2. Клик был НЕ внутри панели?
+    // 3. Клик был НЕ по кнопке (и не по картинке внутри кнопки)?
+    if (!panel.classList.contains('hidden') && 
+        !panel.contains(e.target) && 
+        !btn.contains(e.target)) {
+        
         panel.classList.add('hidden');
     }
 });
@@ -816,6 +832,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
