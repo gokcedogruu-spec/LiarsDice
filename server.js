@@ -740,7 +740,6 @@ function handleBotMove(room) {
         // 3. Ставка похожа на правду -> Повышаем
         makeBotRaise(room, bot, lastBid, myHand, diff, totalDiceInGame);
     }
-}
 // Улучшенная функция повышения
 function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
     let nextQty = lastBid.quantity; 
@@ -1618,6 +1617,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
