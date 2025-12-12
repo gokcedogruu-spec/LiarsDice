@@ -19,6 +19,37 @@ const MONGO_URL = process.env.MONGO_URL;
 // --- 0. INIT BOT ---
 const bot = token ? new TelegramBot(token, { polling: true }) : null;
 
+// --- INLINE QUERY HANDLER (SHARE GAME) ---
+if (bot) {
+    bot.on('inline_query', (query) => {
+        const roomId = query.query.trim(); // Получаем то, что передал клиент (ID комнаты)
+        
+        // Если ID пустой, ничего не делаем
+        if (!roomId) return;
+
+        // Формируем красивую карточку
+        const results = [{
+            type: 'photo', // ТЕПЕРЬ ЭТО ФОТО
+            id: 'invite_' + roomId,
+            photo_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/logotg_one.png', // Большая картинка
+            thumb_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/logotg_one.png', // Маленькая превью
+            title: '🏴‍☠️ Присоединиться',
+            caption: `☠️ Го в костяшки! \nКод комнаты: <b>${roomId}</b>`, // Текст теперь тут
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[
+                    {
+                        text: "ВОЙТИ В КОМНАТУ",
+                        url: `https://t.me/zmssliarsbot/game?startapp=${roomId}` 
+                    }
+                ]]
+            }
+        }];
+
+        bot.answerInlineQuery(query.id, results, { cache_time: 0 });
+    });
+}
+
 // --- 1. DATABASE ---
 mongoose.set('strictQuery', false);
 if (MONGO_URL) {
@@ -198,7 +229,7 @@ async function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp
     if (type === 'win_pve') {
         if (difficulty === 'medium') { baseWinXP = 100; baseWinCoins = 100; }
         else if (difficulty === 'pirate') { baseWinXP = 500; baseWinCoins = 500; }
-        else if (difficulty === 'legend') { baseWinXP = 1000; baseWinCoins = 1000; } // НОВАЯ НАГРАДА
+        else if (difficulty === 'legend') { baseWinXP = 1000; baseWinCoins = 1000; }
     }
 
     let potCoins = 0; let potXP = 0;
@@ -366,10 +397,52 @@ function makeBidInternal(room, player, quantity, faceValue) {
     nextTurn(room);
 }
 
-// --- REVEAL & FINALIZE LOGIC ---
 function checkEliminationAndContinue(room, loser, killer) {
-    // Not used directly anymore in handleCall, but used for Skills/Timeouts
     finalizeRound(room, loser, killer);
+}
+
+// --- BOT EMOTES & SKILLS ---
+function sendBotEmote(room, bot, type) {
+    const chance = room.config.difficulty === 'legend' ? 0.5 : 0.3;
+    if (Math.random() > chance && type !== 'win_bluff') return;
+
+    const emotes = {
+        'bluff': 'skeptic',  
+        'raise': 'bully',    
+        'win_bluff': 'gigachad', 
+        'wait': 'button',    
+        'low_hp': 'sad',     
+        'panic': 'panic'     
+    };
+
+    if (emotes[type]) {
+        setTimeout(() => {
+            io.to(room.id).emit('emoteReceived', { id: bot.id, emoji: emotes[type] });
+        }, 500); 
+    }
+}
+
+function tryBotSkill(room, bot) {
+    if (room.config.difficulty !== 'legend') return false;
+    if (bot.skillsUsed && bot.skillsUsed.length > 0) return false; 
+
+    // LUCKY
+    if (bot.diceCount < 4 && Math.random() < 0.7) {
+        bot.skillsUsed = ['lucky'];
+        const successChance = 0.65; 
+
+        if (Math.random() < successChance) {
+            bot.diceCount++;
+            bot.dice.push(Math.floor(Math.random()*6)+1);
+            io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} (Бот) достал кубик из рукава!`, type: 'alert' });
+            sendBotEmote(room, bot, 'win_bluff'); 
+        } else {
+            io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} уронил кубик!`, type: 'info' });
+            sendBotEmote(room, bot, 'low_hp'); 
+        }
+        return false; 
+    }
+    return false;
 }
 
 function finalizeRound(room, forcedLoser = null, forcedWinner = null) {
@@ -382,17 +455,8 @@ function finalizeRound(room, forcedLoser = null, forcedWinner = null) {
         loser = room.pendingResult.loser;
         killer = room.pendingResult.winner;
         
-        // --- ЭМОЦИИ ПОСЛЕ ВСКРЫТИЯ ---
-        // 1. Если победил бот, а проиграл человек -> GIGACHAD
-        if (killer.isBot && !loser.isBot) {
-            sendBotEmote(room, killer, 'win_bluff');
-        }
-        
-        // 2. Если бот потерял кубик и у него останется 1 -> SAD
-        // (Сейчас diceCount еще старый, если он == 2, значит станет 1)
-        if (loser.isBot && loser.diceCount === 2) {
-            sendBotEmote(room, loser, 'low_hp');
-        }
+        if (killer.isBot && !loser.isBot) sendBotEmote(room, killer, 'win_bluff');
+        if (loser.isBot && loser.diceCount === 2) sendBotEmote(room, loser, 'low_hp');
 
         room.pendingResult = null; 
     }
@@ -402,11 +466,13 @@ function finalizeRound(room, forcedLoser = null, forcedWinner = null) {
     const betCoins = room.config.betCoins || 0; 
     const betXp = room.config.betXp || 0;
 
-    if (loser.diceCount === 0) {
+    loser.diceCount--;
+
+    if (loser.diceCount <= 0) {
+        loser.diceCount = 0;
         if (!loser.isBot && loser.tgId) {
             updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0).then(res => { if(res) { pushProfileUpdate(loser.tgId); io.to(loser.id).emit('matchResults', res); } });
         }
-        // Используем имя из объекта loser, если оно есть (фикс для admin force)
         const loserName = loser.name || "Игрок";
         io.to(room.id).emit('gameEvent', { text: `💀 ${loserName} выбывает!`, type: 'error' });
     }
@@ -445,12 +511,10 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
     r.players.forEach(p => { 
         if (p.diceCount > 0) { 
             p.dice.forEach(d => { if (d === targetFace) total++; else if (r.config.jokers && d === 1 && targetFace !== 1) total++; }); 
-            // FIX: Использование ID вместо имени для уникальности ботов
             allDice[p.id] = { dice: p.dice, id: p.id, skin: p.equipped.skin, name: p.name }; 
         } 
     });
     
-    // NEW: REVEAL PHASE LOGIC
     let loser, winnerOfRound, msg;
     if (type === 'bluff') {
         if (total < r.currentBid.quantity) { msg = `На столе ${total}. Блеф! ${bidder.name} теряет куб.`; loser = bidder; winnerOfRound = challenger; } 
@@ -460,93 +524,21 @@ function handleCall(socket, type, roomOverride = null, playerOverride = null) {
         else { msg = `Мимо! На столе ${total}. ${challenger.name} теряет куб.`; loser = challenger; winnerOfRound = bidder; }
     }
 
-    // Decrement dice immediately logic kept in finalizeRound, here we just prep
-    loser.diceCount--; 
+    io.to(r.id).emit('bluffEffect', { playerId: challenger.id, type: type });
 
-    // FIX: NEW DELAYED ANIMATION LOGIC
-    // 1. TRIGGER CLIENT ANIMATION (RED FLASH, CLOUD, VIBRATION)
-    io.to(r.id).emit('bluffEffect', { 
-        playerId: challenger.id, 
-        type: type 
-    });
-
-    // 2. SET TIMEOUT FOR ACTUAL REVEAL
     setTimeout(() => {
-        // SET ROOM STATE TO REVEAL
         r.status = 'REVEAL';
         r.pendingResult = { loser, winner: winnerOfRound };
-        r.readyPlayers = new Set(); // Track who clicked READY
-
-        // SAVE DATA FOR RECONNECT (NEW LINE)
-        // FIX: ADDED REMAINING TIME INFO FOR CLIENT
+        r.readyPlayers = new Set(); 
         r.revealData = { allDice: allDice, message: msg, timeLeft: 30000, animate: true }; 
         
-        // Add bots to ready immediately
         r.players.forEach(p => { if (p.isBot || p.diceCount === 0) r.readyPlayers.add(p.id); });
 
-        // Broadcast REVEAL info
-        io.to(r.id).emit('revealPhase', { 
-            allDice: allDice, 
-            message: msg,
-            timeLeft: 30000, // Send duration to client
-            animate: true // Flag to tell client to animate reveal
-        });
-
-        // Auto-proceed after 30s
+        io.to(r.id).emit('revealPhase', { allDice: allDice, message: msg, timeLeft: 30000, animate: true });
         r.timerId = setTimeout(() => finalizeRound(r), 30000);
-    }, 2500); // 2.5 seconds delay for animation
+    }, 2500); 
 }
 
-// ============================================================
-// === ЛОГИКА БОТОВ (ЭМОЦИИ, НАВЫКИ, ПОВЫШЕНИЕ) ===
-// ============================================================
-
-function sendBotEmote(room, bot, type) {
-    // Шанс отправки (на Легенде 50%, иначе 30%)
-    // Gigachad отправляем всегда (100%), если тип 'win_bluff'
-    const chance = room.config.difficulty === 'legend' ? 0.5 : 0.3;
-    if (Math.random() > chance && type !== 'win_bluff') return;
-
-    const emotes = {
-        'bluff': 'skeptic',  // Перед тем как сказать "Не верю"
-        'raise': 'bully',    // Когда жестко повышает
-        'win_bluff': 'gigachad', // Когда игрок ошибся и бот выиграл
-        'wait': 'button',    // Когда игрок долго думает
-        'low_hp': 'sad',     // Когда остался 1 кубик
-        'panic': 'panic'     // Когда игрок жестко повысил
-    };
-
-    if (emotes[type]) {
-        setTimeout(() => {
-            io.to(room.id).emit('emoteReceived', { id: bot.id, emoji: emotes[type] });
-        }, 500); 
-    }
-}
-function tryBotSkill(room, bot) {
-    if (room.config.difficulty !== 'legend') return false;
-    if (bot.skillsUsed && bot.skillsUsed.length > 0) return false; 
-
-    // LUCKY: Пытаемся использовать почти в каждой игре, когда кубов становится меньше
-    // Условие: меньше 4 кубов. Шанс попытки: 70% каждый ход (было 20%)
-    if (bot.diceCount < 4 && Math.random() < 0.7) {
-        bot.skillsUsed = ['lucky'];
-        const successChance = 0.65; // Шанс успеха самого скилла
-
-        if (Math.random() < successChance) {
-            bot.diceCount++;
-            bot.dice.push(Math.floor(Math.random()*6)+1);
-            io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} (Бот) достал кубик из рукава!`, type: 'alert' });
-            sendBotEmote(room, bot, 'win_bluff'); 
-        } else {
-            io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} уронил кубик!`, type: 'info' });
-            sendBotEmote(room, bot, 'low_hp'); 
-        }
-        return false; 
-    }
-    return false;
-}
-
-// Улучшенная функция повышения + КОМАНДНАЯ РАБОТА
 function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
     let nextQty = lastBid.quantity; 
     let nextFace = lastBid.faceValue + 1;
@@ -557,10 +549,7 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
 
     let bestFaceToBid = null;
     if (!room.config.strict) {
-        // !!! ЗАПРЕТ НА 1 !!!
-        // Начинаем искать номинал выше текущего, но если текущий был 1, то начнем с 2.
         let searchFrom = Math.max(2, lastBid.faceValue + 1);
-
         for (let f = searchFrom; f <= 6; f++) {
             const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
             const minSupport = (diff === 'legend') ? 2 : 1;
@@ -570,22 +559,13 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
 
     if (bestFaceToBid) {
         nextFace = bestFaceToBid;
-        if (isGangingUp) {
-            nextQty = lastBid.quantity + 1;
-            sendBotEmote(room, bot, 'raise');
-        }
+        if (isGangingUp) { nextQty = lastBid.quantity + 1; sendBotEmote(room, bot, 'raise'); }
     } else {
         nextQty = lastBid.quantity + 1;
-        if (isGangingUp && totalDice > 10) {
-            nextQty = lastBid.quantity + 2;
-            sendBotEmote(room, bot, 'raise');
-        }
+        if (isGangingUp && totalDice > 10) { nextQty = lastBid.quantity + 2; sendBotEmote(room, bot, 'raise'); }
 
         let maxCount = -1;
         let targetF = 2;
-        
-        // !!! ЗАПРЕТ НА 1 !!!
-        // Всегда ищем от 2 до 6
         for(let f=2; f<=6; f++) {
              const c = (myHand[f]||0) + (room.config.jokers ? (myHand[1] || 0) : 0);
              if(c > maxCount) { maxCount = c; targetF = f; }
@@ -596,7 +576,7 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
     if (room.config.strict) { 
         nextQty = lastBid.quantity + 1; 
         nextFace = Math.floor(Math.random() * 6) + 1; 
-        if (nextFace === 1) nextFace = 2; // Даже в рандоме строгого режима убираем 1
+        if (nextFace === 1) nextFace = 2;
     } 
     
     if (nextFace > 6) { nextFace = 2; nextQty = lastBid.quantity + 1; }
@@ -616,9 +596,7 @@ function handleBotMove(room) {
     
     if (lastBid && room.lastQuantity && lastBid.quantity >= room.lastQuantity + 2) {
         const prevIdx = (room.currentTurn - 1 + room.players.length) % room.players.length;
-        if (!room.players[prevIdx].isBot && Math.random() < 0.7) {
-             sendBotEmote(room, bot, 'panic');
-        }
+        if (!room.players[prevIdx].isBot && Math.random() < 0.7) sendBotEmote(room, bot, 'panic');
     }
     if(lastBid) room.lastQuantity = lastBid.quantity;
 
@@ -628,37 +606,28 @@ function handleBotMove(room) {
     bot.dice.forEach(d => myHand[d] = (myHand[d] || 0) + 1);
     const diff = room.config.difficulty;
 
-    // === ПЕРВЫЙ ХОД ===
     if (!lastBid) { 
         let bestFace = 6; 
         let maxCount = 0;
         
-        // !!! ЖЕСТКИЙ ЗАПРЕТ НА 1 !!!
-        // Ищем лучший номинал ТОЛЬКО от 2 до 6
         for(let f=2; f<=6; f++) { 
-            // Считаем номинал + джокеры (они универсальны)
             const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
             if(count > maxCount) { maxCount = count; bestFace = f; } 
         }
         
-        // Старт: 1/3.5 от стола
         let startQty = Math.max(1, Math.floor(totalDiceInGame / 3.5));
-        
-        // Если у нас на руках больше, чем формула -> ставим уверенно
         if (maxCount >= startQty) startQty = maxCount; 
 
         makeBidInternal(room, bot, startQty, bestFace); 
         return; 
     }
 
-    // ... (Остальная часть функции, анализ и решение, без изменений) ...
     const needed = lastBid.quantity; 
     const face = lastBid.faceValue;
     const inHand = myHand[face] || 0; 
     const inHandJokers = room.config.jokers ? (myHand[1] || 0) : 0;
     
     const mySureCount = (face === 1 && room.config.jokers) ? inHand : (inHand + (face !== 1 ? inHandJokers : 0));
-    
     const unknownDice = totalDiceInGame - bot.diceCount;
     const probPerDie = room.config.jokers ? (face===1 ? 1/6 : 2/6) : 1/6;
     const expectedTotal = mySureCount + (unknownDice * probPerDie);
@@ -692,112 +661,6 @@ function handleBotMove(room) {
     }
 }
 
-    // --- АНАЛИЗ ---
-    const needed = lastBid.quantity; 
-    const face = lastBid.faceValue;
-    const inHand = myHand[face] || 0; 
-    const inHandJokers = room.config.jokers ? (myHand[1] || 0) : 0;
-    
-    const mySureCount = (face === 1 && room.config.jokers) ? inHand : (inHand + (face !== 1 ? inHandJokers : 0));
-    
-    const unknownDice = totalDiceInGame - bot.diceCount;
-    const probPerDie = room.config.jokers ? (face===1 ? 1/6 : 2/6) : 1/6;
-    const expectedTotal = mySureCount + (unknownDice * probPerDie);
-    
-    let threshold = 0.8; 
-    if (diff === 'pirate') threshold = -0.2; 
-    if (diff === 'legend') threshold = -0.8; // Легенда очень подозрителен
-
-    // --- "В ТОЧКУ" ---
-    if ((diff === 'pirate' || diff === 'legend') && room.config.spot) {
-        if (Math.abs(expectedTotal - needed) < 0.35) {
-            const risk = diff === 'legend' ? 0.6 : 0.3;
-            if (Math.random() < risk) { handleCall(null, 'spot', room, bot); return; }
-        }
-    }
-
-    // --- РЕШЕНИЕ ---
-    
-    // 1. ИСПРАВЛЕНИЕ ТУПОСТИ: Если у нас на руках уже есть нужное кол-во -> ПОВЫШАЕМ
-    // Бот никогда не скажет "не верю", если видит карты у себя
-    if (mySureCount >= needed) {
-        makeBotRaise(room, bot, lastBid, myHand, diff, totalDiceInGame);
-        return;
-    }
-
-    // 2. Если ставка кажется блефом (математика не сходится)
-    if (needed > expectedTotal + threshold) {
-        // Умная защита: Если ставка мелкая (меньше 40% стола), не вскрываем, а давим
-        const safeZone = totalDiceInGame * 0.4;
-        
-        if (needed <= safeZone) {
-             makeBotRaise(room, bot, lastBid, myHand, diff, totalDiceInGame);
-        } else {
-             sendBotEmote(room, bot, 'bluff'); // Скептик
-             handleCall(null, 'bluff', room, bot);
-        }
-    } else {
-        // 3. Ставка похожа на правду -> Повышаем
-        makeBotRaise(room, bot, lastBid, myHand, diff, totalDiceInGame);
-    }
-// Улучшенная функция повышения
-function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
-    let nextQty = lastBid.quantity; 
-    let nextFace = lastBid.faceValue + 1;
-    
-    const nextIdx = (room.currentTurn + 1) % room.players.length;
-    const nextPlayer = room.players[nextIdx];
-    const isGangingUp = (diff === 'legend' && !nextPlayer.isBot && Math.random() < 0.6); 
-
-    let bestFaceToBid = null;
-    if (!room.config.strict) {
-        // !!! ЗАПРЕТ НА 1 !!!
-        // Начинаем искать номинал выше текущего, но если текущий был 1, то начнем с 2.
-        let searchFrom = Math.max(2, lastBid.faceValue + 1);
-
-        for (let f = searchFrom; f <= 6; f++) {
-            const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
-            const minSupport = (diff === 'legend') ? 2 : 1;
-            if (count >= minSupport) { bestFaceToBid = f; break; }
-        }
-    }
-
-    if (bestFaceToBid) {
-        nextFace = bestFaceToBid;
-        if (isGangingUp) {
-            nextQty = lastBid.quantity + 1;
-            sendBotEmote(room, bot, 'raise');
-        }
-    } else {
-        nextQty = lastBid.quantity + 1;
-        if (isGangingUp && totalDice > 10) {
-            nextQty = lastBid.quantity + 2;
-            sendBotEmote(room, bot, 'raise');
-        }
-
-        let maxCount = -1;
-        let targetF = 2;
-        
-        // !!! ЗАПРЕТ НА 1 !!!
-        // Всегда ищем от 2 до 6
-        for(let f=2; f<=6; f++) {
-             const c = (myHand[f]||0) + (room.config.jokers ? (myHand[1] || 0) : 0);
-             if(c > maxCount) { maxCount = c; targetF = f; }
-        }
-        nextFace = targetF;
-    }
-
-    if (room.config.strict) { 
-        nextQty = lastBid.quantity + 1; 
-        nextFace = Math.floor(Math.random() * 6) + 1; 
-        if (nextFace === 1) nextFace = 2; // Даже в рандоме строгого режима убираем 1
-    } 
-    
-    if (nextFace > 6) { nextFace = 2; nextQty = lastBid.quantity + 1; }
-    if (nextQty <= lastBid.quantity && nextFace <= lastBid.faceValue) { nextQty = lastBid.quantity + 1; }
-
-    makeBidInternal(room, bot, nextQty, nextFace);
-}
 function handleTimeout(room) {
     if (room.status !== 'PLAYING') return;
     const loser = room.players[room.currentTurn];
@@ -815,19 +678,15 @@ function resetTurnTimer(room) {
     if (!currentPlayer || currentPlayer.diceCount === 0) { nextTurn(room); return; }
     if (currentPlayer.isBot) { const thinkTime = Math.random() * 2000 + 2000; room.timerId = setTimeout(() => handleBotMove(room), thinkTime); } 
     else { 
-        // ХОД ЧЕЛОВЕКА
         room.timerId = setTimeout(() => handleTimeout(room), duration); 
-        
-        // --- ЭМОЦИЯ BUTTON (ЖДУН) ---
         const waitTime = 7000 + Math.random() * 5000;
         const turnCheck = room.currentTurn;
-        
         setTimeout(() => {
             if (room.status === 'PLAYING' && room.currentTurn === turnCheck) {
                 const bots = room.players.filter(p => p.isBot && p.diceCount > 0);
                 if (bots.length > 0) {
                     const impatientBot = bots[Math.floor(Math.random() * bots.length)];
-                    sendBotEmote(room, impatientBot, 'wait'); 
+                    sendBotEmote(room, impatientBot, 'wait');
                 }
             }
         }, waitTime);
@@ -837,54 +696,27 @@ function resetTurnTimer(room) {
 function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
     const i = room.players.findIndex(p => p.id === socketId);
     if (i === -1) return;
-    const player = room.players[i]; 
-    const wasCreator = player.isCreator;
+    const player = room.players[i]; const wasCreator = player.isCreator;
     
-    // Если игрок вышел во время игры
     if (room.status === 'PLAYING' || room.status === 'REVEAL') {
         if (isVoluntary) {
-            player.hasLeft = true; // Помечаем как дезертира
+            player.hasLeft = true;
             io.to(room.id).emit('gameEvent', { text: `🏃‍♂‍ ${player.name} сдался и покинул стол!`, type: 'error' });
-            
-            if (player.diceCount > 0) { 
-                player.diceCount = 0; 
-                if (!player.isBot && player.tgId) { 
-                    updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp)
-                        .then(res => { if(res) io.to(player.id).emit('matchResults', res); }); 
-                } 
-            }
-            
-            // Если идет вскрытие, авто-готовность (чтобы не ждать)
+            if (player.diceCount > 0) { player.diceCount = 0; if (!player.isBot && player.tgId) { updateUserXP(player.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, room.config.betCoins, room.config.betXp).then(res => { if(res) io.to(player.id).emit('matchResults', res); }); } }
             if(room.status === 'REVEAL') finalizeRound(room); 
             else {
-                // Если был ход этого игрока
-                if (i === room.currentTurn) { 
-                    if (room.currentTurn >= room.players.length) room.currentTurn = 0; 
-                    resetTurnTimer(room); 
-                } else if (i < room.currentTurn) { 
-                    room.currentTurn--; 
-                }
-                
-                // Проверяем победителя
+                if (i === room.currentTurn) { if (room.currentTurn >= room.players.length) room.currentTurn = 0; resetTurnTimer(room); } else if (i < room.currentTurn) { room.currentTurn--; }
                 const active = room.players.filter(p => p.diceCount > 0);
                 if (active.length === 1) {
-                    const winner = active[0]; 
-                    room.status = 'FINISHED'; 
-                    if (room.timerId) clearTimeout(room.timerId);
+                    const winner = active[0]; room.status = 'FINISHED'; if (room.timerId) clearTimeout(room.timerId);
                     if (!winner.isBot && winner.tgId) {
-                        const type = room.isPvE ? 'win_pve' : 'win_game'; 
-                        const diff = room.isPvE ? room.config.difficulty : null; 
-                        const multiplier = room.players.length; 
-                        updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier)
-                            .then(res => { pushProfileUpdate(winner.tgId); io.to(winner.id).emit('matchResults', res); });
+                        const type = room.isPvE ? 'win_pve' : 'win_game'; const diff = room.isPvE ? room.config.difficulty : null; const multiplier = room.players.length; 
+                        updateUserXP(winner.tgId, type, diff, room.config.betCoins, room.config.betXp, multiplier).then(res => { pushProfileUpdate(winner.tgId); io.to(winner.id).emit('matchResults', res); });
                     }
                     io.to(room.id).emit('gameOver', { winner: winner.name });
-                } else { 
-                    broadcastGameState(room); 
-                }
+                } else { broadcastGameState(room); }
             }
         } else { 
-            // Разрыв соединения (не добровольно)
             if (room.status === 'REVEAL') {
                if(!room.readyPlayers) room.readyPlayers = new Set();
                room.readyPlayers.add(player.id);
@@ -893,30 +725,19 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
             io.to(room.id).emit('gameEvent', { text: `🔌 ${player.name} отключился...`, type: 'error' }); 
         }
     } else {
-        // Выход из Лобби или Финала -> Удаляем игрока
         io.to(room.id).emit('gameEvent', { text: `🏃‍♂‍ ${player.name} ушел!`, type: 'error' });
         room.players.splice(i, 1);
-
-        // Если в комнате не осталось людей (только боты) -> Удаляем комнату через таймер
         if (room.players.filter(p => !p.isBot).length === 0) { 
             if(room.timerId) clearTimeout(room.timerId); 
             console.log(`Комната ${room.id} пуста. Удаление через 60 сек...`);
             room.deletionTimer = setTimeout(() => {
-                if (rooms.has(room.id)) {
-                    rooms.delete(room.id);
-                    console.log(`Комната ${room.id} удалена.`);
-                }
+                if (rooms.has(room.id)) { rooms.delete(room.id); console.log(`Комната ${room.id} удалена.`); }
             }, 60000); 
         }
         else { 
-            // ПЕРЕДАЧА ЛИДЕРСТВА
             if (wasCreator) {
-                // Ищем первого живого человека (не бота)
                 const newLeader = room.players.find(p => !p.isBot);
-                if (newLeader) {
-                    newLeader.isCreator = true;
-                    io.to(room.id).emit('gameEvent', { text: `👑 ${newLeader.name} теперь капитан!`, type: 'info' });
-                }
+                if (newLeader) { newLeader.isCreator = true; io.to(room.id).emit('gameEvent', { text: `👑 ${newLeader.name} теперь капитан!`, type: 'info' }); }
             }
             broadcastRoomUpdate(room); 
         }
@@ -976,14 +797,10 @@ function handleSkill(socket, skillType) {
             
             if (Math.random() < 0.5) {
                 io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} пристрелил ${enemy.name}!`, type: 'info' });
-                enemy.diceCount = 0; 
-                // ЯВНАЯ ПЕРЕДАЧА: (комната, проигравший, победитель)
-                checkEliminationAndContinue(room, enemy, player);
+                enemy.diceCount = 0; checkEliminationAndContinue(room, enemy, player);
             } else {
                 io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} промахнулся и застрелился!`, type: 'error' });
-                player.diceCount = 0; 
-                // ЯВНАЯ ПЕРЕДАЧА: (комната, проигравший, победитель)
-                checkEliminationAndContinue(room, player, enemy);
+                player.diceCount = 0; checkEliminationAndContinue(room, player, enemy);
             }
             if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('kill'); broadcastGameState(room);
         }
@@ -1057,7 +874,6 @@ if (bot) {
             const room = getRoomBySocketId(socketId); 
             if (!room || room.status !== 'PLAYING') return bot.sendMessage(chatId, "Not active");
             room.players.forEach(p => { if (p.tgId !== ADMIN_ID) p.diceCount = 0; });
-            // Fix: передаем объект с именем для корректного лога
             checkEliminationAndContinue(room, {diceCount:0, isBot:true, name: "Админская кара"}, null);
             bot.sendMessage(chatId, "🏆 Force Win!");
         }
@@ -1076,37 +892,6 @@ if (bot) {
     });
 }
 
-// --- INLINE QUERY HANDLER (SHARE GAME) ---
-if (bot) {
-    bot.on('inline_query', (query) => {
-        const roomId = query.query.trim(); // Получаем то, что передал клиент (ID комнаты)
-        
-        // Если ID пустой, ничего не делаем
-        if (!roomId) return;
-
-        // Формируем красивую карточку
-        const results = [{
-            type: 'photo', // ТЕПЕРЬ ЭТО ФОТО
-            id: 'invite_' + roomId,
-            photo_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/logotg_one.png', // Большая картинка
-            thumb_url: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/logotg_one.png', // Маленькая превью
-            title: '🏴‍☠️ Присоединиться',
-            caption: `☠️ Го в костяшки! \nКод комнаты: <b>${roomId}</b>`, // Текст теперь тут
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [[
-                    {
-                        text: "ВОЙТИ В КОМНАТУ",
-                        url: `https://t.me/zmssliarsbot/game?startapp=${roomId}` 
-                    }
-                ]]
-            }
-        }];
-
-        bot.answerInlineQuery(query.id, results, { cache_time: 0 });
-    });
-}
-
 // --- SOCKET ---
 io.on('connection', (socket) => {
     socket.on('login', async ({ tgUser }) => {
@@ -1122,23 +907,12 @@ io.on('connection', (socket) => {
         for (const [roomId, room] of rooms) {
             if (room.status === 'PLAYING' || room.status === 'REVEAL') {
                 const existingPlayer = room.players.find(p => p.tgId === tgUser.id);
-                
-                // FIX: Check if player voluntarily left before rejoining
                 if (existingPlayer && !existingPlayer.hasLeft) {
                     existingPlayer.id = socket.id;
                     socket.join(roomId);
-                    
-                    // Send Dice
                     socket.emit('yourDice', existingPlayer.dice);
-                    
-                    // Send State
                     broadcastGameState(room);
-                    
-                    // If in Reveal Phase, send reveal data immediately
-                    if (room.status === 'REVEAL' && room.revealData) {
-                        socket.emit('revealPhase', room.revealData);
-                    }
-
+                    if (room.status === 'REVEAL' && room.revealData) socket.emit('revealPhase', room.revealData);
                     socket.emit('gameEvent', { text: '🔄 Вы вернулись в бой!', type: 'info' });
                 }
             }
@@ -1227,7 +1001,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // FRIEND ACTIONS
     socket.on('friendAction', async ({ action, payload }) => {
         if (!socket.tgUserId) return;
         const userId = socket.tgUserId;
@@ -1236,29 +1009,24 @@ io.on('connection', (socket) => {
         if (action === 'search') {
             let targetName = payload.trim().toLowerCase();
             if (targetName.startsWith('@')) targetName = targetName.substring(1);
-            
             const found = await User.findOne({
                 $and: [
                     { id: { $ne: userId } },
                     { $or: [{ username: targetName }, { name: new RegExp('^'+targetName+'$', 'i') }] }
                 ]
             });
-            
             if (found) socket.emit('friendSearchResult', { id: found.id, name: found.name });
             else socket.emit('friendSearchResult', null);
         }
-        
         else if (action === 'request') {
             let targetId = payload;
             if (typeof payload === 'string' && isNaN(parseInt(payload))) {
                  const ts = io.sockets.sockets.get(payload);
                  if(ts && ts.tgUserId) targetId = ts.tgUserId; else return socket.emit('errorMsg', 'Игрок не найден');
             } else targetId = parseInt(payload);
-            
             if(targetId === userId) return;
             let target = userCache.get(targetId);
             if(!target) { const t = await User.findOne({id: targetId}); if(t) target = t.toObject(); }
-            
             if(target && !target.requests.includes(userId) && !target.friends.includes(userId)) {
                 target.requests.push(userId);
                 if(userCache.has(targetId)) userCache.set(targetId, target);
@@ -1268,26 +1036,21 @@ io.on('connection', (socket) => {
                 socket.emit('errorMsg', 'Запрос отправлен!');
             } else socket.emit('errorMsg', 'Ошибка запроса');
         }
-        
         else if (action === 'accept') {
             const targetId = parseInt(payload);
             let target = userCache.get(targetId);
             if(!target) { const t = await User.findOne({id: targetId}); if(t) target = t.toObject(); }
-            
             if(target) {
                 if(!user.friends.includes(targetId)) user.friends.push(targetId);
                 if(!target.friends.includes(userId)) target.friends.push(userId);
                 user.requests = user.requests.filter(r => r !== targetId);
-                
                 userCache.set(userId, user); await saveUser(userId);
                 if(userCache.has(targetId)) userCache.set(targetId, target);
                 await User.updateOne({id: targetId}, {friends: target.friends});
-                
                 socket.emit('friendAction', { action: 'get' });
                 const ts = findSocketIdByUserId(targetId); if(ts) io.to(ts).emit('forceFriendUpdate');
             }
         }
-        
         else if (action === 'decline') {
             const targetId = parseInt(payload);
             if(user.friends.includes(targetId)) {
@@ -1307,7 +1070,6 @@ io.on('connection', (socket) => {
             userCache.set(userId, user); await saveUser(userId);
             socket.emit('friendAction', { action: 'get' });
         }
-
         else if (action === 'get') {
              const list = [];
              for (const fid of user.friends) {
@@ -1323,37 +1085,6 @@ io.on('connection', (socket) => {
                  if(r) reqs.push({id: rid, name: r.name});
              }
              socket.emit('friendUpdate', { friends: list, requests: reqs });
-        }
-    });
-    
-    // --- LEADERBOARD ---
-    socket.on('getLeaderboard', async () => {
-        try {
-            // Ищем топ 50 по XP (убывание)
-            // Возвращаем только нужные поля: id, name, xp, wins, rankName (вычислим)
-            const topUsers = await User.find({})
-                .sort({ xp: -1 })
-                .limit(50)
-                .select('id name xp wins streak equipped'); // Берем equipped для отображения рамки/шляпы если захочешь
-
-            // Преобразуем для клиента
-            const leaderboard = topUsers.map((u, index) => {
-                const rInfo = getRankInfo(u.xp, u.streak || 0);
-                return {
-                    rank: index + 1,
-                    id: u.id,
-                    name: u.name,
-                    xp: u.xp,
-                    wins: u.wins,
-                    rankName: rInfo.current.name,
-                    frame: u.equipped?.frame || 'frame_default'
-                };
-            });
-
-            socket.emit('leaderboardData', leaderboard);
-        } catch (e) {
-            console.error(e);
-            socket.emit('errorMsg', 'Ошибка загрузки топа');
         }
     });
 
@@ -1380,30 +1111,19 @@ io.on('connection', (socket) => {
         }
     });
     
-    // NEW: Handle voluntary leave
     socket.on('leaveRoom', () => {
         const room = getRoomBySocketId(socket.id);
-        if (room) {
-            // true indicates voluntary leave
-            handlePlayerDisconnect(socket.id, room, true);
-        }
+        if (room) handlePlayerDisconnect(socket.id, room, true);
     });
 
-                socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
-        // 1. Чистим текущий сокет
+    socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
         const old = getRoomBySocketId(socket.id); 
         if (old) handlePlayerDisconnect(socket.id, old, true);
 
-        // 2. УБИВАЕМ КЛОНОВ
         for (const [rId, r] of rooms) {
             const cloneIdx = r.players.findIndex(p => p.tgId === tgUser.id && !p.isBot);
             if (cloneIdx !== -1) {
-                // Удаляем клона
                 r.players.splice(cloneIdx, 1);
-                
-                // Если после удаления клона комната пуста — не страшно.
-                // Если это ТА ЖЕ комната, куда мы входим — мы сейчас отменим таймер в блоке ниже.
-                // Если чужая — она удалится своим таймером.
                 broadcastRoomUpdate(r);
             }
         }
@@ -1414,107 +1134,41 @@ io.on('connection', (socket) => {
         const rInfo = getRankInfo(uData.xp, uData.streak);
         
         if (options && options.dice < 3) options.dice = 3;
-        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) { 
-            socket.emit('errorMsg', 'NO_FUNDS'); 
-            return; 
-        }
+        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
 
-        let room; 
-        let isCreator = false;
+        let room; let isCreator = false;
 
-        // --- РЕЖИМ PVE (С БОТОМ) ---
         if (mode === 'pve') {
             const newId = 'CPU_' + Math.random().toString(36).substring(2,6);
             room = { 
-                id: newId, 
-                players: [], 
-                status: 'LOBBY', 
-                currentTurn: 0, 
-                currentBid: null, 
-                history: [], 
-                timerId: null, 
-                turnDeadline: 0, 
-                config: { 
-                    dice: Math.max(3, options.dice), 
-                    players: options.players, 
-                    time: 30, 
-                    jokers: options.jokers, 
-                    spot: options.spot, 
-                    strict: options.strict, 
-                    difficulty: options.difficulty 
-                }, 
+                id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, 
+                config: { dice: Math.max(3, options.dice), players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty }, 
                 isPvE: true 
             };
-            rooms.set(newId, room); 
-            isCreator = true;
+            rooms.set(newId, room); isCreator = true;
+            room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: true, isCreator: true, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
             
-            // Добавляем игрока (Создателя)
-            room.players.push({ 
-                id: socket.id, 
-                tgId: userId, 
-                name: uData.name, 
-                rank: rInfo.current.name, 
-                dice: [], 
-                diceCount: room.config.dice, 
-                ready: true, 
-                isCreator: true, 
-                equipped: uData.equipped, 
-                skillsUsed: [], 
-                rankLevel: rInfo.current.level 
-            });
-            
-            // --- СПИСКИ ИМЕН ПО СЛОЖНОСТИ ---
-            const namesMedium = ['Гиббс', 'Пинтел', 'Раджетти', 'Марти', 'Коттон', 'Малрой', 'Мёртогг', 'Скрам', 'Попугай'];
-            const namesPirate = ['Джек Воробей', 'Уилл Тернер', 'Элизабет', 'Гектор', 'Сяо Фэнь', 'Анжелика', 'Капитан Тиг', 'Джон Сильвер', 'Флинт'];
-            const namesLegend = ['Дейви Джонс', 'Черная Борода', 'Барбосса', 'Салазар', 'Призрак', 'Кракен', 'Калипсо', 'Капитан Крюк', 'Летучий Голландец'];
+            const namesMedium = ['Гиббс', 'Пинтел', 'Раджетти', 'Марти', 'Коттон', 'Малрой', 'Скрам', 'Мёртогг', 'Попугай'];
+            const namesPirate = ['Джек Воробей', 'Уилл Тернер', 'Элизабет', 'Капитан Тиг', 'Сяо Фэнь', 'Флинт', 'Джон Сильвер', 'Прихлоп Билл', 'Анжелика'];
+            const namesLegend = ['Дейви Джонс', 'Черная Борода', 'Барбосса', 'Шри Сумбаджи', 'Салазар', 'Калипсо', 'Капитан Крюк', 'Чёрный Барт', 'Амман Корсар'];
 
             let targetNames = namesMedium;
             let botRank = 'Матрос';
-
             if (options.difficulty === 'pirate') { targetNames = namesPirate; botRank = 'Капитан'; }
             if (options.difficulty === 'legend') { targetNames = namesLegend; botRank = 'Легенда морей'; }
             
             for(let i=0; i<options.players-1; i++) { 
-                room.players.push({ 
-                    id: 'bot_' + Math.random(), 
-                    name: `${targetNames[i % targetNames.length]}`, 
-                    rank: botRank, 
-                    dice: [], 
-                    diceCount: room.config.dice, 
-                    ready: true, 
-                    isCreator: false, 
-                    isBot: true, 
-                    equipped: { frame: 'frame_default' }, 
-                    rankLevel: 0 
-                }); 
+                room.players.push({ id: 'bot_' + Math.random(), name: `${targetNames[i % targetNames.length]}`, rank: botRank, dice: [], diceCount: room.config.dice, ready: true, isCreator: false, isBot: true, equipped: { frame: 'frame_default' }, rankLevel: 0 }); 
             }
-            socket.join(newId); 
-            startNewRound(room, true); 
-            return;
+            socket.join(newId); startNewRound(room, true); return;
         }
         
-        // --- РЕЖИМ PVP (МУЛЬТИПЛЕЕР) ---
         if (roomId) { 
             room = rooms.get(roomId); 
-            
-            // !!! СПАСЕНИЕ КОМНАТЫ !!!
-            if (room && room.deletionTimer) {
-                clearTimeout(room.deletionTimer);
-                room.deletionTimer = null;
-                console.log(`Комната ${roomId} спасена игроком!`);
-            }
-
-            // НОВАЯ ЛОГИКА: Разрешаем вход всегда, если есть места
-            if (!room || room.players.length >= room.config.players) { 
-                 socket.emit('errorMsg', 'Ошибка входа или комната полна'); 
-                 return; 
-            } 
-            
-            // Если лобби — проверяем деньги
+            if (room && room.deletionTimer) { clearTimeout(room.deletionTimer); room.deletionTimer = null; }
+            if (!room || room.players.length >= room.config.players) { socket.emit('errorMsg', 'Ошибка входа или комната полна'); return; } 
             if (room.status === 'LOBBY' || room.status === 'FINISHED') {
-                if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) { 
-                    socket.emit('errorMsg', 'NO_FUNDS'); return; 
-                }
+                if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
             }
         } else { 
             const newId = generateRoomId(); 
@@ -1523,44 +1177,22 @@ io.on('connection', (socket) => {
             rooms.set(newId, room); roomId = newId; isCreator = true; 
         }
         
-        // ЛОГИКА ЛИДЕРСТВА
         if (!isCreator) {
             const hasActiveCreator = room.players.some(p => p.isCreator);
             if (!hasActiveCreator) isCreator = true;
         }
 
-        // ОПРЕДЕЛЯЕМ РОЛЬ (Игрок или Зритель)
         let initialDice = room.config.dice;
         let initialReady = false;
-
-        // Если игра уже идет — ты зритель (0 кубов)
         if (room.status === 'PLAYING' || room.status === 'REVEAL') {
             initialDice = 0;
-            initialReady = true; // Зритель сразу "готов"
+            initialReady = true; 
             socket.emit('gameEvent', { text: 'Вы вошли как наблюдатель', type: 'info' });
         }
 
-        room.players.push({ 
-            id: socket.id, 
-            tgId: userId, 
-            name: uData.name, 
-            rank: rInfo.current.name, 
-            dice: [], 
-            diceCount: initialDice, 
-            ready: initialReady,    
-            isCreator: isCreator, 
-            equipped: uData.equipped, 
-            skillsUsed: [], 
-            rankLevel: rInfo.current.level 
-        });
-        
+        room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: initialDice, ready: initialReady, isCreator: isCreator, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
         socket.join(roomId); 
-        
-        if (room.status === 'PLAYING' || room.status === 'REVEAL') {
-            broadcastGameState(room);
-        } else {
-            broadcastRoomUpdate(room);
-        }
+        if (room.status === 'PLAYING' || room.status === 'REVEAL') broadcastGameState(room); else broadcastRoomUpdate(room);
     });
 
     socket.on('setReady', (isReady) => { const r = getRoomBySocketId(socket.id); if (r?.status === 'LOBBY') { const p = r.players.find(x => x.id === socket.id); if (p) { p.ready = isReady; broadcastRoomUpdate(r); } } });
@@ -1574,67 +1206,38 @@ io.on('connection', (socket) => {
         if(r && r.status === 'REVEAL') {
             if(!r.readyPlayers) r.readyPlayers = new Set();
             r.readyPlayers.add(socket.id);
-            // If all active players ready
-            const activeCount = r.players.filter(p => p.diceCount > 0).length;
-            if(r.readyPlayers.size >= activeCount) finalizeRound(r);
+            if(r.readyPlayers.size >= r.players.length) finalizeRound(r);
         }
     });
 
     socket.on('requestRestart', async () => { 
         const r = getRoomBySocketId(socket.id); 
         if (r?.status === 'FINISHED') { 
-            // Обновляем профили игроков (на всякий случай, если еще не обновились)
             for(const p of r.players) { if (!p.isBot && p.tgId) await pushProfileUpdate(p.tgId); }
-            
-            if (r.isPvE) { 
-                // PVE: Сразу перезапуск (как было)
-                r.status = 'PLAYING'; 
-                r.players.forEach(p => { 
-                    p.diceCount = r.config.dice; 
-                    p.dice = []; 
-                    p.skillsUsed = []; 
-                }); 
-                r.currentBid = null; 
-                startNewRound(r, true); 
-            } 
-            else { 
-                // PVP: Переход в ЛОББИ для проверки готовности
-                r.status = 'LOBBY'; 
-                r.players.forEach(p => { 
-                    p.diceCount = r.config.dice; 
-                    p.ready = false; // Сбрасываем готовность!
-                    p.dice = []; 
-                    p.skillsUsed = []; 
-                    // Если игрок был создателем, он им и остается
-                }); 
-                r.currentBid = null; 
-                
-                // Отправляем всех на экран Лобби
-                broadcastRoomUpdate(r); 
-            } 
+            if (r.isPvE) { r.status = 'PLAYING'; r.players.forEach(p => { p.diceCount = r.config.dice; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; startNewRound(r, true); } 
+            else { r.status = 'LOBBY'; r.players.forEach(p => { p.diceCount = r.config.dice; p.ready = false; p.dice = []; p.skillsUsed = []; }); r.currentBid = null; broadcastRoomUpdate(r); } 
         } 
+    });
+
+    // --- LEADERBOARD ---
+    socket.on('getLeaderboard', async () => {
+        try {
+            const topUsers = await User.find({}).sort({ xp: -1 }).limit(50).select('id name xp wins streak equipped');
+            const leaderboard = topUsers.map((u, index) => {
+                const rInfo = getRankInfo(u.xp, u.streak || 0);
+                return {
+                    rank: index + 1,
+                    id: u.id,
+                    name: u.name,
+                    xp: u.xp,
+                    wins: u.wins,
+                    rankName: rInfo.current.name,
+                    frame: u.equipped?.frame || 'frame_default'
+                };
+            });
+            socket.emit('leaderboardData', leaderboard);
+        } catch (e) { console.error(e); socket.emit('errorMsg', 'Ошибка загрузки топа'); }
     });
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
