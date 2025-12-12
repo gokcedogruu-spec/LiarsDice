@@ -541,9 +541,7 @@ function tryBotSkill(room, bot) {
             io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} уронил кубик!`, type: 'info' });
             sendBotEmote(room, bot, 'low_hp'); 
         }
-        return false; 
-    }
-    return false;
+        return false;
 }
 
 // Улучшенная функция повышения + КОМАНДНАЯ РАБОТА
@@ -1626,6 +1624,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
