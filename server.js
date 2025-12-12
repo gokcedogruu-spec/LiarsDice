@@ -528,7 +528,7 @@ function tryBotSkill(room, bot) {
 
     // LUCKY: Пытаемся использовать почти в каждой игре, когда кубов становится меньше
     // Условие: меньше 4 кубов. Шанс попытки: 70% каждый ход (было 20%)
-    if (bot.diceCount < 4 && Math.random() < 0.8) {
+    if (bot.diceCount < 4 && Math.random() < 0.7) {
         bot.skillsUsed = ['lucky'];
         const successChance = 0.65; // Шанс успеха самого скилла
 
@@ -541,7 +541,9 @@ function tryBotSkill(room, bot) {
             io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} уронил кубик!`, type: 'info' });
             sendBotEmote(room, bot, 'low_hp'); 
         }
-        return false;
+        return false; 
+    }
+    return false;
 }
 
 // Улучшенная функция повышения + КОМАНДНАЯ РАБОТА
@@ -744,23 +746,17 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
     let nextQty = lastBid.quantity; 
     let nextFace = lastBid.faceValue + 1;
     
-    // СТРАТЕГИЯ "ПОДРАЖАТЕЛЬ" (Mimic)
-    // Если бот не уверен в своих картах, но ставка кажется реальной (не высокой),
-    // он может просто повысить количество на ТОМ ЖЕ номинале, имитируя уверенность игрока.
-    const canMimic = !room.config.strict && lastBid.faceValue !== 1;
-    const mimicChance = (diff === 'legend') ? 0.4 : 0.2;
-    
-    if (canMimic && Math.random() < mimicChance && lastBid.quantity < totalDice * 0.6) {
-        // Повышаем количество на том же номинале
-        makeBidInternal(room, bot, lastBid.quantity + 1, lastBid.faceValue);
-        return;
-    }
+    const nextIdx = (room.currentTurn + 1) % room.players.length;
+    const nextPlayer = room.players[nextIdx];
+    const isGangingUp = (diff === 'legend' && !nextPlayer.isBot && Math.random() < 0.6); 
 
-    // СТАНДАРТНОЕ ПОВЫШЕНИЕ
     let bestFaceToBid = null;
     if (!room.config.strict) {
-        // Ищем номинал выше текущего, который есть у нас
-        for (let f = lastBid.faceValue + 1; f <= 6; f++) {
+        // !!! ЗАПРЕТ НА 1 !!!
+        // Начинаем искать номинал выше текущего, но если текущий был 1, то начнем с 2.
+        let searchFrom = Math.max(2, lastBid.faceValue + 1);
+
+        for (let f = searchFrom; f <= 6; f++) {
             const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
             const minSupport = (diff === 'legend') ? 2 : 1;
             if (count >= minSupport) { bestFaceToBid = f; break; }
@@ -769,35 +765,33 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
 
     if (bestFaceToBid) {
         nextFace = bestFaceToBid;
+        if (isGangingUp) {
+            nextQty = lastBid.quantity + 1;
+            sendBotEmote(room, bot, 'raise');
+        }
     } else {
-        // Если номиналов выше нет (или режим Строго), повышаем количество
         nextQty = lastBid.quantity + 1;
-        
-        // Ищем наш лучший номинал (кроме 1, если кубов много)
+        if (isGangingUp && totalDice > 10) {
+            nextQty = lastBid.quantity + 2;
+            sendBotEmote(room, bot, 'raise');
+        }
+
         let maxCount = -1;
         let targetF = 2;
-        // В режиме Джокера стараемся не ставить на 1, если это не финал
-        let startSearch = 2;
-        if (room.config.jokers && totalDice <= 3) startSearch = 1; // Если мало кубов, можно и на 1
-
-        for(let f=startSearch; f<=6; f++) {
+        
+        // !!! ЗАПРЕТ НА 1 !!!
+        // Всегда ищем от 2 до 6
+        for(let f=2; f<=6; f++) {
              const c = (myHand[f]||0) + (room.config.jokers ? (myHand[1] || 0) : 0);
              if(c > maxCount) { maxCount = c; targetF = f; }
         }
         nextFace = targetF;
     }
 
-    // Коррекции правил
     if (room.config.strict) { 
         nextQty = lastBid.quantity + 1; 
         nextFace = Math.floor(Math.random() * 6) + 1; 
-        // В строгом режиме номинал случайный, но лучше выбрать свой
-        if(Math.random() > 0.3) {
-             // Попытка выбрать свой номинал в строгом режиме
-             let bestStrictFace = 6; let maxStrict = -1;
-             for(let f=1; f<=6; f++) { if((myHand[f]||0) > maxStrict) { maxStrict = myHand[f]; bestStrictFace = f; } }
-             nextFace = bestStrictFace;
-        }
+        if (nextFace === 1) nextFace = 2; // Даже в рандоме строгого режима убираем 1
     } 
     
     if (nextFace > 6) { nextFace = 2; nextQty = lastBid.quantity + 1; }
@@ -1624,6 +1618,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
