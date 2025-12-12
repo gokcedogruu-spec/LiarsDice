@@ -522,28 +522,26 @@ function sendBotEmote(room, bot, type) {
         }, 500); 
     }
 }
-
 function tryBotSkill(room, bot) {
-    // Навыки только у Легенды
     if (room.config.difficulty !== 'legend') return false;
     if (bot.skillsUsed && bot.skillsUsed.length > 0) return false; 
 
-    // LUCKY (Если мало кубов, < 3)
-    // Возмездие (Kill) убрано по твоей просьбе
-    if (bot.diceCount < 3 && Math.random() < 0.2) {
+    // LUCKY: Пытаемся использовать почти в каждой игре, когда кубов становится меньше
+    // Условие: меньше 4 кубов. Шанс попытки: 70% каждый ход (было 20%)
+    if (bot.diceCount < 4 && Math.random() < 0.8) {
         bot.skillsUsed = ['lucky'];
-        const successChance = 0.65; // Шанс 65% (бонус Легенды)
+        const successChance = 0.65; // Шанс успеха самого скилла
 
         if (Math.random() < successChance) {
             bot.diceCount++;
             bot.dice.push(Math.floor(Math.random()*6)+1);
             io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} (Бот) достал кубик из рукава!`, type: 'alert' });
-            sendBotEmote(room, bot, 'win_bluff'); // Gigachad (довольный)
+            sendBotEmote(room, bot, 'win_bluff'); 
         } else {
             io.to(room.id).emit('gameEvent', { text: `⚡ ${bot.name} уронил кубик!`, type: 'info' });
-            sendBotEmote(room, bot, 'low_hp'); // Sad
+            sendBotEmote(room, bot, 'low_hp'); 
         }
-        return false; // Возвращаем false, чтобы бот продолжил делать ставку после скилла
+        return false; 
     }
     return false;
 }
@@ -553,16 +551,17 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
     let nextQty = lastBid.quantity; 
     let nextFace = lastBid.faceValue + 1;
     
-    // КОМАНДНАЯ РАБОТА (ЛЕГЕНДА)
-    // Проверяем, кто ходит следующим. Если человек - гасим его.
     const nextIdx = (room.currentTurn + 1) % room.players.length;
     const nextPlayer = room.players[nextIdx];
     const isGangingUp = (diff === 'legend' && !nextPlayer.isBot && Math.random() < 0.6); 
 
     let bestFaceToBid = null;
     if (!room.config.strict) {
-        for (let f = lastBid.faceValue + 1; f <= 6; f++) {
-            if (diff === 'legend' && f === 1) continue; // Легенда не ставит на 1
+        // !!! ЗАПРЕТ НА 1 !!!
+        // Начинаем искать номинал выше текущего, но если текущий был 1, то начнем с 2.
+        let searchFrom = Math.max(2, lastBid.faceValue + 1);
+
+        for (let f = searchFrom; f <= 6; f++) {
             const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
             const minSupport = (diff === 'legend') ? 2 : 1;
             if (count >= minSupport) { bestFaceToBid = f; break; }
@@ -572,15 +571,11 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
     if (bestFaceToBid) {
         nextFace = bestFaceToBid;
         if (isGangingUp) {
-            // Если гасим - повышаем еще и количество, даже если можно было только номинал
             nextQty = lastBid.quantity + 1;
             sendBotEmote(room, bot, 'raise');
         }
     } else {
-        // Номиналов выше нет, повышаем количество
         nextQty = lastBid.quantity + 1;
-        
-        // Если гасим игрока и кубов много - можем задрать ставку на +2
         if (isGangingUp && totalDice > 10) {
             nextQty = lastBid.quantity + 2;
             sendBotEmote(room, bot, 'raise');
@@ -588,25 +583,22 @@ function makeBotRaise(room, bot, lastBid, myHand, diff, totalDice) {
 
         let maxCount = -1;
         let targetF = 2;
-        // Легенда начинает искать с 2 (не ставит на 1)
-        // В режиме джокеров можно ставить на 1, только если кубов мало
-        let startSearch = (diff === 'legend' || (room.config.jokers && totalDice > 3)) ? 2 : 1;
-
-        for(let f=startSearch; f<=6; f++) {
+        
+        // !!! ЗАПРЕТ НА 1 !!!
+        // Всегда ищем от 2 до 6
+        for(let f=2; f<=6; f++) {
              const c = (myHand[f]||0) + (room.config.jokers ? (myHand[1] || 0) : 0);
              if(c > maxCount) { maxCount = c; targetF = f; }
         }
         nextFace = targetF;
     }
 
-    // Коррекции правил
     if (room.config.strict) { 
         nextQty = lastBid.quantity + 1; 
         nextFace = Math.floor(Math.random() * 6) + 1; 
-        if (diff === 'legend' && nextFace === 1) nextFace = 2;
+        if (nextFace === 1) nextFace = 2; // Даже в рандоме строгого режима убираем 1
     } 
     
-    // Финальная валидация
     if (nextFace > 6) { nextFace = 2; nextQty = lastBid.quantity + 1; }
     if (nextQty <= lastBid.quantity && nextFace <= lastBid.faceValue) { nextQty = lastBid.quantity + 1; }
 
@@ -618,14 +610,11 @@ function handleBotMove(room) {
     const bot = room.players[room.currentTurn];
     if (!bot || bot.diceCount === 0) { nextTurn(room); return; }
 
-    // --- НАВЫКИ ---
-    tryBotSkill(room, bot); // Попытка юзнуть удачу (не прерывает ход)
+    if (tryBotSkill(room, bot)) return; 
 
     const lastBid = room.currentBid;
     
-    // --- ПАНИКА (Если игрок жестко повысил на +2 и более) ---
     if (lastBid && room.lastQuantity && lastBid.quantity >= room.lastQuantity + 2) {
-        // Если предыдущий был человек
         const prevIdx = (room.currentTurn - 1 + room.players.length) % room.players.length;
         if (!room.players[prevIdx].isBot && Math.random() < 0.7) {
              sendBotEmote(room, bot, 'panic');
@@ -639,26 +628,69 @@ function handleBotMove(room) {
     bot.dice.forEach(d => myHand[d] = (myHand[d] || 0) + 1);
     const diff = room.config.difficulty;
 
-    // --- ПЕРВЫЙ ХОД ---
+    // === ПЕРВЫЙ ХОД ===
     if (!lastBid) { 
         let bestFace = 6; 
         let maxCount = 0;
-        const startFace = (diff === 'legend') ? 2 : 1; // Легенда не начинает с 1
-
-        for(let f=startFace; f<=6; f++) { 
-            if((myHand[f]||0) > maxCount) { maxCount = myHand[f]; bestFace = f; } 
+        
+        // !!! ЖЕСТКИЙ ЗАПРЕТ НА 1 !!!
+        // Ищем лучший номинал ТОЛЬКО от 2 до 6
+        for(let f=2; f<=6; f++) { 
+            // Считаем номинал + джокеры (они универсальны)
+            const count = (myHand[f] || 0) + (room.config.jokers ? (myHand[1] || 0) : 0);
+            if(count > maxCount) { maxCount = count; bestFace = f; } 
         }
         
-        // Пират иногда блефует джокером, Легенда - нет
-        if (diff !== 'legend' && room.config.jokers && Math.random() < 0.15 && myHand[1] > 0) bestFace = 1;
-
-        // Старт: 1/3.5 от стола (чтобы не начинать с 1, когда кубов много)
+        // Старт: 1/3.5 от стола
         let startQty = Math.max(1, Math.floor(totalDiceInGame / 3.5));
+        
+        // Если у нас на руках больше, чем формула -> ставим уверенно
         if (maxCount >= startQty) startQty = maxCount; 
 
         makeBidInternal(room, bot, startQty, bestFace); 
         return; 
     }
+
+    // ... (Остальная часть функции, анализ и решение, без изменений) ...
+    const needed = lastBid.quantity; 
+    const face = lastBid.faceValue;
+    const inHand = myHand[face] || 0; 
+    const inHandJokers = room.config.jokers ? (myHand[1] || 0) : 0;
+    
+    const mySureCount = (face === 1 && room.config.jokers) ? inHand : (inHand + (face !== 1 ? inHandJokers : 0));
+    
+    const unknownDice = totalDiceInGame - bot.diceCount;
+    const probPerDie = room.config.jokers ? (face===1 ? 1/6 : 2/6) : 1/6;
+    const expectedTotal = mySureCount + (unknownDice * probPerDie);
+    
+    let threshold = 0.8; 
+    if (diff === 'pirate') threshold = -0.2; 
+    if (diff === 'legend') threshold = -0.8; 
+
+    if ((diff === 'pirate' || diff === 'legend') && room.config.spot) {
+        if (Math.abs(expectedTotal - needed) < 0.35) {
+            const risk = diff === 'legend' ? 0.6 : 0.3;
+            if (Math.random() < risk) { handleCall(null, 'spot', room, bot); return; }
+        }
+    }
+
+    if (mySureCount >= needed) {
+        makeBotRaise(room, bot, lastBid, myHand, diff, totalDiceInGame);
+        return;
+    }
+
+    if (needed > expectedTotal + threshold) {
+        const safeZone = totalDiceInGame * 0.4;
+        if (needed <= safeZone) {
+             makeBotRaise(room, bot, lastBid, myHand, diff, totalDiceInGame);
+        } else {
+             sendBotEmote(room, bot, 'bluff'); 
+             handleCall(null, 'bluff', room, bot);
+        }
+    } else {
+        makeBotRaise(room, bot, lastBid, myHand, diff, totalDiceInGame);
+    }
+}
 
     // --- АНАЛИЗ ---
     const needed = lastBid.quantity; 
@@ -1594,6 +1626,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
