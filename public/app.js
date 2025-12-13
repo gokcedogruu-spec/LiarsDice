@@ -172,9 +172,11 @@ const HATS_META = {
     'hat_flame': { name: 'Шляпа обожжённого капитана', price: 10000000, rarity: 'legendary' },
     'hat_frozen': { name: 'Шляпа замерзшего капитана', price: 10000000, rarity: 'legendary' },
     'hat_ghost': { name: 'Шляпа потустороннего капитана', price: 10000000, rarity: 'legendary' },
+    'hat_poison': { name: 'Шляпа отравленного капитана', price: 10000000, rarity: 'legendary' },
     'hat_lava': { name: 'Шляпа плавающего по лаве', price: 100000000, rarity: 'mythical' },
     'hat_deadlycursed': { name: 'Шляпа коммодора флотилии теней', price: 100000000, rarity: 'mythical' },
-    'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' }
+    'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' },
+    'hat_miasmas': { name: 'Шляпа дышащей миазмами', price: 100000000, rarity: 'mythical' }
 };
 
 function getRankImage(rankName, hatId = null) {
@@ -190,9 +192,11 @@ function getRankImage(rankName, hatId = null) {
             'hat_flame': 'legendary/lvl8_flame.png',
             'hat_frozen': 'legendary/lvl8_frozen.png',
             'hat_ghost': 'legendary/lvl8_ghost.png',
+            'hat_poison': 'legendary/lvl8_poison.png',
             'hat_lava': 'mythical/lvl9_cursedflame.png',
             'hat_deadlycursed': 'mythical/lvl9_deadlycursed.png',
-            'hat_antarctica': 'mythical/lvl9_kingofantarctica.png'
+            'hat_antarctica': 'mythical/lvl9_kingofantarctica.png',
+            'hat_miasmas': 'mythical/lvl9__snakehead.png'
         };
         if(map[hatId]) return baseHat + map[hatId];
     }
@@ -867,6 +871,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
