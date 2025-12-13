@@ -192,11 +192,11 @@ function getRankImage(rankName, hatId = null) {
             'hat_flame': 'legendary/lvl8_flame.png',
             'hat_frozen': 'legendary/lvl8_frozen.png',
             'hat_ghost': 'legendary/lvl8_ghost.png',
-            'hat_poison': 'legendary/lvl8_poison.png',
+            'hat_poison': 'legendary/lvl8_poison_.png',
             'hat_lava': 'mythical/lvl9_cursedflame.png',
             'hat_deadlycursed': 'mythical/lvl9_deadlycursed.png',
             'hat_antarctica': 'mythical/lvl9_kingofantarctica.png',
-            'hat_miasmas': 'mythical/lvl9__snakehead.png'
+            'hat_miasmas': 'mythical/lvl9_snakehead.png'
         };
         if(map[hatId]) return baseHat + map[hatId];
     }
@@ -871,6 +871,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
