@@ -543,13 +543,33 @@ window.requestPlayerStats = (socketId) => {
 
 socket.on('showPlayerStats', (data) => {
     const modal = document.getElementById('modal-player'); if (!modal) return;
-    const content = modal.querySelector('.modal-content'); content.className = 'modal-content pop-in'; if (data.equipped.frame && data.equipped.frame !== 'frame_default') content.classList.add(data.equipped.frame);
+    const content = modal.querySelector('.modal-content'); 
+    
+    // Рамка профиля
+    content.className = 'modal-content pop-in'; 
+    if (data.equipped.frame && data.equipped.frame !== 'frame_default') content.classList.add(data.equipped.frame);
+    
     document.getElementById('info-name').textContent = data.name;
     document.getElementById('info-rank-name').textContent = data.rankName;
     document.getElementById('info-matches').textContent = data.matches;
     document.getElementById('info-wins').textContent = data.wins;
     document.getElementById('info-wr').textContent = (data.matches > 0 ? Math.round((data.wins / data.matches) * 100) : 0) + '%';
-    const rankImg = document.getElementById('info-rank-img'); if(rankImg) rankImg.src = getRankImage(data.rankName, data.equipped?.hat);
+    
+    // --- ОБНОВЛЕННАЯ ЛОГИКА ШЛЯП ---
+    const rankImg = document.getElementById('info-rank-img'); 
+    if(rankImg) {
+        rankImg.src = getRankImage(data.rankName, data.equipped?.hat);
+        
+        // Сбрасываем классы
+        rankImg.className = 'rank-img';
+        
+        // Добавляем классы редкости для анимации
+        if (data.equipped?.hat && HATS_META[data.equipped.hat]) {
+            const r = HATS_META[data.equipped.hat].rarity;
+            if (r === 'legendary') rankImg.classList.add('hat-legendary');
+            if (r === 'mythical') rankImg.classList.add('hat-mythical');
+        }
+    }
     const invGrid = document.getElementById('info-inventory'); invGrid.innerHTML = '';
     const categories = { 'hats': 'Шляпы', 'skins': 'Кости', 'frames': 'Рамки', 'bg': 'Палуба' };
     const getType = (id) => { if(HATS_META[id]) return 'hats'; if(ITEMS_META[id]) return ITEMS_META[id].type; return null; };
@@ -847,6 +867,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
