@@ -6,6 +6,167 @@ window.onerror = function(message, source, lineno, colno, error) {
 const socket = io();
 const tg = window.Telegram?.WebApp;
 
+// --- ASSET & AUDIO MANAGER ---
+const assets = {
+    // Список всех ресурсов для предзагрузки
+    sounds: {
+        bgm: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/music/Liar\'s%20Dice%20Rum%20and%20Ruckus.mp3',
+        click: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/main_ui_button.mp3',
+        dice: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/match_dice.mp3',
+        
+        // Победа (2 трека)
+        win_music: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/main_music_win.mp3',
+        win_voice: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/match_voice_win.mp3',
+        
+        // Поражение (2 трека)
+        lose_music: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/main_music_lose.mp3',
+        lose_voice: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/main_voice_lose.mp3',
+        
+        // Матч
+        match_bg: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/match_back.mp3',
+        bluff: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/match_dontbelieve.mp3',
+        
+        // Исходы раунда
+        round_win: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/match_winround.mp3',
+        round_lose: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/match_loseround.mp3'
+    },
+    images: [
+        'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png',
+        'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/table_default.png'
+        // Сюда можно добавить еще тяжелых картинок, если нужно
+    ],
+    
+    // Хранилище объектов Audio
+    audioCache: {},
+    enabled: true,
+    
+    // Метод загрузки
+    preload: async function(onProgress, onComplete) {
+        const total = Object.keys(this.sounds).length + this.images.length;
+        let loaded = 0;
+        
+        const check = () => {
+            loaded++;
+            const pct = Math.floor((loaded / total) * 100);
+            onProgress(pct);
+            if (loaded >= total) onComplete();
+        };
+
+        // Грузим звуки
+        for (const [key, url] of Object.entries(this.sounds)) {
+            const audio = new Audio();
+            audio.src = url;
+            audio.preload = 'auto'; // Важно для мобилок
+            
+            // Настройка громкости
+            if (key === 'bgm') { audio.loop = true; audio.volume = 0.4; }
+            if (key === 'match_bg') { audio.loop = true; audio.volume = 0.2; } // Тихий фон
+            if (key === 'dice') audio.volume = 1.0; // Громко!
+            
+            // Ждем загрузки метаданных (достаточно для старта)
+            audio.onloadeddata = check;
+            audio.onerror = check; // Даже если ошибка, не зависаем
+            this.audioCache[key] = audio;
+        }
+
+        // Грузим картинки (в фоне)
+        for (const url of this.images) {
+            const img = new Image();
+            img.src = url;
+            img.onload = check;
+            img.onerror = check;
+        }
+    },
+
+    
+    play: function(name) {
+        if (!this.enabled || !this.audioCache[name]) return;
+        const a = this.audioCache[name];
+        
+        // Сбрасываем (кроме фоновой музыки)
+        if (!name.includes('bgm') && !name.includes('match_bg')) {
+            a.currentTime = 0;
+        }
+        a.play().catch(e => {});
+    },
+
+    stop: function(name) {
+        if (this.audioCache[name]) {
+            this.audioCache[name].pause();
+            this.audioCache[name].currentTime = 0;
+        }
+    },
+    
+    toggle: function() {
+        this.enabled = !this.enabled;
+        const btn = document.getElementById('btn-sound');
+        if (btn) {
+            btn.textContent = this.enabled ? '🔊' : '🔇';
+            btn.classList.toggle('muted', !this.enabled);
+        }
+        
+        // Управление фоном при переключении
+        if (this.enabled) {
+            // Если мы в меню -> bgm, если в игре -> match_bg + bgm
+            if (document.getElementById('screen-game').classList.contains('active')) {
+                this.audioCache['bgm'].play().catch(()=>{});
+                this.audioCache['match_bg'].play().catch(()=>{});
+            } else {
+                this.audioCache['bgm'].play().catch(()=>{});
+            }
+        } else {
+            this.audioCache['bgm'].pause();
+            this.audioCache['match_bg'].pause();
+        }
+        
+        localStorage.setItem('soundEnabled', this.enabled);
+    },
+    
+    // Специальная функция для последовательности звуков (Блеф -> Результат)
+    playSequence: function(first, second, delay) {
+        if (!this.enabled) return;
+        this.play(first);
+        setTimeout(() => {
+            this.play(second);
+        }, delay);
+    }
+};
+
+
+// --- STARTUP LOGIC ---
+window.onload = () => {
+    // 1. Загрузка
+    assets.preload(
+        (pct) => { 
+            document.getElementById('preload-bar').style.width = pct + '%'; 
+            document.getElementById('preload-text').textContent = pct + '%';
+        },
+        () => {
+            // 2. Готово! Показываем кнопку
+            document.getElementById('preload-text').textContent = "ГОТОВО!";
+            document.getElementById('btn-start-app').classList.remove('hidden');
+        }
+    );
+};
+
+// 3. Запуск по кнопке (AudioContext требует клика)
+bindClick('btn-start-app', () => {
+    // Восстанавливаем настройку звука
+    const saved = localStorage.getItem('soundEnabled');
+    if (saved === 'false') assets.toggle(); // Выключить, если было выключено
+    
+    // Запускаем музыку
+    if (assets.enabled) assets.audioCache['bgm'].play().catch(e => console.log("Audio error", e));
+    
+    // Переход к логину
+    if (tg?.initDataUnsafe?.user) { 
+        state.username = tg.initDataUnsafe.user.first_name; 
+        loginSuccess(); 
+    } else {
+        showScreen('login');
+    }
+});
+
 // --- SYSTEM UI HELPERS ---
 const ui = {
     modal: document.getElementById('modal-system'),
@@ -112,7 +273,13 @@ window.addEventListener('load', () => {
 
 socket.on('connect', () => { if (state.username) loginSuccess(); });
 
-function bindClick(id, handler) { const el = document.getElementById(id); if (el) el.addEventListener('click', handler); }
+function bindClick(id, handler) { 
+    const el = document.getElementById(id); 
+    if (el) el.addEventListener('click', (e) => {
+        assets.play('click'); // <---
+        handler(e);
+    }); 
+}
 
 bindClick('btn-login', () => {
     const val = document.getElementById('input-username').value.trim();
@@ -629,9 +796,9 @@ socket.on('emoteReceived', (data) => { const el = document.querySelector(`.playe
 socket.on('skillResult', (data) => { const modal = document.getElementById('modal-skill-alert'); const iconEl = document.getElementById('skill-alert-title'); let icon = '⚡'; if (data.type === 'ears') icon = '👂'; else if (data.type === 'lucky') icon = '🎲'; else if (data.type === 'kill') icon = '🔫'; iconEl.textContent = icon; document.getElementById('skill-alert-text').textContent = data.text; modal.classList.add('active'); });
 window.closeSkillAlert = () => { document.getElementById('modal-skill-alert').classList.remove('active'); };
 socket.on('errorMsg', (msg) => { if (msg === 'NO_FUNDS') { document.getElementById('modal-res-alert').classList.add('active'); } else { uiAlert(msg, "ОШИБКА"); } });
-socket.on('roomUpdate', (room) => { state.roomId = room.roomId; if (room.status === 'LOBBY') { showScreen('lobby'); document.getElementById('lobby-room-id').textContent = room.roomId; if (room.config) { document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`; state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp }; let betStr = ''; if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `; if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`; document.getElementById('lobby-bets').textContent = betStr; } const list = document.getElementById('lobby-players'); list.innerHTML = ''; room.players.forEach(p => { list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')"><div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div><span>${p.ready?'✅':'⏳'}</span></div>`; }); const me = room.players.find(p => p.id === socket.id); const startBtn = document.getElementById('btn-start-game'); if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none'; } });
+socket.on('roomUpdate', (room) => { assets.stop('match_bg'); state.roomId = room.roomId; if (room.status === 'LOBBY') { showScreen('lobby'); document.getElementById('lobby-room-id').textContent = room.roomId; if (room.config) { document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`; state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp }; let betStr = ''; if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `; if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`; document.getElementById('lobby-bets').textContent = betStr; } const list = document.getElementById('lobby-players'); list.innerHTML = ''; room.players.forEach(p => { list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')"><div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div><span>${p.ready?'✅':'⏳'}</span></div>`; }); const me = room.players.find(p => p.id === socket.id); const startBtn = document.getElementById('btn-start-game'); if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none'; } });
 socket.on('gameEvent', (evt) => { const log = document.getElementById('game-log'); if(log) log.innerHTML = `<div>${evt.text}</div>`; if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning'); });
-socket.on('yourDice', (dice) => { const skin = state.equipped.skin || 'skin_white'; document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join(''); });
+socket.on('yourDice',  (dice) => { assets.play('dice'); const skin = state.equipped.skin || 'skin_white'; document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join(''); });
 
 socket.on('gameOver', (data) => {
     showScreen('result');
@@ -641,6 +808,10 @@ socket.on('gameOver', (data) => {
 
 socket.on('gameState', (gs) => { 
     showScreen('game'); 
+    
+    // Включаем фоновый шум матча
+    if (assets.enabled) assets.audioCache['match_bg'].play().catch(()=>{});
+    
     document.body.className = gs.activeBackground || 'bg_default'; 
     let rulesText = ''; 
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  '; 
@@ -709,7 +880,7 @@ socket.on('gameState', (gs) => {
     if (gs.remainingTime !== undefined && gs.totalDuration) { startVisualTimer(gs.remainingTime, gs.totalDuration); } 
 });
 
-socket.on('bluffEffect', (data) => {
+socket.on('bluffEffect', (data) => { assets.play('bluff');
     if(tg) {
         tg.HapticFeedback.notificationOccurred('error');
         setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 300);
@@ -758,6 +929,7 @@ socket.on('revealPhase', (data) => {
             }
         });
         if(data.timeLeft) startVisualTimer(data.timeLeft, data.timeLeft);
+        if (data.animate) assets.play('round_win');
     }, delay);
 });
 
@@ -767,7 +939,17 @@ window.sendReadyNext = () => {
     socket.emit('playerReadyNext');
 };
 
-socket.on('matchResults', (res) => {
+socket.on('matchResults', (res) => {assets.stop('match_bg'); // Стоп шум матча
+    
+    if (res.coins > 0) {
+        // ПОБЕДА (Музыка + Голос)
+        assets.play('win_music');
+        setTimeout(() => assets.play('win_voice'), 500);
+    } else {
+        // ПОРАЖЕНИЕ
+        assets.play('lose_music');
+        setTimeout(() => assets.play('lose_voice'), 500);
+    }
     const profitEl = document.getElementById('result-profit');
     profitEl.innerHTML = '';
     let html = '';
@@ -871,6 +1053,9 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
+window.toggleSound = () => assets.toggle();
+
 
 
 
