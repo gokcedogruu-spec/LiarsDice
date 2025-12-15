@@ -10,7 +10,7 @@ const tg = window.Telegram?.WebApp;
 const assets = {
     // Список всех ресурсов для предзагрузки
     sounds: {
-        bgm: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/music/Liar\'s%20Dice%20Rum%20and%20Ruckus.mp3',
+        bgm: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/music/liarsdice_mainMusic.mp3',
         click: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/main_ui_button.mp3',
         dice: 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/audio/effects/match_dice.mp3',
         
@@ -273,13 +273,6 @@ function showScreen(name) {
     if(target) target.classList.add('active');
 }
 
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        const loading = document.getElementById('screen-loading');
-        if (loading && loading.classList.contains('active')) { if (!tg?.initDataUnsafe?.user) showScreen('login'); }
-    }, 3000);
-    if (tg?.initDataUnsafe?.user) { state.username = tg.initDataUnsafe.user.first_name; loginSuccess(); }
-});
 
 socket.on('connect', () => { if (state.username) loginSuccess(); });
 
@@ -1065,6 +1058,66 @@ socket.on('notification', (data) => { if (data.type === 'friend_req') { const bt
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
 
 window.toggleSound = () => assets.toggle();
+
+// --- ЛОГИКА ЗАГРУЗКИ И СТАРТА ---
+
+window.addEventListener('load', () => {
+    console.log("Начало загрузки ресурсов...");
+    
+    // 1. Запускаем загрузчик
+    assets.preload(
+        (pct) => { 
+            // Обновляем проценты
+            const bar = document.getElementById('preload-bar');
+            const txt = document.getElementById('preload-text');
+            if (bar) bar.style.width = pct + '%'; 
+            if (txt) txt.textContent = `ЗАГРУЗКА ${pct}%`;
+        },
+        () => {
+            // 2. Загрузка завершена!
+            console.log("Загрузка завершена. А ты готов?");
+            const txt = document.getElementById('preload-text');
+            const btn = document.getElementById('btn-start-app');
+            
+            if (txt) txt.textContent = "ГОТОВО К БОЮ!";
+            
+            // Показываем кнопку ИГРАТЬ
+            if (btn) {
+                btn.classList.remove('hidden');
+                btn.classList.add('pulse-btn'); // Добавим пульсацию
+            }
+        }
+    );
+});
+
+// 3. Обработчик нажатия на кнопку "ИГРАТЬ"
+bindClick('btn-start-app', () => {
+    console.log("Отлично, собираем салаг...");
+
+    // Активируем аудио контекст
+    if (assets.enabled) {
+        // Принудительно запускаем музыку
+        const bgm = assets.audioCache['bgm'];
+        if (bgm) {
+            bgm.volume = 0.3;
+            bgm.play()
+                .then(() => {
+                    console.log("Салаги на месте!");
+                    assets.bgmPlaying = true;
+                })
+                .catch(e => console.error("Произошла ошибка:", e));
+        }
+    }
+
+    // Переходим дальше (вход)
+    if (tg?.initDataUnsafe?.user) { 
+        state.username = tg.initDataUnsafe.user.first_name; 
+        loginSuccess(); 
+    } else {
+        showScreen('login');
+    }
+});
+
 
 
 
