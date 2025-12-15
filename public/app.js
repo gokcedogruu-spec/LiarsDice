@@ -133,42 +133,52 @@ const assets = {
 };
 
 
-// --- STARTUP LOGIC ---
-window.onload = () => {
-    // 1. Начинаем загрузку ресурсов
+    // 1. Запускаем загрузчик
     assets.preload(
         (pct) => { 
-            // Обновляем прогресс-бар
+            // Обновляем проценты
             const bar = document.getElementById('preload-bar');
             const txt = document.getElementById('preload-text');
-            if(bar) bar.style.width = pct + '%'; 
-            if(txt) txt.textContent = pct + '%';
+            if (bar) bar.style.width = pct + '%'; 
+            if (txt) txt.textContent = `ЗАГРУЗКА ${pct}%`;
         },
         () => {
             // 2. Загрузка завершена!
+            console.log("Загрузка завершена. А ты готов?");
             const txt = document.getElementById('preload-text');
             const btn = document.getElementById('btn-start-app');
             
-            if(txt) txt.textContent = "ГОТОВО!";
+            if (txt) txt.textContent = "ГОТОВО К БОЮ!";
             
-            // ПОКАЗЫВАЕМ КНОПКУ "ИГРАТЬ"
-            if(btn) {
+            // Показываем кнопку ИГРАТЬ
+            if (btn) {
                 btn.classList.remove('hidden');
-                btn.classList.add('pop-in'); // Анимация появления
+                btn.classList.add('pulse-btn'); // Добавим пульсацию
             }
         }
     );
-};
+});
 
-// 3. Обработчик кнопки "ИГРАТЬ"
+// 3. Обработчик нажатия на кнопку "ИГРАТЬ"
 bindClick('btn-start-app', () => {
-    // Запускаем музыку (теперь можно, так как это клик)
+    console.log("Отлично, собираем салаг...");
+
+    // Активируем аудио контекст
     if (assets.enabled) {
-         assets.audioCache['bgm'].play().catch(e => {});
-         assets.bgmPlaying = true;
+        // Принудительно запускаем музыку
+        const bgm = assets.audioCache['bgm'];
+        if (bgm) {
+            bgm.volume = 0.3;
+            bgm.play()
+                .then(() => {
+                    console.log("Салаги на месте!");
+                    assets.bgmPlaying = true;
+                })
+                .catch(e => console.error("Произошла ошибка:", e));
+        }
     }
-    
-    // Переходим к логину (как раньше)
+
+    // Переходим дальше (вход)
     if (tg?.initDataUnsafe?.user) { 
         state.username = tg.initDataUnsafe.user.first_name; 
         loginSuccess(); 
@@ -1117,6 +1127,7 @@ bindClick('btn-start-app', () => {
         showScreen('login');
     }
 });
+
 
 
 
