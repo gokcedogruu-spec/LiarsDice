@@ -33,6 +33,7 @@
             <button class="btn-icon btn-encyclopedia" onclick="openEncyclopedia()">📖</button>
             <button id="btn-friends-menu" class="btn-icon btn-friends" onclick="openFriends()">👥</button>
             <button class="btn-icon btn-leaderboard" onclick="openLeaderboard()">🏆</button>
+            <button class="btn-mini" onclick="toggleSound()" style="position:absolute; top:15px; left:15px; z-index:100;">🔊</button>
 
             <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             
@@ -210,6 +211,7 @@
             <div id="bluff-cloud" class="bluff-cloud hidden">НЕ ВЕРЮ!</div>
 
             <button class="btn-mini btn-game-leave" onclick="leaveGame()">✕</button>
+            <button class="btn-mini" onclick="toggleSound()" style="position:absolute; top:10px; right:10px; z-index:20;">🔊</button>
 
             <div class="rivals-bar-container">
                 <div id="players-bar" class="rivals-row"></div>
@@ -458,6 +460,7 @@
     <script src="app.js?v=15"></script>
 </body>
 </html>
+
 
 
 
