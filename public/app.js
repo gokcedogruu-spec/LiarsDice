@@ -328,13 +328,16 @@ socket.on('profileUpdate', (data) => {
         }));
     }
 
+    // Если открыта Лавка - обновляем баланс и товары
     if (document.getElementById('screen-shop').classList.contains('active')) {
         document.getElementById('shop-coins').textContent = state.coins;
-        renderShop();
+        renderShop(); // <-- ЭТО ВАЖНО (перерисовка кнопок КУПИТЬ/НАДЕТЬ)
     }
+    
+    // Если открыта Каюта - обновляем баланс и товары
     if (document.getElementById('screen-cabin').classList.contains('active')) {
         document.getElementById('cabin-coins').textContent = state.coins;
-        renderCabin();
+        renderCabin(); // <-- ЭТО ВАЖНО
     }
 });
 
@@ -578,7 +581,16 @@ window.adjBid = (type, delta) => { if (type === 'qty') { state.bidQty = Math.max
 bindClick('btn-make-bid', () => socket.emit('makeBid', { quantity: state.bidQty, faceValue: state.bidVal }));
 bindClick('btn-call-bluff', () => socket.emit('callBluff'));
 bindClick('btn-call-spot', () => socket.emit('callSpot'));
-bindClick('btn-restart', () => socket.emit('requestRestart'));
+bindClick('btn-restart', () => {
+    // Если "Еще раз" не перезагружает страницу, а просто шлет сокет:
+    socket.emit('requestRestart');
+    
+    // Включаем музыку обратно
+    if (assets.enabled) {
+        assets.audioCache['bgm'].play().catch(()=>{});
+        assets.bgmPlaying = true;
+    }
+});
 bindClick('btn-home', () => location.reload());
 window.sendEmote = (e) => { socket.emit('sendEmote', e); };
 window.useSkill = (type) => { socket.emit('useSkill', type); };
@@ -736,6 +748,7 @@ window.sendReadyNext = () => {
 
 socket.on('matchResults', (res) => {
     assets.stop('match_bg');
+    assets.stop('bgm');
     if (res.coins > 0) {
         assets.play('win_music');
         setTimeout(() => assets.play('win_voice'), 500);
@@ -831,3 +844,4 @@ bindClick('btn-start-app', () => {
 });
 
 window.toggleSound = () => assets.toggle();
+
