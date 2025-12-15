@@ -13,17 +13,17 @@
 <body class="bg_default">
     <div id="app">
         
-                <!-- 1. LOADING -->
-        <div id="screen-loading" class="screen center-content active" style="background: #2b2d42;">
-            <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" style="max-width: 200px;">
-            
-            <div class="loading-box" style="margin-top: 30px; width: 80%; max-width: 300px; text-align: center;">
-                <div class="xp-track" style="height: 10px; background: rgba(255,255,255,0.1); margin-bottom: 10px;">
-                    <div id="preload-bar" class="xp-fill" style="width: 0%; background: #06d6a0;"></div>
-                </div>
-                <div id="preload-text" style="color: #8d99ae; font-size: 0.8rem; font-weight: bold;">ЗАГРУЗКА...</div>
-                
-                <button id="btn-start-app" class="btn btn-green hidden" style="margin-top: 20px; font-size: 1.2rem;">ИГРАТЬ</button>
+        <!-- 1. LOADING / LOGIN -->
+        <div id="screen-loading" class="screen center-content active">
+            <div class="loader"></div>
+            <h2 class="title-text" style="margin-top: 20px;">ЗАГРУЗКА...</h2>
+        </div>
+
+        <div id="screen-login" class="screen center-content">
+            <h2 class="title-text">КТО ТЫ, МОРЯК?</h2>
+            <div class="card slide-up">
+                <input type="text" id="input-username" placeholder="Твое имя..." maxlength="12">
+                <button id="btn-login" class="btn btn-primary" style="margin-top: 15px;">НА АБОРДАЖ!</button>
             </div>
         </div>
 
@@ -33,7 +33,6 @@
             <button class="btn-icon btn-encyclopedia" onclick="openEncyclopedia()">📖</button>
             <button id="btn-friends-menu" class="btn-icon btn-friends" onclick="openFriends()">👥</button>
             <button class="btn-icon btn-leaderboard" onclick="openLeaderboard()">🏆</button>
-            <button class="btn-mini" onclick="toggleSound()" style="position:absolute; top:15px; left:15px; z-index:100;">🔊</button>
 
             <img src="https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/logo/applogo.png" class="game-logo float-anim" alt="Logo">
             
@@ -211,7 +210,6 @@
             <div id="bluff-cloud" class="bluff-cloud hidden">НЕ ВЕРЮ!</div>
 
             <button class="btn-mini btn-game-leave" onclick="leaveGame()">✕</button>
-            <button class="btn-mini" onclick="toggleSound()" style="position:absolute; top:10px; right:10px; z-index:20;">🔊</button>
 
             <div class="rivals-bar-container">
                 <div id="players-bar" class="rivals-row"></div>
@@ -460,8 +458,6 @@
     <script src="app.js?v=15"></script>
 </body>
 </html>
-
-
 
 
 
