@@ -60,7 +60,7 @@ const assets = {
             
             // Настройка громкости
             if (key === 'bgm') { audio.loop = true; audio.volume = 0.4; }
-            if (key === 'match_bg') { audio.loop = true; audio.volume = 0.2; } // Тихий фон
+            if (key === 'match_bg') { audio.loop = true; audio.volume = 0.05; } // Тихий фон
             if (key === 'dice') audio.volume = 1.0; // Громко!
             
             // Ждем загрузки метаданных (достаточно для старта)
@@ -135,30 +135,40 @@ const assets = {
 
 // --- STARTUP LOGIC ---
 window.onload = () => {
-    // 1. Загрузка
+    // 1. Начинаем загрузку ресурсов
     assets.preload(
         (pct) => { 
-            document.getElementById('preload-bar').style.width = pct + '%'; 
-            document.getElementById('preload-text').textContent = pct + '%';
+            // Обновляем прогресс-бар
+            const bar = document.getElementById('preload-bar');
+            const txt = document.getElementById('preload-text');
+            if(bar) bar.style.width = pct + '%'; 
+            if(txt) txt.textContent = pct + '%';
         },
         () => {
-            // 2. Готово! Показываем кнопку
-            document.getElementById('preload-text').textContent = "ГОТОВО!";
-            document.getElementById('btn-start-app').classList.remove('hidden');
+            // 2. Загрузка завершена!
+            const txt = document.getElementById('preload-text');
+            const btn = document.getElementById('btn-start-app');
+            
+            if(txt) txt.textContent = "ГОТОВО!";
+            
+            // ПОКАЗЫВАЕМ КНОПКУ "ИГРАТЬ"
+            if(btn) {
+                btn.classList.remove('hidden');
+                btn.classList.add('pop-in'); // Анимация появления
+            }
         }
     );
 };
 
-// 3. Запуск по кнопке (AudioContext требует клика)
+// 3. Обработчик кнопки "ИГРАТЬ"
 bindClick('btn-start-app', () => {
-    // Восстанавливаем настройку звука
-    const saved = localStorage.getItem('soundEnabled');
-    if (saved === 'false') assets.toggle(); // Выключить, если было выключено
+    // Запускаем музыку (теперь можно, так как это клик)
+    if (assets.enabled) {
+         assets.audioCache['bgm'].play().catch(e => {});
+         assets.bgmPlaying = true;
+    }
     
-    // Запускаем музыку
-    if (assets.enabled) assets.audioCache['bgm'].play().catch(e => console.log("Audio error", e));
-    
-    // Переход к логину
+    // Переходим к логину (как раньше)
     if (tg?.initDataUnsafe?.user) { 
         state.username = tg.initDataUnsafe.user.first_name; 
         loginSuccess(); 
@@ -1055,6 +1065,7 @@ socket.on('notification', (data) => { if (data.type === 'friend_req') { const bt
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
 
 window.toggleSound = () => assets.toggle();
+
 
 
 
