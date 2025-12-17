@@ -804,65 +804,151 @@ function handlePlayerDisconnect(socketId, room, isVoluntary = false) {
 
 function handleSkill(socket, skillType) {
     const room = getRoomBySocketId(socket.id);
-    if (!room || room.status === 'FINISHED') return; 
+    if (!room || room.status === 'FINISHED') return;
     if (room.status !== 'PLAYING') return;
 
     const player = room.players.find(p => p.id === socket.id);
     if (!player || !player.tgId) return;
-    if (player.skillsUsed && player.skillsUsed.includes(skillType)) { socket.emit('errorMsg', 'Навык уже использован!'); return; }
+
+    if (player.skillsUsed && player.skillsUsed.includes(skillType)) {
+        socket.emit('errorMsg', 'Навык уже использован!');
+        return;
+    }
+
     const user = userCache.get(player.tgId);
-    const rankInfo = getRankInfo(user.xp, user.streak); const level = rankInfo.current.level;
+    const rankInfo = getRankInfo(user.xp, user.streak);
+    const level = rankInfo.current.level;
 
     try {
         if (skillType === 'ears') {
             if (level < 4) return socket.emit('errorMsg', 'Нужен ранг Боцман');
             if (room.currentTurn !== room.players.indexOf(player)) return socket.emit('errorMsg', 'Только в свой ход');
             if (!room.currentBid) return socket.emit('errorMsg', 'Ставок нет');
-            
+
             if (Math.random() < 0.5) {
-                const bid = room.currentBid; let total = 0;
-                room.players.forEach(p => { p.dice.forEach(d => { if (d === bid.faceValue || (room.config.jokers && d===1 && bid.faceValue!==1)) total++; }) });
+                const bid = room.currentBid;
+                let total = 0;
+                room.players.forEach(p => {
+                    p.dice.forEach(d => {
+                        if (d === bid.faceValue || (room.config.jokers && d === 1 && bid.faceValue !== 1)) total++;
+                    });
+                });
                 const isLying = total < bid.quantity;
-                socket.emit('skillResult', { type: 'ears', text: isLying ? "Он ВРЁТ!" : "Похоже на правду..." });
-            } else socket.emit('skillResult', { type: 'ears', text: "Ничего не слышно..." });
-            
-            if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('ears'); broadcastGameState(room);
+                socket.emit('skillResult', {
+                    type: 'ears',
+                    text: isLying ? "Он ВРЁТ!" : "Похоже на правду..."
+                });
+            } else {
+                socket.emit('skillResult', {
+                    type: 'ears',
+                    text: "Ничего не слышно..."
+                });
+            }
+
+            if (!player.skillsUsed) player.skillsUsed = [];
+            player.skillsUsed.push('ears');
+            broadcastGameState(room);
+
+            // уведомление о скилле
+            io.to(room.id).emit('skillUsed', {
+                playerId: player.id,
+                name: player.name,
+                skill: 'ears'
+            });
         }
+
         else if (skillType === 'lucky') {
             if (level < 5) return socket.emit('errorMsg', 'Нужен ранг 1-й помощник');
             if (player.diceCount >= 5) return socket.emit('errorMsg', 'Максимум кубиков');
-            
+
             if (Math.random() < 0.5) {
-                player.diceCount++; player.dice.push(Math.floor(Math.random()*6)+1);
-                io.to(room.id).emit('gameEvent', { text: `🎲 ${player.name} достал кубик!`, type: 'info' });
-                io.to(player.id).emit('yourDice', player.dice); 
-                socket.emit('skillResult', { type: 'lucky', text: "Вы достали кубик из рукава!" });
-            } else {
-                player.diceCount--; player.dice.pop();
-                io.to(room.id).emit('gameEvent', { text: `🤡 ${player.name} уронил кубик!`, type: 'error' });
+                player.diceCount++;
+                player.dice.push(Math.floor(Math.random() * 6) + 1);
+                io.to(room.id).emit('gameEvent', {
+                    text: `🎲 ${player.name} достал кубик!`,
+                    type: 'info'
+                });
                 io.to(player.id).emit('yourDice', player.dice);
-                socket.emit('skillResult', { type: 'lucky', text: "Фокус не удался, кубик потерян!" });
-                if(player.diceCount === 0) checkEliminationAndContinue(room, player, null);
+                socket.emit('skillResult', {
+                    type: 'lucky',
+                    text: "Вы достали кубик из рукава!"
+                });
+            } else {
+                player.diceCount--;
+                player.dice.pop();
+                io.to(room.id).emit('gameEvent', {
+                    text: `🤡 ${player.name} уронил кубик!`,
+                    type: 'error'
+                });
+                io.to(player.id).emit('yourDice', player.dice);
+                socket.emit('skillResult', {
+                    type: 'lucky',
+                    text: "Фокус не удался, кубик потерян!"
+                });
+                if (player.diceCount === 0) {
+                    checkEliminationAndContinue(room, player, null);
+                    // дальше состояние обновит finalizeRound/startNewRound
+                }
             }
-            if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('lucky'); broadcastGameState(room);
+
+            if (!player.skillsUsed) player.skillsUsed = [];
+            player.skillsUsed.push('lucky');
+
+            // если игрок ещё жив, можно просто обновить состояние
+            if (player.diceCount > 0) {
+                broadcastGameState(room);
+            }
+
+            io.to(room.id).emit('skillUsed', {
+                playerId: player.id,
+                name: player.name,
+                skill: 'lucky'
+            });
         }
+
         else if (skillType === 'kill') {
             if (level < 6) return socket.emit('errorMsg', 'Нужен ранг Капитан');
+
             const active = room.players.filter(p => p.diceCount > 0);
             if (active.length !== 2) return socket.emit('errorMsg', 'Нужно 1 на 1');
+
             const enemy = active.find(p => p.id !== player.id);
-            if (player.diceCount !== 1 || enemy.diceCount !== 1) return socket.emit('errorMsg', 'У всех по 1 кубу');
-            
-            if (Math.random() < 0.5) {
-                io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} пристрелил ${enemy.name}!`, type: 'info' });
-                enemy.diceCount = 0; checkEliminationAndContinue(room, enemy, player);
-            } else {
-                io.to(room.id).emit('gameEvent', { text: `🔫 ${player.name} промахнулся и застрелился!`, type: 'error' });
-                player.diceCount = 0; checkEliminationAndContinue(room, player, enemy);
+            if (!enemy) return socket.emit('errorMsg', 'Противник не найден');
+
+            if (player.diceCount !== 1 || enemy.diceCount !== 1) {
+                return socket.emit('errorMsg', 'У всех по 1 кубу');
             }
-            if(!player.skillsUsed) player.skillsUsed = []; player.skillsUsed.push('kill'); broadcastGameState(room);
+
+            if (Math.random() < 0.5) {
+                io.to(room.id).emit('gameEvent', {
+                    text: `🔫 ${player.name} пристрелил ${enemy.name}!`,
+                    type: 'info'
+                });
+                // НЕ трогаем diceCount вручную, пусть всё сделает finalizeRound
+                checkEliminationAndContinue(room, enemy, player);
+            } else {
+                io.to(room.id).emit('gameEvent', {
+                    text: `🔫 ${player.name} промахнулся и застрелился!`,
+                    type: 'error'
+                });
+                checkEliminationAndContinue(room, player, enemy);
+            }
+
+            if (!player.skillsUsed) player.skillsUsed = [];
+            player.skillsUsed.push('kill');
+
+            // состояние и таймеры обновит finalizeRound / startNewRound / gameOver
+            io.to(room.id).emit('skillUsed', {
+                playerId: player.id,
+                name: player.name,
+                skill: 'kill'
+            });
         }
-    } catch(e) { console.error(e); socket.emit('errorMsg', 'Ошибка навыка'); }
+
+    } catch (e) {
+        console.error(e);
+        socket.emit('errorMsg', 'Ошибка навыка');
+    }
 }
 
 // --- ADMIN ---
@@ -1360,6 +1446,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
