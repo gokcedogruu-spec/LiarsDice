@@ -783,6 +783,49 @@ socket.on('bluffEffect', (data) => {
     }, 2500);
 });
 
+socket.on('skillUsed', (data) => {
+    const cloud = document.getElementById('skill-cloud');
+    if (!cloud) return;
+
+    let text = '';
+    if (data.skill === 'ears')  text = `${data.name} подслушивает!`;
+    if (data.skill === 'lucky') text = `${data.name} достаёт кубик!`;
+    if (data.skill === 'kill')  text = `${data.name} достаёт ствол!`;
+
+    cloud.textContent = text || `${data.name} использует навык!`;
+
+    cloud.classList.remove('hidden');
+    cloud.classList.remove('skill-cloud-active');
+    // перезапуск анимации
+    void cloud.offsetWidth;
+    cloud.classList.add('skill-cloud-active');
+
+    // Хаптик: для kill — пожёстче, для остальных — помягче
+    if (tg && tg.HapticFeedback) {
+        try {
+            if (data.skill === 'kill') {
+                tg.HapticFeedback.notificationOccurred('error');
+                setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 200);
+            } else {
+                tg.HapticFeedback.notificationOccurred('warning');
+            }
+        } catch (e) {}
+    }
+
+    // Для kill добавим ещё и вспышку (как при bluff), но короче
+    if (data.skill === 'kill') {
+        const flash = document.getElementById('red-flash-overlay');
+        if (flash) {
+            flash.classList.add('red-flash-active');
+            setTimeout(() => flash.classList.remove('red-flash-active'), 800);
+        }
+    }
+
+    setTimeout(() => {
+        cloud.classList.add('hidden');
+    }, 1900);
+});
+
 socket.on('revealPhase', (data) => {
     document.getElementById('game-controls').classList.add('hidden');
     document.getElementById('current-bid-display').innerHTML = 
@@ -951,6 +994,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
