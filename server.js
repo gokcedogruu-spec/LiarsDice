@@ -407,23 +407,48 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     resetTurnTimer(room);
 }
 
-function nextTurn(room) {
-    let loopCount = 0;
-    do {
-        room.currentTurn = (room.currentTurn + 1) % room.players.length;
-        loopCount++; if (loopCount > 20) return; 
-    } while (room.players[room.currentTurn].diceCount === 0);
-    resetTurnTimer(room); broadcastGameState(room);
-}
-
 function makeBidInternal(room, player, quantity, faceValue) {
     if (room.currentBid) {
-        if (room.config.strict) { if (quantity <= room.currentBid.quantity) { io.to(player.id).emit('errorMsg', 'В строгом режиме нужно повышать количество!'); return; } } 
-        else { if (quantity < room.currentBid.quantity) quantity = room.currentBid.quantity + 1; else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) faceValue = room.currentBid.faceValue + 1; }
+        if (room.config.strict) {
+            if (quantity <= room.currentBid.quantity) {
+                io.to(player.id).emit('errorMsg', 'В строгом режиме нужно повышать количество!');
+                return;
+            }
+        } else {
+            if (quantity < room.currentBid.quantity) {
+                quantity = room.currentBid.quantity + 1;
+            } else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) {
+                faceValue = room.currentBid.faceValue + 1;
+            }
+        }
     }
-    if (faceValue > 6) { if(room.config.strict) faceValue = 6; else { faceValue = 2; quantity++; } }
+
+    if (faceValue > 6) {
+        if (room.config.strict) {
+            faceValue = 6;
+        } else {
+            faceValue = 2;
+            quantity++;
+        }
+    }
+
     room.currentBid = { quantity, faceValue, playerId: player.id };
-    io.to(room.id).emit('gameEvent', { text: `${player.name} ставит: ${quantity}x[${faceValue}]`, type: 'info' });
+
+    // Лог, как было
+    io.to(room.id).emit('gameEvent', {
+        text: `${player.name} ставит: ${quantity}x[${faceValue}]`,
+        type: 'info'
+    });
+
+    // НОВОЕ: лёгкий эффект пузыря ставки с визуалом кубика
+    const skin = (player.equipped && player.equipped.skin) ? player.equipped.skin : 'skin_white';
+    io.to(room.id).emit('bidEffect', {
+        playerId: player.id,
+        quantity,
+        faceValue,
+        skin
+    });
+
     nextTurn(room);
 }
 
@@ -1332,5 +1357,6 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
