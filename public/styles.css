@@ -509,6 +509,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 }
 
 /* Лёгкий пузырь при ставке / повышении */
+/* Лёгкий пузырь при ставке / повышении */
 .raise-bubble {
     position: absolute;
     bottom: 100%; /* над фишкой */
@@ -628,6 +629,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .menu-buttons {
     padding-bottom: 10px;
 }
+
 
 
 
