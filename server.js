@@ -408,6 +408,7 @@ function startNewRound(room, isFirst = false, startIdx = null) {
 }
 
 function makeBidInternal(room, player, quantity, faceValue) {
+    // 1. Проверка и нормализация ставки, как было раньше
     if (room.currentBid) {
         if (room.config.strict) {
             if (quantity <= room.currentBid.quantity) {
@@ -417,7 +418,8 @@ function makeBidInternal(room, player, quantity, faceValue) {
         } else {
             if (quantity < room.currentBid.quantity) {
                 quantity = room.currentBid.quantity + 1;
-            } else if (quantity === room.currentBid.quantity && faceValue <= room.currentBid.faceValue) {
+            } else if (quantity === room.currentBid.quantity &&
+                       faceValue <= room.currentBid.faceValue) {
                 faceValue = room.currentBid.faceValue + 1;
             }
         }
@@ -432,23 +434,34 @@ function makeBidInternal(room, player, quantity, faceValue) {
         }
     }
 
+    // 2. Фиксируем ставку
     room.currentBid = { quantity, faceValue, playerId: player.id };
 
-    // Лог, как было
+    // 3. Сообщение в лог (как было)
     io.to(room.id).emit('gameEvent', {
         text: `${player.name} ставит: ${quantity}x[${faceValue}]`,
         type: 'info'
     });
 
-    // НОВОЕ: лёгкий эффект пузыря ставки с визуалом кубика
-    const skin = (player.equipped && player.equipped.skin) ? player.equipped.skin : 'skin_white';
-    io.to(room.id).emit('bidEffect', {
-        playerId: player.id,
-        quantity,
-        faceValue,
-        skin
-    });
+    // 4. Лёгкий визуальный эффект (мини-пузырь над фишкой)
+    //    ОБЕРНУТ В try, чтобы ЛЮБАЯ ошибка здесь не ломала ход игры
+    try {
+        const skin = (player && player.equipped && player.equipped.skin)
+            ? player.equipped.skin
+            : 'skin_white';
 
+        io.to(room.id).emit('bidEffect', {
+            playerId: player.id,
+            quantity,
+            faceValue,
+            skin
+        });
+    } catch (e) {
+        console.error('bidEffect error:', e);
+        // ничего не делаем, игра должна продолжаться
+    }
+
+    // 5. Переход хода (ОБЯЗАТЕЛЬНО ВЫЗЫВАЕТСЯ В КОНЦЕ)
     nextTurn(room);
 }
 
@@ -1357,6 +1370,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
