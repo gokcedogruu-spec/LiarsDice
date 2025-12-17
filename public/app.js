@@ -80,15 +80,23 @@ document.addEventListener('click', (e) => {
 });
 
 let state = {
-    username: null, roomId: null, myId: null,
-    bidQty: 1, bidVal: 2, timerFrame: null,
-    createDice: 5, createPlayers: 10, createTime: 30,
+    username: null,
+    roomId: null,
+    myId: null,
+    bidQty: 1,
+    bidVal: 2,
+    timerFrame: null,
+    createDice: 5,
+    createPlayers: 10,
+    createTime: 30,
     rules: { jokers: false, spot: false, strict: false },
     currentRoomBets: { coins: 0, xp: 0 },
     pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
-    coins: 0, inventory: [], equipped: {}
+    coins: 0,
+    inventory: [],
+    equipped: {},
+    lastBid: null            // <<< НОВОЕ ПОЛЕ
 };
-
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 const XP_STEPS = [0, 100, 250, 500, 1000];
 
@@ -673,18 +681,62 @@ socket.on('gameState', (gs) => {
     }); 
     Array.from(bar.children).forEach(child => { if (!activeIds.has(child.getAttribute('data-id'))) child.remove(); }); 
     
-    const bid = document.getElementById('current-bid-display'); 
-    if (gs.currentBid) { 
-        const bidder = gs.players.find(p => p.id === gs.currentBid.playerId); 
-        const skin = bidder?.equipped?.skin || 'skin_white'; 
-        bid.innerHTML = `<div class="bid-container"><div class="bid-qty">${gs.currentBid.quantity}<span class="bid-x">x</span></div><div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div></div>`; 
-        state.bidQty = gs.currentBid.quantity; state.bidVal = gs.currentBid.faceValue; updateInputs(); 
-    } else { 
-        const me = gs.players.find(p => p.id === socket.id); 
-        if (me?.isTurn) { bid.innerHTML = `<div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">Ваш ход!</div>`; } 
-        else { const turnPlayer = gs.players.find(p => p.isTurn); const name = turnPlayer ? turnPlayer.name : "Ожидание"; bid.innerHTML = `<div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">Ходит: ${name}</div>`; } 
-        state.bidQty = 1; state.bidVal = 2; updateInputs(); 
-    } 
+    const bid = document.getElementById('current-bid-display');
+
+if (gs.currentBid) {
+    const bidder = gs.players.find(p => p.id === gs.currentBid.playerId);
+    const skin = bidder?.equipped?.skin || 'skin_white';
+
+    bid.innerHTML = `
+        <div class="bid-container">
+            <div class="bid-qty">
+                ${gs.currentBid.quantity}<span class="bid-x">x</span>
+            </div>
+            <div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div>
+        </div>
+    `;
+
+    // мини-пузырь: только если ставка изменилась
+    const lb = state.lastBid;
+    const cb = gs.currentBid;
+    const isNewBid =
+        !lb ||
+        lb.playerId !== cb.playerId ||
+        lb.quantity !== cb.quantity ||
+        lb.faceValue !== cb.faceValue;
+
+    if (isNewBid) {
+        spawnRaiseBubble(gs);
+        state.lastBid = { ...cb };
+    }
+
+    state.bidQty = cb.quantity;
+    state.bidVal = cb.faceValue;
+    updateInputs();
+} else {
+    state.lastBid = null;
+
+    const me = gs.players.find(p => p.id === socket.id);
+    if (me?.isTurn) {
+        bid.innerHTML = `
+            <div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">
+                Ваш ход!
+            </div>
+        `;
+    } else {
+        const turnPlayer = gs.players.find(p => p.isTurn);
+        const name = turnPlayer ? turnPlayer.name : "Ожидание";
+        bid.innerHTML = `
+            <div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">
+                Ходит: ${name}
+            </div>
+        `;
+    }
+
+    state.bidQty = 1;
+    state.bidVal = 2;
+    updateInputs();
+}
     
     const me = gs.players.find(p => p.id === socket.id); 
     const myTurn = me?.isTurn; 
@@ -729,33 +781,6 @@ socket.on('bluffEffect', (data) => {
         cloud.classList.remove('bluff-cloud-active');
         cloud.classList.add('hidden');
     }, 2500);
-});
-
-socket.on('bidEffect', (data) => {
-    const chip = document.querySelector(`.player-chip[data-id='${data.playerId}']`);
-    if (!chip) return;
-
-    const bubble = document.createElement('div');
-    bubble.className = 'raise-bubble';
-
-    // Визуал: количество + маленький кубик с нужным скином и гранью
-    bubble.innerHTML = `
-        <span class="raise-qty">${data.quantity}×</span>
-        <div class="die ${data.skin || 'skin_white'} face-${data.faceValue} bid-die-mini"></div>
-    `;
-
-    chip.appendChild(bubble);
-
-    // Лёгкий хаптик
-    if (tg && tg.HapticFeedback) {
-        try {
-            tg.HapticFeedback.impactOccurred('light');
-        } catch (e) {}
-    }
-
-    setTimeout(() => {
-        if (bubble.parentNode) bubble.remove();
-    }, 900);
 });
 
 socket.on('revealPhase', (data) => {
@@ -819,6 +844,33 @@ socket.on('matchResults', (res) => {
 
 function updateInputs() { document.getElementById('display-qty').textContent = state.bidQty; document.getElementById('display-val').textContent = state.bidVal; }
 function startVisualTimer(remaining, total) { if (state.timerFrame) cancelAnimationFrame(state.timerFrame); const bar = document.querySelector('.timer-progress'); if (!bar) return; if (remaining <= 0 || !total) { bar.style.width = '0%'; return; } const endTime = Date.now() + remaining; function tick() { const now = Date.now(); const left = endTime - now; if (left <= 0) { bar.style.width = '0%'; return; } const pct = (left / total) * 100; bar.style.width = `${Math.min(100, Math.max(0, pct))}%`; if (pct < 25) bar.style.backgroundColor = '#ef233c'; else if (pct < 50) bar.style.backgroundColor = '#ffb703'; else bar.style.backgroundColor = '#06d6a0'; state.timerFrame = requestAnimationFrame(tick); } tick(); }
+function spawnRaiseBubble(gs) {
+    if (!gs.currentBid) return;
+
+    const bid = gs.currentBid;
+    const chip = document.querySelector(`.player-chip[data-id='${bid.playerId}']`);
+    if (!chip) return;
+
+    const player = gs.players.find(p => p.id === bid.playerId);
+    const skin = player?.equipped?.skin || 'skin_white';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'raise-bubble';
+    bubble.innerHTML = `
+        <span class="raise-qty">${bid.quantity}×</span>
+        <div class="die ${skin} face-${bid.faceValue} bid-die-mini"></div>
+    `;
+
+    chip.appendChild(bubble);
+
+    if (tg && tg.HapticFeedback) {
+        try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {}
+    }
+
+    setTimeout(() => {
+        if (bubble.parentNode) bubble.remove();
+    }, 900);
+}
 
 // --- FRIEND SYSTEM CLIENT LOGIC ---
 let currentFriendTab = 'list';
@@ -899,6 +951,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
