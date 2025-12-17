@@ -1045,9 +1045,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('friendAction', async ({ action, payload }) => {
-        if (!socket.tgUserId) return;
-        const userId = socket.tgUserId;
-        const user = userCache.get(userId);
+    if (!socket.tgUserId) return;
+    const userId = socket.tgUserId;
+
+    try {
+        // ГАРАНТИРУЕМ, что user есть (из кеша или базы)
+        let user = userCache.get(userId);
+        if (!user) {
+            const dbUser = await User.findOne({ id: userId });
+            if (!dbUser) {
+                // Пользователь ещё не создан / не логинился — безопасно выходим
+                return;
+            }
+            user = dbUser.toObject();
+            userCache.set(userId, user);
+        }
 
         if (action === 'search') {
             let targetName = payload.trim().toLowerCase();
@@ -1055,7 +1067,7 @@ io.on('connection', (socket) => {
             const found = await User.findOne({
                 $and: [
                     { id: { $ne: userId } },
-                    { $or: [{ username: targetName }, { name: new RegExp('^'+targetName+'$', 'i') }] }
+                    { $or: [{ username: targetName }, { name: new RegExp('^' + targetName + '$', 'i') }] }
                 ]
             });
             if (found) socket.emit('friendSearchResult', { id: found.id, name: found.name });
@@ -1064,73 +1076,109 @@ io.on('connection', (socket) => {
         else if (action === 'request') {
             let targetId = payload;
             if (typeof payload === 'string' && isNaN(parseInt(payload))) {
-                 const ts = io.sockets.sockets.get(payload);
-                 if(ts && ts.tgUserId) targetId = ts.tgUserId; else return socket.emit('errorMsg', 'Игрок не найден');
-            } else targetId = parseInt(payload);
-            if(targetId === userId) return;
+                const ts = io.sockets.sockets.get(payload);
+                if (ts && ts.tgUserId) targetId = ts.tgUserId;
+                else return socket.emit('errorMsg', 'Игрок не найден');
+            } else {
+                targetId = parseInt(payload);
+            }
+            if (targetId === userId) return;
+
             let target = userCache.get(targetId);
-            if(!target) { const t = await User.findOne({id: targetId}); if(t) target = t.toObject(); }
-            if(target && !target.requests.includes(userId) && !target.friends.includes(userId)) {
+            if (!target) {
+                const t = await User.findOne({ id: targetId });
+                if (t) target = t.toObject();
+            }
+            if (target && !target.requests.includes(userId) && !target.friends.includes(userId)) {
                 target.requests.push(userId);
-                if(userCache.has(targetId)) userCache.set(targetId, target);
-                await User.updateOne({id: targetId}, {requests: target.requests});
+                if (userCache.has(targetId)) userCache.set(targetId, target);
+                await User.updateOne({ id: targetId }, { requests: target.requests });
+
                 const ts = findSocketIdByUserId(targetId);
-                if(ts) { io.to(ts).emit('notification', {type: 'friend_req'}); io.to(ts).emit('forceFriendUpdate'); }
+                if (ts) {
+                    io.to(ts).emit('notification', { type: 'friend_req' });
+                    io.to(ts).emit('forceFriendUpdate');
+                }
                 socket.emit('errorMsg', 'Запрос отправлен!');
-            } else socket.emit('errorMsg', 'Ошибка запроса');
+            } else {
+                socket.emit('errorMsg', 'Ошибка запроса');
+            }
         }
         else if (action === 'accept') {
             const targetId = parseInt(payload);
             let target = userCache.get(targetId);
-            if(!target) { const t = await User.findOne({id: targetId}); if(t) target = t.toObject(); }
-            if(target) {
-                if(!user.friends.includes(targetId)) user.friends.push(targetId);
-                if(!target.friends.includes(userId)) target.friends.push(userId);
+            if (!target) {
+                const t = await User.findOne({ id: targetId });
+                if (t) target = t.toObject();
+            }
+            if (target) {
+                if (!user.friends.includes(targetId)) user.friends.push(targetId);
+                if (!target.friends.includes(userId)) target.friends.push(userId);
                 user.requests = user.requests.filter(r => r !== targetId);
-                userCache.set(userId, user); await saveUser(userId);
-                if(userCache.has(targetId)) userCache.set(targetId, target);
-                await User.updateOne({id: targetId}, {friends: target.friends});
+
+                userCache.set(userId, user);
+                await saveUser(userId);
+
+                if (userCache.has(targetId)) userCache.set(targetId, target);
+                await User.updateOne({ id: targetId }, { friends: target.friends });
+
                 socket.emit('friendAction', { action: 'get' });
-                const ts = findSocketIdByUserId(targetId); if(ts) io.to(ts).emit('forceFriendUpdate');
+                const ts = findSocketIdByUserId(targetId);
+                if (ts) io.to(ts).emit('forceFriendUpdate');
             }
         }
         else if (action === 'decline') {
             const targetId = parseInt(payload);
-            if(user.friends.includes(targetId)) {
+            if (user.friends.includes(targetId)) {
                 user.friends = user.friends.filter(x => x !== targetId);
                 let target = userCache.get(targetId);
-                if(!target) { const t = await User.findOne({id: targetId}); if(t) target = t.toObject(); }
-                if(target) {
+                if (!target) {
+                    const t = await User.findOne({ id: targetId });
+                    if (t) target = t.toObject();
+                }
+                if (target) {
                     target.friends = target.friends.filter(x => x !== userId);
-                    if(userCache.has(targetId)) userCache.set(targetId, target);
-                    await User.updateOne({id: targetId}, {friends: target.friends});
+                    if (userCache.has(targetId)) userCache.set(targetId, target);
+                    await User.updateOne({ id: targetId }, { friends: target.friends });
                     const ts = findSocketIdByUserId(targetId);
-                    if(ts) io.to(ts).emit('forceFriendUpdate');
+                    if (ts) io.to(ts).emit('forceFriendUpdate');
                 }
             } else {
                 user.requests = user.requests.filter(x => x !== targetId);
             }
-            userCache.set(userId, user); await saveUser(userId);
+            userCache.set(userId, user);
+            await saveUser(userId);
             socket.emit('friendAction', { action: 'get' });
         }
         else if (action === 'get') {
-             const list = [];
-             for (const fid of user.friends) {
-                 let fName = "Unknown"; let st = "offline";
-                 const fc = userCache.get(fid);
-                 if(fc) { fName = fc.name; if(findSocketIdByUserId(fid)) st="online"; }
-                 else { const fd = await User.findOne({id: fid}); if(fd) fName = fd.name; }
-                 list.push({id: fid, name: fName, status: st});
-             }
-             const reqs = [];
-             for (const rid of user.requests) {
-                 const r = await User.findOne({id: rid});
-                 if(r) reqs.push({id: rid, name: r.name});
-             }
-             socket.emit('friendUpdate', { friends: list, requests: reqs });
-        }
-    });
+            const list = [];
+            for (const fid of user.friends) {
+                let fName = "Unknown";
+                let st = "offline";
+                const fc = userCache.get(fid);
+                if (fc) {
+                    fName = fc.name;
+                    if (findSocketIdByUserId(fid)) st = "online";
+                } else {
+                    const fd = await User.findOne({ id: fid });
+                    if (fd) fName = fd.name;
+                }
+                list.push({ id: fid, name: fName, status: st });
+            }
 
+            const reqs = [];
+            for (const rid of user.requests) {
+                const r = await User.findOne({ id: rid });
+                if (r) reqs.push({ id: rid, name: r.name });
+            }
+
+            socket.emit('friendUpdate', { friends: list, requests: reqs });
+        }
+    } catch (e) {
+        console.error('friendAction error:', e);
+        socket.emit('errorMsg', 'Ошибка системы друзей');
+    }
+});
     socket.on('inviteToRoom', (targetId) => {
         if (!socket.tgUserId) return;
         const myRoom = getRoomBySocketId(socket.id);
@@ -1284,4 +1332,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
