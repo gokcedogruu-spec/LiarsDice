@@ -114,6 +114,34 @@ const HATS = {
 const userCache = new Map();
 const rooms = new Map();
 
+// userId -> Set(socketId)
+// Нужен, чтобы быстро находить сокеты по Telegram id без перебора всех соединений
+const userSockets = new Map();
+
+/**
+ * Привязать сокет к пользователю
+ */
+function addUserSocket(userId, socketId) {
+    let set = userSockets.get(userId);
+    if (!set) {
+        set = new Set();
+        userSockets.set(userId, set);
+    }
+    set.add(socketId);
+}
+
+/**
+ * Отвязать сокет от пользователя (на disconnect)
+ */
+function removeUserSocket(userId, socketId) {
+    const set = userSockets.get(userId);
+    if (!set) return;
+    set.delete(socketId);
+    if (set.size === 0) {
+        userSockets.delete(userId);
+    }
+}
+
 // --- HELPERS ---
 async function loadUser(tgUser) {
     let user = await User.findOne({ id: tgUser.id });
@@ -165,9 +193,10 @@ function getRankInfo(xp, streak) {
 }
 
 function findSocketIdByUserId(uid) {
-    const sockets = Array.from(io.sockets.sockets.values());
-    const s = sockets.find(s => s.tgUserId === uid);
-    return s ? s.id : null;
+    const set = userSockets.get(uid);
+    if (!set || set.size === 0) return null;
+    // Берём первый активный сокет пользователя
+    return set.values().next().value;
 }
 
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
@@ -898,6 +927,7 @@ io.on('connection', (socket) => {
     socket.on('login', async ({ tgUser }) => {
         if (!tgUser) return;
         socket.tgUserId = tgUser.id;
+        addUserSocket(tgUser.id, socket.id); // <-- НОВАЯ СТРОКА
         const user = await loadUser(tgUser);
         const rank = getRankInfo(user.xp, user.streak);
         socket.emit('profileUpdate', { ...user, rankName: rank.current.name, currentRankMin: rank.current.min, nextRankXP: rank.next?.min || 'MAX', rankLevel: rank.current.level });
@@ -953,7 +983,19 @@ io.on('connection', (socket) => {
             socket.emit('profileUpdate', { ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min || 'MAX', rankLevel: rInfo.current.level });
             socket.emit('gameEvent', { text: 'Шляпа куплена!', type: 'info' });
         }
+     socket.on('disconnect', () => {
+        // 1. Удаляем сокет из userSockets
+        if (socket.tgUserId) {
+            removeUserSocket(socket.tgUserId, socket.id);
+        }
+
+        // 2. Обрабатываем отключение в комнате (НЕ добровольный выход)
+        const room = getRoomBySocketId(socket.id);
+        if (room) {
+            handlePlayerDisconnect(socket.id, room, false);
+        }
     });
+});
 
     socket.on('shopEquip', async (itemId) => {
         if (!socket.tgUserId) return;
@@ -1242,3 +1284,4 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
