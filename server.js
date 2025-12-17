@@ -407,6 +407,18 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     resetTurnTimer(room);
 }
 
+function nextTurn(room) {
+    let loopCount = 0;
+    do {
+        room.currentTurn = (room.currentTurn + 1) % room.players.length;
+        loopCount++;
+        if (loopCount > 20) return; // защита от зацикливания
+    } while (room.players[room.currentTurn].diceCount === 0);
+
+    resetTurnTimer(room);
+    broadcastGameState(room);
+}
+
 function makeBidInternal(room, player, quantity, faceValue) {
     if (room.currentBid) {
         if (room.config.strict) {
@@ -1348,6 +1360,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
