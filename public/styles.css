@@ -508,6 +508,58 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
 }
 
+/* Лёгкий пузырь при ставке / повышении */
+.raise-bubble {
+    position: absolute;
+    bottom: 100%; /* над фишкой */
+    left: 50%;
+    transform: translate(-50%, 0);
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #2b2d42;
+    font-size: 0.7rem;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 50;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    animation: raisePop 0.9s ease-out forwards;
+}
+
+.raise-qty {
+    display: inline-block;
+}
+
+/* Мини-кубик в пузыре */
+.bid-die-mini {
+    width: 22px !important;
+    height: 22px !important;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+}
+
+/* Мягкая поп-ап анимация */
+@keyframes raisePop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 10px) scale(0.6);
+    }
+    20% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+    70% {
+        opacity: 1;
+        transform: translate(-50%, -4px) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -8px) scale(0.95);
+    }
+}
 /* ADAPTIVE */
 @media (max-height: 750px) { .game-logo { max-width: 300px; margin-bottom: 5px; } .profile-card { margin-top: 45px !important; } .menu-buttons { margin-top: -5px; } }
 @media (max-height: 600px) { .game-logo { max-width: 220px; } .title-text { font-size: 1.5rem; margin-bottom: 10px; } .profile-card { margin-top: 45px; transform: scale(0.9); } }
@@ -576,6 +628,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .menu-buttons {
     padding-bottom: 10px;
 }
+
 
 
 
