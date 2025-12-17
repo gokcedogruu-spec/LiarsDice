@@ -731,6 +731,33 @@ socket.on('bluffEffect', (data) => {
     }, 2500);
 });
 
+socket.on('bidEffect', (data) => {
+    const chip = document.querySelector(`.player-chip[data-id='${data.playerId}']`);
+    if (!chip) return;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'raise-bubble';
+
+    // Визуал: количество + маленький кубик с нужным скином и гранью
+    bubble.innerHTML = `
+        <span class="raise-qty">${data.quantity}×</span>
+        <div class="die ${data.skin || 'skin_white'} face-${data.faceValue} bid-die-mini"></div>
+    `;
+
+    chip.appendChild(bubble);
+
+    // Лёгкий хаптик
+    if (tg && tg.HapticFeedback) {
+        try {
+            tg.HapticFeedback.impactOccurred('light');
+        } catch (e) {}
+    }
+
+    setTimeout(() => {
+        if (bubble.parentNode) bubble.remove();
+    }, 900);
+});
+
 socket.on('revealPhase', (data) => {
     document.getElementById('game-controls').classList.add('hidden');
     document.getElementById('current-bid-display').innerHTML = 
@@ -872,6 +899,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
