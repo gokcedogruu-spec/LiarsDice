@@ -534,6 +534,38 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
     100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
 }
+/* Облако при использовании навыков (мягче, чем НЕ ВЕРЮ) */
+.skill-cloud {
+    position: absolute;
+    top: 22%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, #118ab2, #073b4c);
+    color: #f8f9fa;
+    padding: 14px 32px;
+    border-radius: 40px;
+    font-size: 1.2rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    box-shadow: 0 0 20px rgba(17, 138, 178, 0.7), inset 0 0 6px rgba(0,0,0,0.5);
+    border: 3px solid rgba(255,255,255,0.9);
+    text-shadow: 1px 1px 0 #000;
+    white-space: nowrap;
+    z-index: 9400;
+    display: none;
+}
+
+.skill-cloud-active {
+    display: block !important;
+    animation: skillPop 1.8s ease-out forwards;
+}
+
+@keyframes skillPop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+    100% { opacity: 0; transform: translate(-50%, -60%) scale(1.0); }
+}
 
 /* Лёгкий пузырь при ставке / повышении */
 /* Лёгкий пузырь при ставке / повышении */
@@ -656,6 +688,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 .menu-buttons {
     padding-bottom: 10px;
 }
+
 
 
 
