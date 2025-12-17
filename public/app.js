@@ -223,6 +223,7 @@ socket.on('profileUpdate', (data) => {
     document.getElementById('user-coins').textContent = data.coins;
     
     state.coins = data.coins;
+    state.xp = data.xp;
     state.inventory = data.inventory || [];
     state.equipped = data.equipped || {};
 
@@ -871,6 +872,7 @@ socket.on('gameInvite', (data) => {
 });
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
+
 
 
 
