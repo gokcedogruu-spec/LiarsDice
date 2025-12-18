@@ -52,7 +52,34 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .subtitle { font-family: var(--font); font-size: 2rem; color: var(--text); margin-bottom: 15px; font-weight: 700; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
 
 /* --- КНОПКИ --- */
-.btn { width: 100%; padding: 8px; border: none; border-radius: 15px; font-family: var(--font); font-size: 0.9rem; font-weight: 800; cursor: pointer; margin-top: 0; transition: transform 0.1s; text-transform: uppercase; letter-spacing: 1px; border: 2px solid rgba(255,255,255,0.1); min-height: 40px; display: flex; align-items: center; justify-content: center; }
+.btn {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 15px;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 0;
+  /* БЫЛО: transition: transform 0.1s; */
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out, filter 0.08s ease-out;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 2px solid rgba(255,255,255,0.1);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Состояние "нажата" */
+.btn-pressed {
+  transform: translateY(2px) scale(0.97);
+  box-shadow: none !important;
+  filter: brightness(0.95);
+}
+
 .btn:active { transform: translateY(4px); box-shadow: none !important; }
 .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 0 #d90429; }
 .btn-orange { background: #fb8500; color: #2b2d42; box-shadow: 0 4px 0 #c46900; }
@@ -67,6 +94,11 @@ body.bg_lvl5 { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3
 .menu-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 340px; margin-top: -10px; }
 #btn-to-create, #btn-to-pve, #btn-join-room { grid-column: span 2; }
 .btn-mini { width: 36px; height: 36px; border-radius: 10px; border: none; background: var(--surface); color: white; font-size: 1.2rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,0.3); cursor: pointer; }
+.btn-mini.btn-pressed,
+.btn-icon.btn-pressed {
+    transform: scale(0.9);
+    box-shadow: none !important;
+}
 .btn-mini:active { transform: translateY(3px); box-shadow: none; }
 .btn-icon { position: absolute; top: 15px; width: 40px; height: 40px; background: var(--surface); color: var(--accent); border: 2px solid var(--accent); border-radius: 50%; font-size: 1.5rem; font-weight: 800; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; display: flex; align-items: center; justify-content: center; }
 .btn-icon:active { transform: scale(0.9); }
@@ -689,6 +721,78 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     padding-bottom: 10px;
 }
 
+/* Адаптация под горизонтальный режим (телефон в альбомной ориентации) */
+@media (orientation: landscape) and (max-height: 520px) {
+    /* Чуть уменьшаем общий масштаб интерфейса */
+    :root {
+        --die-size: 36px;
+    }
+
+    body {
+        font-size: 0.9rem;
+    }
+
+    /* Экран игры – в строку: [игроки] [стол] [управление] */
+    #screen-game {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .rivals-bar-container {
+        width: 28%;
+        max-width: 260px;
+        margin-top: 10px;
+        margin-bottom: 0;
+        padding-right: 4px;
+    }
+
+    .table-center {
+        width: 42%;
+        justify-content: flex-start;
+        padding: 0 4px;
+    }
+
+    .my-controls-area {
+        width: 30%;
+        align-self: stretch;
+        margin-top: 0;
+    }
+
+    .my-dice-panel {
+        margin-bottom: 4px;
+    }
+
+    .timer-capsule {
+        margin-top: 8px;
+        margin-bottom: 4px;
+    }
+
+    /* Немного уплотнить панель действий */
+    .action-panel {
+        padding: 8px;
+    }
+
+    .bid-controls {
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+
+    .main-actions button {
+        padding: 5px 3px;
+        font-size: 0.7rem;
+    }
+
+    /* На главном экране чуть уменьшить логотип и профиль */
+    #screen-home .game-logo {
+        max-width: 260px;
+        margin-bottom: 5px;
+    }
+
+    #screen-home .profile-card {
+        margin-top: 40px !important;
+        transform: scale(0.9);
+    }
+}
 
 
 
