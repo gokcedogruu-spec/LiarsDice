@@ -995,6 +995,27 @@ socket.on('gameInvite', (data) => {
 socket.on('notification', (data) => { if (data.type === 'friend_req') { const btn = document.getElementById('btn-friends-menu'); btn.classList.add('blink-anim'); if(tg) tg.HapticFeedback.notificationOccurred('success'); } });
 window.openInviteModal = () => { openFriends(); switchFriendTab('list'); };
 
+// Глобальный "эффект нажатия" для кнопок .btn
+function handleButtonDown(e) {
+    const btn = e.target.closest('.btn');
+    if (!btn) return;
+    btn.classList.add('btn-pressed');
+}
+
+function handleButtonUp() {
+    document.querySelectorAll('.btn-pressed')
+        .forEach(el => el.classList.remove('btn-pressed'));
+}
+
+// Навешиваем для мыши и тача
+document.addEventListener('mousedown', handleButtonDown);
+document.addEventListener('touchstart', handleButtonDown, { passive: true });
+
+// Снимаем при отпускании/уходе
+['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
+    document.addEventListener(ev, handleButtonUp, true);
+});
+
 
 
 
