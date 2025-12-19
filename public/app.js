@@ -39,6 +39,197 @@ window.uiPrompt = (text, onSubmit) => {
     document.getElementById('sys-btn-ok').onclick = () => { const val = ui.input.value.trim(); if(val) { ui.close(); onSubmit(val); } };
 };
 
+window.openHatInfo = (hatId, mode = 'both') => {
+    const hatMeta = HATS_META[hatId];
+    const HAT_SKILLS = {
+    'hat_rich': {
+        passiveTitle: 'Казначей',
+        passiveDesc:
+            'Первые несколько поражений по ставке забирают МЕНЬШЕ монет.\n' +
+            'XP-штраф остаётся обычным.\n' +
+            'Идеально для любителей крупных банков.',
+        activeTitle: 'Золотой сундук',
+        activeDesc:
+            '1 раз за матч: объявить "Золотой сундук".\n' +
+            'Если выиграешь матч — монетная награда за него увеличена.\n' +
+            'Если проиграешь матч — монетный штраф сильнее обычного.'
+    },
+
+    'hat_fallen': {
+        passiveTitle: 'Упавшая легенда',
+        passiveDesc:
+            'Стрик никогда не падает до нуля — вместо этого делится пополам.\n' +
+            'Пример: было 23 → после поражения станет 11.',
+        activeTitle: 'Второй шанс',
+        activeDesc:
+            '1 раз за матч: при вылете (0 кубов) не покидать игру,\n' +
+            'а вернуться с 1 кубиком.\n' +
+            'При этом награда XP за матч заметно уменьшается.'
+    },
+
+    'hat_underwater': {
+        passiveTitle: 'Дыхание под водой',
+        passiveDesc:
+            'Твой первый таймаут за матч не выбрасывает тебя из игры.\n' +
+            'Вместо вылета ты просто теряешь 1 куб и продолжаешь играть.',
+        activeTitle: 'Глоток воздуха',
+        activeDesc:
+            '1 раз за матч: удвоить время хода только для себя.\n' +
+            'Если даже с удвоенным таймером не успеваешь походить —\n' +
+            'мгновенный вылет по таймауту без снижения штрафов.'
+    },
+
+    'hat_voodoo': {
+        passiveTitle: 'Шёпот костей',
+        passiveDesc:
+            'При чужих ставках иногда слышен шёпот костей.\n' +
+            'С небольшим шансом подсказывает, похожа ли ставка на правду\n' +
+            'или тянет на блеф.\n' +
+            'Подсказки могут быть неточными!',
+        activeTitle: 'Проклятье языка',
+        activeDesc:
+            '1 раз за матч, при существующей ставке: наложить проклятье\n' +
+            'на игрока, который сделал текущую ставку.\n' +
+            'В этом раунде он НЕ может повышать ставку — только\n' +
+            '"НЕ ВЕРЮ!" или "В ТОЧКУ" (если режим разрешает).'
+    },
+
+    'hat_king_voodoo': {
+        passiveTitle: 'Король проклятий',
+        passiveDesc:
+            'Каждый успешный "НЕ ВЕРЮ!" (кем бы он ни был сказан)\n' +
+            'питает твою магию и слегка повышает будущую монетную награду.\n' +
+            'Бонус небольшой и накапливается ограниченно.',
+        activeTitle: 'Кукла вуду',
+        activeDesc:
+            '1 раз за матч: выбрать жертву.\n' +
+            'Один её куб в текущем раунде становится "связанным":\n' +
+            'он не считается ни джокером, ни как любая грань при вскрытии.\n' +
+            'Сильное и очень коварное искажение математики раунда.'
+    },
+
+    'hat_cursed': {
+        passiveTitle: 'Живи опасно',
+        passiveDesc:
+            'Победы приносят больше XP, чем обычно.\n' +
+            'Но любое поражение бьёт сильнее: штраф XP заметно выше.\n' +
+            'Играешь на повышенных ставках опыта.',
+        activeTitle: 'Проклятый банк',
+        activeDesc:
+            '1 раз за матч: проклясть общий банк.\n' +
+            'Награды и штрафы этого матча становятся жёстче для всех.\n' +
+            'Особенно больно будет тому, кто вылетит первым.'
+    },
+
+    'hat_flame': {
+        passiveTitle: 'Горячий стиль',
+        passiveDesc:
+            'Если ты несколько раз подряд ходишь достаточно быстро\n' +
+            'и при этом не теряешь кубы, в конце матча получаешь\n' +
+            'небольшой монетный бонус.\n' +
+            'Награда за уверенную и быструю игру.',
+        activeTitle: 'Пылающий вызов',
+        activeDesc:
+            '1 раз за матч: разжечь страсти за столом.\n' +
+            'В текущем раунде каждый, кто скажет "НЕ ВЕРЮ!" и ошибётся,\n' +
+            'теряет дополнительный куб (если он есть).\n' +
+            'Включая тебя, если риск не оправдался.'
+    },
+
+    'hat_frozen': {
+        passiveTitle: 'Лёд в жилах',
+        passiveDesc:
+            'Один раз за матч, когда ты должен вылететь (0 кубов),\n' +
+            'вместо вылета остаёшься в игре с 1 кубиком.\n' +
+            'Следующий ход — только ставка, без навыков и фокусов.',
+        activeTitle: 'Ледяной шок',
+        activeDesc:
+            '1 раз за матч: "охладить" противника.\n' +
+            'В его следующий ход таймер уменьшается примерно вдвое.\n' +
+            'Если он успеет походить — получает небольшой бонус XP.\n' +
+            'Если нет — обычный вылет по таймауту.'
+    },
+
+    'hat_ghost': {
+        passiveTitle: 'Призрачный взгляд',
+        passiveDesc:
+            'В начале каждого раунда ты краем глаза видишь\n' +
+            'один случайный куб одного случайного противника.\n' +
+            'Мелкая, но очень приятная подсказка.',
+        activeTitle: 'Видение конца',
+        activeDesc:
+            '1 раз за матч: выбрать грань (2–6) и увидеть,\n' +
+            'сколько таких костей прямо сейчас на столе (с учётом правил).\n' +
+            'Очень сильная информация — используй с умом.'
+    },
+
+    'hat_poison': {
+        passiveTitle: 'Токсичная аура',
+        passiveDesc:
+            'Если надет куб "Яд", максимум его стаков эффекта увеличен,\n' +
+            'но штрафы за поражения начинают расти раньше.\n' +
+            'Играть становится ещё более рискованно.',
+        activeTitle: 'Отравленный куб',
+        activeDesc:
+            '1 раз за матч: отравить куб выбранного игрока на этот раунд.\n' +
+            'Если он проиграет раунд — теряет дополнительно 1 куб.\n' +
+            'Если выиграет — яд обращается против тебя, ты теряешь 1 куб.'
+    },
+
+    'hat_lava': {
+        passiveTitle: 'Огненная выносливость',
+        passiveDesc:
+            'В первых партиях с этой шляпой ты немного защищён\n' +
+            'от чересчур жёстких потерь кубов из-за ставок и блефа.\n' +
+            'Не спасает от таймаута и самоубийственных навыков.',
+        activeTitle: 'Огненный шторм',
+        activeDesc:
+            '1 раз за матч: вызвать огненный шторм.\n' +
+            'У всех игроков случайным образом перебрасывается по одному кубу.\n' +
+            'Твои новые значения чуть чаще оказываются выгодными.'
+    },
+
+    'hat_deadlycursed': {
+        passiveTitle: 'Тень над столом',
+        passiveDesc:
+            'Каждый раз, когда кто-то вылетает из матча,\n' +
+            'ты получаешь небольшой бонус XP.\n' +
+            'Чем кровавее партия, тем приятнее тебе.',
+        activeTitle: 'Теневой выстрел',
+        activeDesc:
+            '1 раз за матч: сделать "теневой выстрел".\n' +
+            'У выбранного игрока один куб как бы исчезает на этот раунд,\n' +
+            'а у тебя временно появляется дополнительный куб.\n' +
+            'После раунда всё возвращается в норму.'
+    },
+
+    'hat_antarctica': {
+        passiveTitle: 'Ледяной фронт',
+        passiveDesc:
+            'В играх против ботов первые раунды они чуть осторожнее\n' +
+            'оценивают ставки и блеф.\n' +
+            'Это упрощает агрессивную игру в начале.',
+        activeTitle: 'Метель',
+        activeDesc:
+            '1 раз за матч: вызвать метель.\n' +
+            'Все игроки перебрасывают все свои кубы целиком.\n' +
+            'Ты же помнишь и старые, и новые значения своих костей.'
+    },
+
+    'hat_miasmas': {
+        passiveTitle: 'Заражённый стол',
+        passiveDesc:
+            'Все игроки играют как будто в более жёстком режиме:\n' +
+            'штрафы за поражения немного выше, награды за победы чуть больше.\n' +
+            'Токсичная атмосфера всем, но тебе — в радость.',
+        activeTitle: 'Туча миазм',
+        activeDesc:
+            '1 раз за матч: накрыть стол тучей миазм.\n' +
+            'В этом раунде каждый проигравший раунд теряет\n' +
+            'дополнительный куб (у ботов шанс смягчить удар).\n' +
+            'Партия может резко ускориться.'
+    }
+};
 // --- EMOJI LOGIC ---
 
 // 1. Функция переключения (Открыть/Закрыть)
@@ -80,22 +271,13 @@ document.addEventListener('click', (e) => {
 });
 
 let state = {
-    username: null,
-    roomId: null,
-    myId: null,
-    bidQty: 1,
-    bidVal: 2,
-    timerFrame: null,
-    createDice: 5,
-    createPlayers: 10,
-    createTime: 30,
-    rules: { jokers: false, spot: false, strict: false },
+    username: null, roomId: null, myId: null,
+    bidQty: 1, bidVal: 2, timerFrame: null,
+    createDice: 5, createPlayers: 10, createTime: 30,
+    rules: { jokers: false, spot: false, strict: false, crazy: false },     // + crazy
     currentRoomBets: { coins: 0, xp: 0 },
-    pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false },
-    coins: 0,
-    inventory: [],
-    equipped: {},
-    lastBid: null            // <<< НОВОЕ ПОЛЕ
+    pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false, crazy: false }, // + crazy
+    coins: 0, inventory: [], equipped: {}
 };
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 const XP_STEPS = [0, 100, 250, 500, 1000];
@@ -185,6 +367,21 @@ const HATS_META = {
     'hat_deadlycursed': { name: 'Шляпа коммодора флотилии теней', price: 100000000, rarity: 'mythical' },
     'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' },
     'hat_miasmas': { name: 'Шляпа дышащей миазмами', price: 100000000, rarity: 'mythical' }
+};
+const HAT_SKILLS = {
+    'hat_rich': {
+        passiveTitle: 'Казначей',
+        passiveDesc: 'Первые поражения по ставке забирают меньше монет.\nИдеально для любителей больших банков.',
+        activeTitle: 'Золотой сундук',
+        activeDesc: '1 раз за матч: удвоить будущий выигрыш монет.\nНо если проиграешь матч – штраф по монетам выше.'
+    },
+    'hat_fallen': {
+        passiveTitle: 'Упавшая легенда',
+        passiveDesc: 'Стрик никогда не падает до 0, а делится пополам.\nПроиграл с серией 23 → останется 11.',
+        activeTitle: 'Второй шанс',
+        activeDesc: '1 раз за матч: при вылете возвращает в игру с 1 кубом,\nно награда XP за матч уменьшается.'
+    },
+    // ...добавлю потом
 };
 
 function getRankImage(rankName, hatId = null) {
@@ -358,7 +555,16 @@ function renderShop() {
         else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
         else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
         
-        grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''}"><div class="shop-preview-box">${previewHTML}</div><h4>${meta.name}</h4>${btnHTML}</div>`;
+        grid.innerHTML += `
+    <div class="shop-item ${owned ? 'owned' : ''} ${cssClass}">
+        <img src="${imgUrl}"
+             style="width:60px; height:60px; object-fit:contain; margin-bottom:5px; cursor:pointer;"
+             class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}"
+             onclick="openHatInfoFromCabin('${id}')">
+        <h4 style="font-size:0.8rem;">${meta.name}</h4>
+        ${btnHTML}
+    </div>
+`;
     }
 }
 
@@ -456,6 +662,14 @@ function renderCabin() {
 }
 window.buyHat = (id, price) => { if (state.coins >= price) socket.emit('hatBuy', id); else uiAlert("Не хватает золота!", "УПС..."); };
 window.equipHat = (id) => socket.emit('hatEquip', id);
+window.openHatInfoFromCabin = (hatId) => {
+    const owned = state.inventory.includes(hatId);
+    if (!owned) {
+        uiAlert("Характеристики ещё не разблокированы", "ШЛЯПА");
+        return;
+    }
+    openHatInfo(hatId, 'both'); // покажем и пассив, и актив
+};
 
 // --- ENCYCLOPEDIA ---
 const ENCYCLOPEDIA_DATA = {
@@ -513,7 +727,7 @@ window.setDiff = (diff) => {
     document.getElementById('diff-desc').textContent = desc[diff] || '';
 };
 bindClick('btn-start-pve', () => {
-    socket.emit('joinOrCreateRoom', { roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123, first_name:state.username}, mode: 'pve', options: { dice: state.pve.dice, players: state.pve.bots + 1, jokers: state.pve.jokers, spot: state.pve.spot, strict: state.pve.strict, difficulty: state.pve.difficulty } });
+    socket.emit('joinOrCreateRoom', { roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123, first_name:state.username}, mode: 'pve', options: { dice: state.pve.dice, players: state.pve.bots + 1, jokers: state.pve.jokers, spot: state.pve.spot, strict: state.pve.strict, difficulty: state.pve.difficulty, crazy: state.pve.crazy } });
 });
 bindClick('btn-to-create', () => showScreen('create-settings'));
 bindClick('btn-back-home', () => showScreen('home'));
@@ -531,7 +745,7 @@ bindClick('btn-confirm-create', () => {
     const betCoins = COIN_STEPS[document.getElementById('range-bet-coins').value];
     const betXp = XP_STEPS[document.getElementById('range-bet-xp').value];
     if((betCoins > 0 && betCoins > state.coins) || (betXp > 0 && betXp > state.xp)) { document.getElementById('modal-res-alert').classList.add('active'); return; }
-    socket.emit('joinOrCreateRoom', { roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123, first_name:state.username}, options: { dice: state.createDice, players: state.createPlayers, time: state.createTime, jokers: state.rules.jokers, spot: state.rules.spot, strict: state.rules.strict, betCoins: betCoins, betXp: betXp } });
+    socket.emit('joinOrCreateRoom', { roomId: null, tgUser: tg?.initDataUnsafe?.user || {id:123, first_name:state.username}, options: { dice: state.createDice, players: state.createPlayers, time: state.createTime, jokers: state.rules.jokers, spot: state.rules.spot, strict: state.rules.strict, betCoins: betCoins, betXp: betXp, crazy: state.rules.crazy } });
 });
 window.toggleRule = (rule, isPve = false) => {
     const target = isPve ? state.pve : state.rules;
@@ -653,9 +867,10 @@ socket.on('gameState', (gs) => {
     document.body.className = gs.activeBackground || 'bg_default'; 
     let rulesText = ''; 
     if (gs.activeRules.jokers) rulesText += '🃏 Джокеры  '; 
-    if (gs.activeRules.spot) rulesText += '🎯 В точку'; 
-    if (gs.activeRules.strict) rulesText += '🔒 Строго'; 
-    document.getElementById('active-rules-display').textContent = rulesText; 
+    if (gs.activeRules.spot)   rulesText += '🎯 В точку  '; 
+    if (gs.activeRules.strict) rulesText += '🔒 Строго  ';
+    if (gs.activeRules.crazy)  rulesText += '🤪 Безумный стол';
+    document.getElementById('active-rules-display').textContent = rulesText.trim(); 
     
     document.querySelectorAll('.revealed-dice-container').forEach(el => el.remove());
 
@@ -743,14 +958,83 @@ if (gs.currentBid) {
     const controls = document.getElementById('game-controls'); 
     const spotBtn = document.getElementById('btn-call-spot'); 
     if (spotBtn) { if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule'); else spotBtn.classList.add('hidden-rule'); } 
-    const existingSkills = document.querySelector('.skills-bar'); if(existingSkills) existingSkills.remove(); 
-    if (me && me.availableSkills && me.availableSkills.length > 0 && !me.isEliminated) { 
-        const skillsDiv = document.createElement('div'); skillsDiv.className = 'skills-bar'; 
-        me.availableSkills.forEach(skill => { 
-            const btn = document.createElement('button'); btn.className = `btn-skill skill-${skill}`; btn.setAttribute('onclick', `useSkill('${skill}')`); skillsDiv.appendChild(btn); 
-        }); 
-        document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls); 
-    } 
+    // Удаляем старую панель навыков
+    const existingSkills = document.querySelector('.skills-bar');
+    if (existingSkills) existingSkills.remove();
+
+    // Навыки показываем только живому игроку
+    if (me && !me.isEliminated) {
+    const skillsDiv = document.createElement('div');
+    skillsDiv.className = 'skills-bar';
+
+    const hasActiveRankSkills = me.availableSkills && me.availableSkills.length > 0;
+    const currentHatId = me.equipped?.hat || null;
+    const crazyMode = !!gs.activeRules.crazy;
+    const hatSkill = crazyMode && currentHatId && HAT_SKILLS[currentHatId] ? HAT_SKILLS[currentHatId] : null;
+
+    // --- АКТИВНЫЕ НАВЫКИ ---
+    if (hasActiveRankSkills || (hatSkill && hatSkill.activeDesc)) {
+        const activeSection = document.createElement('div');
+        activeSection.className = 'skills-section';
+
+        activeSection.innerHTML = `
+            <div class="skills-title">АКТИВНЫЕ</div>
+            <div class="skills-row"></div>
+        `;
+        const row = activeSection.querySelector('.skills-row');
+
+        // Ранговые навыки (уши / счастливый / kill)
+        if (hasActiveRankSkills) {
+            me.availableSkills.forEach(skill => {
+                const btn = document.createElement('button');
+                btn.className = `btn-skill skill-${skill}`;
+                btn.setAttribute('onclick', `useSkill('${skill}')`);
+                row.appendChild(btn);
+            });
+        }
+
+        // Активный навык шляпы (кнопка с иконкой шляпы) – только в Безумном столе
+        if (hatSkill && hatSkill.activeDesc) {
+            const hatBtn = document.createElement('button');
+            hatBtn.className = 'btn-skill btn-skill-hat';
+            // маленькая иконка шляпы – используем ту же картинку, что и для ранга
+            const hatImgUrl = getRankImage(null, currentHatId);
+            hatBtn.style.backgroundImage = `url('${hatImgUrl}')`;
+            hatBtn.title = hatSkill.activeTitle || 'Навык шляпы';
+
+            // Пока только показываем описание навыка, без логики useHatSkill
+            hatBtn.onclick = () => openHatInfo(currentHatId, 'active');
+
+            row.appendChild(hatBtn);
+        }
+
+        skillsDiv.appendChild(activeSection);
+    }
+
+    // --- ПАССИВНЫЕ НАВЫКИ ШЛЯПЫ ---
+    if (hatSkill && hatSkill.passiveDesc) {
+        const passiveSection = document.createElement('div');
+        passiveSection.className = 'skills-section skills-passive';
+
+        passiveSection.innerHTML = `
+            <div class="skills-title">ПАССИВНЫЕ</div>
+            <div class="skills-row"></div>
+        `;
+        const rowP = passiveSection.querySelector('.skills-row');
+
+        const passBtn = document.createElement('button');
+        passBtn.className = 'btn-skill btn-skill-passive';
+        passBtn.textContent = 'i'; // маленькая инфо-кнопка
+        passBtn.onclick = () => openHatInfo(currentHatId, 'passive');
+
+        rowP.appendChild(passBtn);
+        skillsDiv.appendChild(passiveSection);
+    }
+
+    if (skillsDiv.children.length > 0) {
+        document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
+    }
+}
     
     if(myTurn) { 
         controls.classList.remove('hidden'); controls.classList.add('slide-up'); 
@@ -1015,6 +1299,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
