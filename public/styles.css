@@ -510,25 +510,29 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 
 /* Кнопка пассивного эффекта шляпы */
 .btn-skill-passive {
-    width: 26px;
-    height: 26px;
-    font-size: 0.8rem;
-    font-weight: 900;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    border: 2px solid rgba(200,200,200,0.7);
     background-color: rgba(0,0,0,0.6);
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    filter: grayscale(0.9) brightness(0.8);
+    box-shadow: 0 0 6px rgba(0,0,0,0.7);
 }
 
 /* Кнопка навыка шляпы – маленькая шляпа */
 .btn-skill-hat {
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
+    border-width: 2px;
     border-color: #ffb703;
-    box-shadow: 0 0 10px rgba(255,183,3,0.6);
+    box-shadow: 0 0 12px rgba(255,183,3,0.7);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
     animation: hatPulse 1.5s infinite ease-in-out;
 }
 
@@ -844,6 +848,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
         transform: scale(0.9);
     }
 }
+
 
 
 
