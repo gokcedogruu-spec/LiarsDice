@@ -361,7 +361,7 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 @keyframes emotePop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 15% { transform: translate(-50%, -50%) scale(1); } 70% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -60%) scale(1.1); } }
 
 /* --- TABLE CENTER --- */
-.table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; width: 100%; }
+.table-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;; position: relative; width: 100%;  margin-bottom: 6px; }
 .timer-capsule { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 20px; display: flex; align-items: center; gap: 8px; width: 80%; margin-bottom: 15px; }
 .timer-track { flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden; }
 .timer-progress { height: 100%; background: var(--success); width: 100%; border-radius: 5px; transition: width 0.1s linear, background-color 0.3s; }
@@ -373,7 +373,7 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 /* НОВЫЙ СТИЛЬ ТЕКСТА СТАВКИ (КРУПНЕЕ И С ТЕНЬЮ) */
 .game-log-box-large { margin-bottom: 10px; font-size: 1.2rem; color: white; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(0,0,0,0.5); text-align: center; height: 30px; font-weight: 900; white-space: nowrap; letter-spacing: 1px; z-index: 5; }
 
-.my-controls-area { width: 100%; }
+.my-controls-area { width: 100%; padding-bottom: calc(15px + env(safe-area-inset-bottom)); margin-top: 4px; }
 .emotes-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
 .emotes-bar button { background: none; border: none; cursor: pointer; transition: transform 0.1s; padding: 0; }
 .emotes-bar button img { width: 70px; height: 70px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
@@ -844,6 +844,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
         transform: scale(0.9);
     }
 }
+
 
 
 
