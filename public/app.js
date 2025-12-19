@@ -547,33 +547,44 @@ window.filterShop = (type) => {
 
 function renderShop() {
     const grid = document.getElementById('shop-items');
-    if(!grid) return;
+    if (!grid) return;
+
     grid.innerHTML = '';
+
     for (const [id, meta] of Object.entries(ITEMS_META)) {
-        if (meta.type !== currentShopTab) continue; 
+        if (meta.type !== currentShopTab) continue;
+
         const owned = state.inventory.includes(id);
-        const equipped = state.equipped.skin === id || state.equipped.bg === id || state.equipped.frame === id;
-        
+        const equipped =
+            state.equipped.skin === id ||
+            state.equipped.bg === id ||
+            state.equipped.frame === id;
+
         let previewHTML = '';
-        if (meta.type === 'skins') previewHTML = `<div class="shop-preview-die die ${id} face-6"></div>`;
-        else if (meta.type === 'frames') previewHTML = `<div class="shop-preview-frame ${id}">👤</div>`;
-        else if (meta.type === 'bg') previewHTML = `<div class="shop-preview-bg ${id}"></div>`;
+        if (meta.type === 'skins') {
+            previewHTML = `<div class="shop-preview-die die ${id} face-6"></div>`;
+        } else if (meta.type === 'frames') {
+            previewHTML = `<div class="shop-preview-frame ${id}">👤</div>`;
+        } else if (meta.type === 'bg') {
+            previewHTML = `<div class="shop-preview-bg ${id}"></div>`;
+        }
 
         let btnHTML = '';
-        if (equipped) btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
-        else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
-        else btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
-        
+        if (equipped) {
+            btnHTML = `<button class="shop-btn equipped">НАДЕТО</button>`;
+        } else if (owned) {
+            btnHTML = `<button class="shop-btn equip" onclick="equipItem('${id}')">НАДЕТЬ</button>`;
+        } else {
+            btnHTML = `<button class="shop-btn buy" onclick="buyItem('${id}', ${meta.price})">КУПИТЬ (${meta.price})</button>`;
+        }
+
         grid.innerHTML += `
-    <div class="shop-item ${owned ? 'owned' : ''} ${cssClass}">
-        <img src="${imgUrl}"
-             style="width:60px; height:60px; object-fit:contain; margin-bottom:5px; cursor:pointer;"
-             class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}"
-             onclick="openHatInfoFromCabin('${id}')">
-        <h4 style="font-size:0.8rem;">${meta.name}</h4>
-        ${btnHTML}
-    </div>
-`;
+            <div class="shop-item ${owned ? 'owned' : ''}">
+                <div class="shop-preview-box">${previewHTML}</div>
+                <h4>${meta.name}</h4>
+                ${btnHTML}
+            </div>
+        `;
     }
 }
 
@@ -1308,6 +1319,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
