@@ -374,7 +374,7 @@ function broadcastGameState(room) {
     });
     io.to(room.id).emit('gameState', {
         players: playersData, currentBid: room.currentBid, totalDuration: room.turnDuration, remainingTime: remaining,
-        activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict },
+        activeRules: { jokers: room.config.jokers, spot: room.config.spot, strict: room.config.strict, crazy: room.config.crazy || false },
         activeBackground: room.activeBackground
     });
 }
@@ -1347,7 +1347,7 @@ io.on('connection', (socket) => {
             const newId = 'CPU_' + Math.random().toString(36).substring(2,6);
             room = { 
                 id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, 
-                config: { dice: Math.max(3, options.dice), players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty }, 
+                config: { dice: Math.max(3, options.dice), players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty, crazy: !!options.crazy }, 
                 isPvE: true 
             };
             rooms.set(newId, room); isCreator = true;
@@ -1446,6 +1446,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
