@@ -460,20 +460,20 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .skills-bar {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     justify-content: center;
-    margin-top: 10px;
-    margin-bottom: 5px;
+    margin-top: 4px;
+    margin-bottom: 2px;
 }
 
 .skills-section {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .skills-title {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: rgba(255,255,255,0.7);
@@ -482,7 +482,7 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 
 .skills-row {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: center;
 }
 
@@ -844,6 +844,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
         transform: scale(0.9);
     }
 }
+
 
 
 
