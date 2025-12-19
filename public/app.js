@@ -41,6 +41,168 @@ window.uiPrompt = (text, onSubmit) => {
 
 window.openHatInfo = (hatId, mode = 'both') => {
     const hatMeta = HATS_META[hatId];
+    const skill = HAT_SKILLS[hatId];
+
+    if (!skill) {
+        uiAlert('Характеристики этой шляпы ещё не описаны.', 'ШЛЯПА');
+        return;
+    }
+
+    let html = '';
+
+    if (mode === 'both' || mode === 'passive') {
+        html += `<b>${skill.passiveTitle || 'Пассивный эффект'}</b><br>${(skill.passiveDesc || '').replace(/\n/g,'<br>')}<br><br>`;
+    }
+    if (mode === 'both' || mode === 'active') {
+        html += `<b>${skill.activeTitle || 'Активный навык'}</b><br>${(skill.activeDesc || '').replace(/\n/g,'<br>')}`;
+    }
+
+    ui.show(
+        hatMeta ? hatMeta.name : 'Шляпа',
+        html,
+        false,
+        `<button class="btn btn-blue" onclick="ui.close()">ПОНЯЛ</button>`
+    );
+};
+
+// --- EMOJI LOGIC ---
+
+// 1. Функция переключения (Открыть/Закрыть)
+window.toggleEmojiPanel = () => {
+    const panel = document.getElementById('emoji-panel');
+    // Если есть класс hidden - убираем (показываем), если нет - добавляем (скрываем)
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+    } else {
+        panel.classList.add('hidden');
+    }
+};
+
+// 2. Отправить и закрыть
+window.sendEmoteAndClose = (name) => {
+    socket.emit('sendEmote', name); 
+    document.getElementById('emoji-panel').classList.add('hidden'); 
+    if(tg) tg.HapticFeedback.selectionChanged();
+};
+
+// 3. Закрыть при клике в пустоту (ИСПРАВЛЕНО)
+document.addEventListener('click', (e) => {
+    const panel = document.getElementById('emoji-panel');
+    const btn = document.querySelector('.btn-emoji-toggle');
+
+    // Если панели или кнопки нет - выходим
+    if (!panel || !btn) return;
+
+    // Проверяем:
+    // 1. Панель открыта?
+    // 2. Клик был НЕ внутри панели?
+    // 3. Клик был НЕ по кнопке (и не по картинке внутри кнопки)?
+    if (!panel.classList.contains('hidden') && 
+        !panel.contains(e.target) && 
+        !btn.contains(e.target)) {
+        
+        panel.classList.add('hidden');
+    }
+});
+
+let state = {
+    username: null, roomId: null, myId: null,
+    bidQty: 1, bidVal: 2, timerFrame: null,
+    createDice: 5, createPlayers: 10, createTime: 30,
+    rules: { jokers: false, spot: false, strict: false, crazy: false },     // + crazy
+    currentRoomBets: { coins: 0, xp: 0 },
+    pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false, crazy: false }, // + crazy
+    coins: 0, inventory: [], equipped: {}
+};
+const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
+const XP_STEPS = [0, 100, 250, 500, 1000];
+
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
+
+const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin'];
+
+function showScreen(name) {
+    screens.forEach(s => { const el = document.getElementById(`screen-${s}`); if(el) el.classList.remove('active'); });
+    const target = document.getElementById(`screen-${name}`);
+    if(target) target.classList.add('active');
+}
+
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const loading = document.getElementById('screen-loading');
+        if (loading && loading.classList.contains('active')) { if (!tg?.initDataUnsafe?.user) showScreen('login'); }
+    }, 3000);
+    if (tg?.initDataUnsafe?.user) { state.username = tg.initDataUnsafe.user.first_name; loginSuccess(); }
+});
+
+socket.on('connect', () => { if (state.username) loginSuccess(); });
+
+function bindClick(id, handler) { const el = document.getElementById(id); if (el) el.addEventListener('click', handler); }
+
+bindClick('btn-login', () => {
+    const val = document.getElementById('input-username').value.trim();
+    if (val) { state.username = val; socket.tgUserId = 123; loginSuccess(); }
+});
+
+function loginSuccess() {
+    // Данные пользователя
+    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
+    
+    // ПРОВЕРКА: Есть ли параметр start_param (это ID комнаты из ссылки)
+    const startParam = tg?.initDataUnsafe?.start_param;
+
+    if (tg && tg.CloudStorage) {
+        tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
+            let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
+            
+            // 1. Логинимся
+            socket.emit('login', { tgUser: userPayload, savedData });
+
+            // 2. ЗАГРУЖАЕМ ДРУЗЕЙ
+            socket.emit('friendAction', { action: 'get' });
+
+            // 3. Если пришли по ссылке — предлагаем войти
+            if (startParam) {
+                // Небольшая задержка для красоты
+                setTimeout(() => {
+                    uiConfirm(`Войти в комнату ${startParam}?`, () => {
+                        socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
+                    });
+                }, 800);
+            }
+        });
+    } else { 
+        // Логика для браузера (тесты)
+        socket.emit('login', { tgUser: userPayload, savedData: null });
+
+        // ЗАГРУЖАЕМ ДРУЗЕЙ (FIX для браузера)
+        socket.emit('friendAction', { action: 'get' });
+        
+        if (startParam) {
+             setTimeout(() => {
+                socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
+            }, 800);
+        }
+    }
+}
+
+// --- HATS DATA ---
+const HATS_META = {
+    'hat_fallen': { name: 'Шляпа падшей легенды', price: 1000000, rarity: 'rare' },
+    'hat_rich': { name: 'Шляпа богатого капитана', price: 1000000, rarity: 'rare' },
+    'hat_underwater': { name: 'Шляпа измученного капитана', price: 1000000, rarity: 'rare' },
+    'hat_voodoo': { name: 'Шляпа знатока вуду', price: 1000000, rarity: 'rare' },
+    'hat_king_voodoo': { name: 'Шляпа короля вуду', price: 10000000, rarity: 'legendary' },
+    'hat_cursed': { name: 'Шляпа проклятого капитана', price: 10000000, rarity: 'legendary' },
+    'hat_flame': { name: 'Шляпа обожжённого капитана', price: 10000000, rarity: 'legendary' },
+    'hat_frozen': { name: 'Шляпа замерзшего капитана', price: 10000000, rarity: 'legendary' },
+    'hat_ghost': { name: 'Шляпа потустороннего капитана', price: 10000000, rarity: 'legendary' },
+    'hat_poison': { name: 'Шляпа отравленного капитана', price: 10000000, rarity: 'legendary' },
+    'hat_lava': { name: 'Шляпа плавающего по лаве', price: 100000000, rarity: 'mythical' },
+    'hat_deadlycursed': { name: 'Шляпа коммодора флотилии теней', price: 100000000, rarity: 'mythical' },
+    'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' },
+    'hat_miasmas': { name: 'Шляпа дышащей миазмами', price: 100000000, rarity: 'mythical' }
+};
     const HAT_SKILLS = {
     'hat_rich': {
         passiveTitle: 'Казначей',
@@ -229,144 +391,6 @@ window.openHatInfo = (hatId, mode = 'both') => {
             'дополнительный куб (у ботов шанс смягчить удар).\n' +
             'Партия может резко ускориться.'
     }
-};
-// --- EMOJI LOGIC ---
-
-// 1. Функция переключения (Открыть/Закрыть)
-window.toggleEmojiPanel = () => {
-    const panel = document.getElementById('emoji-panel');
-    // Если есть класс hidden - убираем (показываем), если нет - добавляем (скрываем)
-    if (panel.classList.contains('hidden')) {
-        panel.classList.remove('hidden');
-    } else {
-        panel.classList.add('hidden');
-    }
-};
-
-// 2. Отправить и закрыть
-window.sendEmoteAndClose = (name) => {
-    socket.emit('sendEmote', name); 
-    document.getElementById('emoji-panel').classList.add('hidden'); 
-    if(tg) tg.HapticFeedback.selectionChanged();
-};
-
-// 3. Закрыть при клике в пустоту (ИСПРАВЛЕНО)
-document.addEventListener('click', (e) => {
-    const panel = document.getElementById('emoji-panel');
-    const btn = document.querySelector('.btn-emoji-toggle');
-
-    // Если панели или кнопки нет - выходим
-    if (!panel || !btn) return;
-
-    // Проверяем:
-    // 1. Панель открыта?
-    // 2. Клик был НЕ внутри панели?
-    // 3. Клик был НЕ по кнопке (и не по картинке внутри кнопки)?
-    if (!panel.classList.contains('hidden') && 
-        !panel.contains(e.target) && 
-        !btn.contains(e.target)) {
-        
-        panel.classList.add('hidden');
-    }
-});
-
-let state = {
-    username: null, roomId: null, myId: null,
-    bidQty: 1, bidVal: 2, timerFrame: null,
-    createDice: 5, createPlayers: 10, createTime: 30,
-    rules: { jokers: false, spot: false, strict: false, crazy: false },     // + crazy
-    currentRoomBets: { coins: 0, xp: 0 },
-    pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false, crazy: false }, // + crazy
-    coins: 0, inventory: [], equipped: {}
-};
-const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
-const XP_STEPS = [0, 100, 250, 500, 1000];
-
-if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
-
-const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin'];
-
-function showScreen(name) {
-    screens.forEach(s => { const el = document.getElementById(`screen-${s}`); if(el) el.classList.remove('active'); });
-    const target = document.getElementById(`screen-${name}`);
-    if(target) target.classList.add('active');
-}
-
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        const loading = document.getElementById('screen-loading');
-        if (loading && loading.classList.contains('active')) { if (!tg?.initDataUnsafe?.user) showScreen('login'); }
-    }, 3000);
-    if (tg?.initDataUnsafe?.user) { state.username = tg.initDataUnsafe.user.first_name; loginSuccess(); }
-});
-
-socket.on('connect', () => { if (state.username) loginSuccess(); });
-
-function bindClick(id, handler) { const el = document.getElementById(id); if (el) el.addEventListener('click', handler); }
-
-bindClick('btn-login', () => {
-    const val = document.getElementById('input-username').value.trim();
-    if (val) { state.username = val; socket.tgUserId = 123; loginSuccess(); }
-});
-
-function loginSuccess() {
-    // Данные пользователя
-    const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
-    
-    // ПРОВЕРКА: Есть ли параметр start_param (это ID комнаты из ссылки)
-    const startParam = tg?.initDataUnsafe?.start_param;
-
-    if (tg && tg.CloudStorage) {
-        tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
-            let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
-            
-            // 1. Логинимся
-            socket.emit('login', { tgUser: userPayload, savedData });
-
-            // 2. ЗАГРУЖАЕМ ДРУЗЕЙ
-            socket.emit('friendAction', { action: 'get' });
-
-            // 3. Если пришли по ссылке — предлагаем войти
-            if (startParam) {
-                // Небольшая задержка для красоты
-                setTimeout(() => {
-                    uiConfirm(`Войти в комнату ${startParam}?`, () => {
-                        socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
-                    });
-                }, 800);
-            }
-        });
-    } else { 
-        // Логика для браузера (тесты)
-        socket.emit('login', { tgUser: userPayload, savedData: null });
-
-        // ЗАГРУЖАЕМ ДРУЗЕЙ (FIX для браузера)
-        socket.emit('friendAction', { action: 'get' });
-        
-        if (startParam) {
-             setTimeout(() => {
-                socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
-            }, 800);
-        }
-    }
-}
-
-// --- HATS DATA ---
-const HATS_META = {
-    'hat_fallen': { name: 'Шляпа падшей легенды', price: 1000000, rarity: 'rare' },
-    'hat_rich': { name: 'Шляпа богатого капитана', price: 1000000, rarity: 'rare' },
-    'hat_underwater': { name: 'Шляпа измученного капитана', price: 1000000, rarity: 'rare' },
-    'hat_voodoo': { name: 'Шляпа знатока вуду', price: 1000000, rarity: 'rare' },
-    'hat_king_voodoo': { name: 'Шляпа короля вуду', price: 10000000, rarity: 'legendary' },
-    'hat_cursed': { name: 'Шляпа проклятого капитана', price: 10000000, rarity: 'legendary' },
-    'hat_flame': { name: 'Шляпа обожжённого капитана', price: 10000000, rarity: 'legendary' },
-    'hat_frozen': { name: 'Шляпа замерзшего капитана', price: 10000000, rarity: 'legendary' },
-    'hat_ghost': { name: 'Шляпа потустороннего капитана', price: 10000000, rarity: 'legendary' },
-    'hat_poison': { name: 'Шляпа отравленного капитана', price: 10000000, rarity: 'legendary' },
-    'hat_lava': { name: 'Шляпа плавающего по лаве', price: 100000000, rarity: 'mythical' },
-    'hat_deadlycursed': { name: 'Шляпа коммодора флотилии теней', price: 100000000, rarity: 'mythical' },
-    'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' },
-    'hat_miasmas': { name: 'Шляпа дышащей миазмами', price: 100000000, rarity: 'mythical' }
 };
 
 function getRankImage(rankName, hatId = null) {
@@ -1284,6 +1308,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
