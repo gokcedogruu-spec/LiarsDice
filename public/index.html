@@ -13,7 +13,7 @@
 <body class="bg_default">
     <div id="app">
         
-        <!-- 1. LOADING / LOGIN -->
+        <!-- 1. LOADING / LOGIN -->`
         <div id="screen-loading" class="screen center-content active">
             <div class="loader"></div>
             <h2 class="title-text" style="margin-top: 20px;">ЗАГРУЗКА...</h2>
@@ -118,6 +118,14 @@
                     <button id="btn-rule-spot-pve" class="btn-time" onclick="toggleRule('spot', true)">🎯 В точку</button>
                     <button id="btn-rule-strict-pve" class="btn-time" onclick="toggleRule('strict', true)">🔒 Строго</button>
                 </div>
+                <div class="setting-group">
+    <button id="btn-rule-crazy-pve"
+            class="btn-time"
+            style="width:100%; margin-top:5px;"
+            onclick="toggleRule('crazy', true)">
+        🤪 Безумный стол
+    </button>
+</div>
 
                 <button id="btn-start-pve" class="btn btn-red" style="margin-top: 20px;">В БОЙ!</button>
                 <button id="btn-pve-back" class="btn btn-gray">НАЗАД</button>
@@ -159,6 +167,14 @@
                     <button id="btn-rule-spot" class="btn-time" onclick="toggleRule('spot')">🎯 В точку</button>
                     <button id="btn-rule-strict" class="btn-time" onclick="toggleRule('strict')">🔒 Строго</button>
                 </div>
+                <div class="setting-group">
+    <button id="btn-rule-crazy"
+            class="btn-time"
+            style="width:100%; margin-top:5px;"
+            onclick="toggleRule('crazy')">
+        🤪 Безумный стол
+    </button>
+</div>
 
                 <div class="setting-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
                     <label>СТАВКИ</label>
@@ -459,6 +475,7 @@
     <script src="app.js?v=15"></script>
 </body>
 </html>
+
 
 
 
