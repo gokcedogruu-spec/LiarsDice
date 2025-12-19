@@ -675,7 +675,16 @@ function renderCabin() {
                 if (equipped) btnHTML = `<button class="shop-btn equipped" onclick="equipHat(null)">СНЯТЬ</button>`;
                 else if (owned) btnHTML = `<button class="shop-btn equip" onclick="equipHat('${id}')">НАДЕТЬ</button>`;
                 else btnHTML = `<button class="shop-btn buy" onclick="buyHat('${id}', ${meta.price})">КУПИТЬ (${meta.price.toLocaleString()})</button>`;
-                grid.innerHTML += `<div class="shop-item ${owned ? 'owned' : ''} ${cssClass}"><img src="${imgUrl}" style="width:60px; height:60px; object-fit:contain; margin-bottom:5px;" class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}"> <h4 style="font-size:0.8rem;">${meta.name}</h4> ${btnHTML}</div>`;
+                grid.innerHTML += `
+    <div class="shop-item ${owned ? 'owned' : ''} ${cssClass}">
+        <img src="${imgUrl}"
+             style="width:60px; height:60px; object-fit:contain; margin-bottom:5px; cursor:pointer;"
+             class="${(meta.rarity==='legendary'||meta.rarity==='mythical')?'pulse-mythic':''}"
+             onclick="openHatInfoFromCabin('${id}')">
+        <h4 style="font-size:0.8rem;">${meta.name}</h4>
+        ${btnHTML}
+    </div>
+`;
             });
         }
     }
@@ -688,7 +697,7 @@ window.openHatInfoFromCabin = (hatId) => {
         uiAlert("Характеристики ещё не разблокированы", "ШЛЯПА");
         return;
     }
-    openHatInfo(hatId, 'both'); // покажем и пассив, и актив
+    openHatInfo(hatId, 'both'); // твоя уже существующая функция
 };
 
 // --- ENCYCLOPEDIA ---
@@ -1052,8 +1061,10 @@ if (gs.currentBid) {
     }
 
     if (skillsDiv.children.length > 0) {
-        document.querySelector('.my-controls-area').insertBefore(skillsDiv, controls);
-    }
+    const dicePanel = document.querySelector('.my-dice-panel');
+    const parent = dicePanel?.parentNode || document.querySelector('.my-controls-area');
+    parent.insertBefore(skillsDiv, dicePanel || controls);
+}
 }
     
     if(myTurn) { 
@@ -1319,6 +1330,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
