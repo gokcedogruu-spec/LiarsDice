@@ -459,20 +459,40 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 /* --- SKILLS --- */
 .skills-bar {
     display: flex;
+    flex-direction: column;
+    gap: 4px;
     justify-content: center;
-    gap: 15px;
-    margin-top: 15px;
-    flex-wrap: wrap;
+    margin-top: 10px;
     margin-bottom: 5px;
 }
 
-/* Обновлённый стиль кнопки навыка: с рамкой и фоном */
+.skills-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.skills-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.7);
+    text-shadow: 1px 1px 0 #000;
+}
+
+.skills-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+/* Активные (ранговые) навыки остаются как раньше, но с рамкой */
 .btn-skill {
     width: 35px;
     height: 35px;
     border-radius: 10px;
-    border: 2px solid rgba(255,255,255,0.25);  /* рамка как у эмодзи-кнопки */
-    background-color: rgba(0,0,0,0.4);         /* лёгкий фон */
+    border: 2px solid rgba(255,255,255,0.25);
+    background-color: rgba(0,0,0,0.4);
     cursor: pointer;
     background-size: contain;
     background-repeat: no-repeat;
@@ -486,6 +506,37 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
 .btn-skill:active {
     transform: translateY(4px) scale(0.95);
     filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+}
+
+/* Кнопка пассивного эффекта шляпы */
+.btn-skill-passive {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+    font-weight: 900;
+    background-color: rgba(0,0,0,0.6);
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Кнопка навыка шляпы – маленькая шляпа */
+.btn-skill-hat {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border-color: #ffb703;
+    box-shadow: 0 0 10px rgba(255,183,3,0.6);
+    animation: hatPulse 1.5s infinite ease-in-out;
+}
+
+/* Анимация для навыка шляпы */
+@keyframes hatPulse {
+    0%   { transform: scale(1);   box-shadow: 0 0 6px rgba(255,183,3,0.4); }
+    50%  { transform: scale(1.08); box-shadow: 0 0 12px rgba(255,183,3,0.8); }
+    100% { transform: scale(1);   box-shadow: 0 0 6px rgba(255,183,3,0.4); }
 }
 .skill-ears { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/skills/ihearu.png'); }
 .skill-lucky { background-image: url('https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/skills/saviorcube.png'); }
@@ -793,6 +844,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
         transform: scale(0.9);
     }
 }
+
 
 
 
