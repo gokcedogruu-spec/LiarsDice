@@ -368,21 +368,6 @@ const HATS_META = {
     'hat_antarctica': { name: 'Шляпа покорителя южных морей', price: 100000000, rarity: 'mythical' },
     'hat_miasmas': { name: 'Шляпа дышащей миазмами', price: 100000000, rarity: 'mythical' }
 };
-const HAT_SKILLS = {
-    'hat_rich': {
-        passiveTitle: 'Казначей',
-        passiveDesc: 'Первые поражения по ставке забирают меньше монет.\nИдеально для любителей больших банков.',
-        activeTitle: 'Золотой сундук',
-        activeDesc: '1 раз за матч: удвоить будущий выигрыш монет.\nНо если проиграешь матч – штраф по монетам выше.'
-    },
-    'hat_fallen': {
-        passiveTitle: 'Упавшая легенда',
-        passiveDesc: 'Стрик никогда не падает до 0, а делится пополам.\nПроиграл с серией 23 → останется 11.',
-        activeTitle: 'Второй шанс',
-        activeDesc: '1 раз за матч: при вылете возвращает в игру с 1 кубом,\nно награда XP за матч уменьшается.'
-    },
-    // ...добавлю потом
-};
 
 function getRankImage(rankName, hatId = null) {
     const baseHat = 'https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/textures/hats/';
@@ -1299,6 +1284,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
