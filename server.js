@@ -7,6 +7,10 @@ const { Server } = require('socket.io');
 const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
 
+// Подключаем наши новые файлы
+const User = require('./models/User');
+const { RANKS, HATS } = require('./config/constants');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -60,56 +64,10 @@ if (MONGO_URL) {
     console.log('⚠️ NO MONGO_URL! Data will not save.');
 }
 
-const userSchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
-    name: String,
-    username: String,
-    xp: { type: Number, default: 0 },
-    coins: { type: Number, default: 100 },
-    matches: { type: Number, default: 0 },
-    wins: { type: Number, default: 0 },
-    streak: { type: Number, default: 0 },
-    lossStreak: { type: Number, default: 0 },
-    matchHistory: { type: Array, default: [] },
-    friends: { type: [Number], default: [] },
-    requests: { type: [Number], default: [] },
-    pendingInvites: { type: Array, default: [] },
-    inventory: { type: [String], default: ['skin_white', 'bg_default', 'frame_default'] },
-    equipped: {
-        skin: { type: String, default: 'skin_white' },
-        bg: { type: String, default: 'bg_default' },
-        frame: { type: String, default: 'frame_default' },
-        hat: { type: String, default: null }
-    }
-});
-const User = mongoose.model('User', userSchema);
-
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
 app.get('/ping', (req, res) => res.status(200).send('pong'));
-
-// --- DATA ---
-const RANKS = [
-    { name: "Салага", min: 0, level: 0 },
-    { name: "Юнга", min: 500, level: 1 },
-    { name: "Матрос", min: 1500, level: 2 },
-    { name: "Старший матрос", min: 5000, level: 3 },
-    { name: "Боцман", min: 10000, level: 4 }, 
-    { name: "Первый помощник", min: 25000, penalty: 30, level: 5 }, 
-    { name: "Капитан", min: 50000, penalty: 60, level: 6 }, 
-    { name: "Легенда морей", min: 75000, reqStreak: 100, penalty: 100, level: 7 }
-];
-
-const HATS = {
-    'hat_fallen': { price: 1000000, level: 6 }, 'hat_rich': { price: 1000000, level: 6 },
-    'hat_underwater': { price: 1000000, level: 6 }, 'hat_voodoo': { price: 1000000, level: 6 },
-    'hat_king_voodoo': { price: 10000000, level: 6 }, 'hat_cursed': { price: 10000000, level: 6 },
-    'hat_flame': { price: 10000000, level: 6 }, 'hat_frozen': { price: 10000000, level: 6 },
-    'hat_ghost': { price: 10000000, level: 6 }, 'hat_lava': { price: 100000000, level: 7 },
-    'hat_deadlycursed': { price: 100000000, level: 7 }, 'hat_antarctica': { price: 100000000, level: 7 },
-    'hat_poison': { price: 10000000, level: 6 }, 'hat_miasmas': { price: 100000000, level: 7 }
-};
 
 const userCache = new Map();
 const rooms = new Map();
@@ -1446,6 +1404,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
