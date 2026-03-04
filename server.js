@@ -968,7 +968,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('hatBuy', async (hatId) => {
+  socket.on('hatBuy', async (hatId) => {
         if (!socket.tgUserId) return;
         const user = userCache.get(socket.tgUserId);
         const hat = HATS[hatId];
@@ -980,11 +980,20 @@ io.on('connection', (socket) => {
             socket.emit('profileUpdate', { ...user, rankName: rInfo.current.name, currentRankMin: rInfo.current.min, nextRankXP: rInfo.next?.min || 'MAX', rankLevel: rInfo.current.level });
             socket.emit('gameEvent', { text: 'Шляпа куплена!', type: 'info' });
         }
-     socket.on('disconnect', () => {
+    });
+
+    socket.on('disconnect', () => {
         // 1. Удаляем сокет из userSockets
         if (socket.tgUserId) {
             removeUserSocket(socket.tgUserId, socket.id);
         }
+
+        // 2. Обрабатываем отключение в комнате
+        const room = getRoomBySocketId(socket.id);
+        if (room) {
+            handlePlayerDisconnect(socket.id, room, false);
+        }
+    });
 
         // 2. Обрабатываем отключение в комнате (НЕ добровольный выход)
         const room = getRoomBySocketId(socket.id);
@@ -1360,6 +1369,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
