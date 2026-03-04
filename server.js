@@ -1205,10 +1205,10 @@ socket.on('hatBuy', async (hatId) => {
         if (room) handlePlayerDisconnect(socket.id, room, true);
     });
 
-    socket.on('joinOrCreateRoom', ({ roomId, tgUser, options, mode }) => {
-        const old = getRoomBySocketId(socket.id); 
-        if (old) handlePlayerDisconnect(socket.id, old, true);
+socket.on('joinOrCreateRoom', async ({ roomId, tgUser, options, mode }) => {
+        if (!tgUser) return;
 
+        // 1. Сначала удаляем игрока из всех старых комнат (защита от клонов)
         for (const [rId, r] of rooms) {
             const cloneIdx = r.players.findIndex(p => p.tgId === tgUser.id && !p.isBot);
             if (cloneIdx !== -1) {
@@ -1217,22 +1217,17 @@ socket.on('hatBuy', async (hatId) => {
             }
         }
 
-        if (!tgUser) return;
-        const userId = tgUser.id; 
-        const uData = userCache.get(userId);
-        const rInfo = getRankInfo(uData.xp, uData.streak);
-        
-        if (options && options.dice < 3) options.dice = 3;
-        // Защита от неправильных настроек
-        if (options) {
-            options.dice = Math.min(Math.max(parseInt(options.dice) || 5, 3), 10); // от 3 до 10 кубов
-            options.players = Math.min(Math.max(parseInt(options.players) || 2, 2), 10); // от 2 до 10 игроков
-            options.time = Math.min(Math.max(parseInt(options.time) || 30, 15), 60); // от 15 до 60 секунд
+        // 2. ГАРАНТИРУЕМ, что данные пользователя загружены
+        let uData = userCache.get(tgUser.id);
+        if (!uData) {
+            uData = await loadUser(tgUser);
         }
-        if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
 
-        let room; let isCreator = false;
+        const rInfo = getRankInfo(uData.xp, uData.streak);
+        let room; 
+        let isCreator = false;
 
+        // --- РЕЖИМ PVE (С БОТОМ) ---
         if (mode === 'pve') {
             const newId = 'CPU_' + Math.random().toString(36).substring(2,6);
             room = { 
@@ -1240,54 +1235,50 @@ socket.on('hatBuy', async (hatId) => {
                 config: { dice: Math.max(3, options.dice), players: options.players, time: 30, jokers: options.jokers, spot: options.spot, strict: options.strict, difficulty: options.difficulty, crazy: !!options.crazy }, 
                 isPvE: true 
             };
-            rooms.set(newId, room); isCreator = true;
-            room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: true, isCreator: true, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
+            rooms.set(newId, room);
+            isCreator = true;
+            room.players.push({ id: socket.id, tgId: tgUser.id, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: room.config.dice, ready: true, isCreator: true, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
             
-            const namesMedium = ['Гиббс', 'Пинтел', 'Раджетти', 'Марти', 'Коттон', 'Малрой', 'Скрам', 'Мёртогг', 'Попугай'];
-            const namesPirate = ['Джек Воробей', 'Уилл Тернер', 'Элизабет', 'Капитан Тиг', 'Сяо Фэнь', 'Флинт', 'Джон Сильвер', 'Прихлоп Билл', 'Анжелика'];
-            const namesLegend = ['Дейви Джонс', 'Черная Борода', 'Барбосса', 'Шри Сумбаджи', 'Салазар', 'Калипсо', 'Капитан Крюк', 'Чёрный Барт', 'Амман Корсар'];
+            const namesMedium = ['Гиббс', 'Пинтел', 'Раджетти', 'Марти'];
+            const namesPirate = ['Джек Воробей', 'Уилл Тернер', 'Элизабет'];
+            const namesLegend = ['Дейви Джонс', 'Черная Борода', 'Барбосса'];
 
-            let targetNames = namesMedium;
-            let botRank = 'Матрос';
-            if (options.difficulty === 'pirate') { targetNames = namesPirate; botRank = 'Капитан'; }
-            if (options.difficulty === 'legend') { targetNames = namesLegend; botRank = 'Легенда морей'; }
+            let targetNames = options.difficulty === 'legend' ? namesLegend : (options.difficulty === 'pirate' ? namesPirate : namesMedium);
+            let botRank = options.difficulty === 'legend' ? 'Легенда морей' : 'Капитан';
             
             for(let i=0; i<options.players-1; i++) { 
                 room.players.push({ id: 'bot_' + Math.random(), name: `${targetNames[i % targetNames.length]}`, rank: botRank, dice: [], diceCount: room.config.dice, ready: true, isCreator: false, isBot: true, equipped: { frame: 'frame_default' }, rankLevel: 0 }); 
             }
-            socket.join(newId); startNewRound(room, true); return;
+            socket.join(newId); 
+            startNewRound(room, true); 
+            return;
         }
         
+        // --- РЕЖИМ PVP (С ЛЮДЬМИ) ---
         if (roomId) { 
             room = rooms.get(roomId); 
             if (room && room.deletionTimer) { clearTimeout(room.deletionTimer); room.deletionTimer = null; }
-            if (!room || room.players.length >= room.config.players) { socket.emit('errorMsg', 'Ошибка входа или комната полна'); return; } 
-            if (room.status === 'LOBBY' || room.status === 'FINISHED') {
-                if (room.config.betCoins > uData.coins || room.config.betXp > uData.xp) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
-            }
+            if (!room) return socket.emit('errorMsg', 'Комната не найдена (возможно, игра уже удалена)');
+            if (room.players.length >= room.config.players) return socket.emit('errorMsg', 'Комната полна');
         } else { 
             const newId = generateRoomId(); 
-            const st = options || { dice: 5, players: 10, time: 30 }; if(st.dice < 3) st.dice = 3; 
+            const st = options || { dice: 5, players: 10, time: 30 };
             room = { id: newId, players: [], status: 'LOBBY', currentTurn: 0, currentBid: null, history: [], timerId: null, turnDeadline: 0, config: st, isPvE: false }; 
-            rooms.set(newId, room); roomId = newId; isCreator = true; 
+            rooms.set(newId, room); 
+            roomId = newId; 
+            isCreator = true; 
         }
         
-        if (!isCreator) {
-            const hasActiveCreator = room.players.some(p => p.isCreator);
-            if (!hasActiveCreator) isCreator = true;
-        }
+        if (!isCreator && room.players.filter(p => !p.isBot).length === 0) isCreator = true;
 
-        let initialDice = room.config.dice;
-        let initialReady = false;
-        if (room.status === 'PLAYING' || room.status === 'REVEAL') {
-            initialDice = 0;
-            initialReady = true; 
-            socket.emit('gameEvent', { text: 'Вы вошли как наблюдатель', type: 'info' });
-        }
+        let initialDice = (room.status === 'PLAYING' || room.status === 'REVEAL') ? 0 : room.config.dice;
+        let initialReady = (room.status === 'PLAYING' || room.status === 'REVEAL');
 
-        room.players.push({ id: socket.id, tgId: userId, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: initialDice, ready: initialReady, isCreator: isCreator, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
+        room.players.push({ id: socket.id, tgId: tgUser.id, name: uData.name, rank: rInfo.current.name, dice: [], diceCount: initialDice, ready: initialReady, isCreator: isCreator, equipped: uData.equipped, skillsUsed: [], rankLevel: rInfo.current.level });
         socket.join(roomId); 
-        if (room.status === 'PLAYING' || room.status === 'REVEAL') broadcastGameState(room); else broadcastRoomUpdate(room);
+        
+        if (room.status === 'PLAYING' || room.status === 'REVEAL') broadcastGameState(room); 
+        else broadcastRoomUpdate(room);
     });
 
     socket.on('setReady', (isReady) => { const r = getRoomBySocketId(socket.id); if (r?.status === 'LOBBY') { const p = r.players.find(x => x.id === socket.id); if (p) { p.ready = isReady; broadcastRoomUpdate(r); } } });
@@ -1361,6 +1352,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
