@@ -1328,7 +1328,20 @@ io.on('connection', (socket) => {
     });
 });
 
+// --- KEEP ALIVE LOGIC ---
+// Этот код заставляет сервер "стучаться" сам в себя, чтобы не заснуть на Render
+const APP_URL = process.env.APP_URL || `https://liarsdicezmss.onrender.com`;
+
+setInterval(() => {
+    https.get(`${APP_URL}/ping`, (res) => {
+        console.log(`Self-ping sent to ${APP_URL}/ping: Status ${res.statusCode}`);
+    }).on('error', (err) => {
+        console.error(`Self-ping failed: ${err.message}`);
+    });
+}, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
+
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
