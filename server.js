@@ -1222,6 +1222,12 @@ io.on('connection', (socket) => {
         const rInfo = getRankInfo(uData.xp, uData.streak);
         
         if (options && options.dice < 3) options.dice = 3;
+        // Защита от неправильных настроек
+        if (options) {
+            options.dice = Math.min(Math.max(parseInt(options.dice) || 5, 3), 10); // от 3 до 10 кубов
+            options.players = Math.min(Math.max(parseInt(options.players) || 2, 2), 10); // от 2 до 10 игроков
+            options.time = Math.min(Math.max(parseInt(options.time) || 30, 15), 60); // от 15 до 60 секунд
+        }
         if (options && (options.betCoins > uData.coins || options.betXp > uData.xp)) { socket.emit('errorMsg', 'NO_FUNDS'); return; }
 
         let room; let isCreator = false;
@@ -1285,7 +1291,20 @@ io.on('connection', (socket) => {
 
     socket.on('setReady', (isReady) => { const r = getRoomBySocketId(socket.id); if (r?.status === 'LOBBY') { const p = r.players.find(x => x.id === socket.id); if (p) { p.ready = isReady; broadcastRoomUpdate(r); } } });
     socket.on('startGame', () => { const r = getRoomBySocketId(socket.id); if (r) { const p = r.players.find(x => x.id === socket.id); if (p?.isCreator && r.players.length >= 2 && r.players.every(x => x.ready)) startNewRound(r, true); } });
-    socket.on('makeBid', ({ quantity, faceValue }) => { const r = getRoomBySocketId(socket.id); if (!r || r.status !== 'PLAYING' || r.players[r.currentTurn].id !== socket.id) return; makeBidInternal(r, r.players[r.currentTurn], parseInt(quantity), parseInt(faceValue)); });
+    socket.on('makeBid', ({ quantity, faceValue }) => {
+        const r = getRoomBySocketId(socket.id);
+        if (!r || r.status !== 'PLAYING' || r.players[r.currentTurn].id !== socket.id) return;
+
+        // ПРОВЕРКА: Превращаем в числа и проверяем, что это вообще числа
+        const q = parseInt(quantity);
+        const v = parseInt(faceValue);
+
+        if (isNaN(q) || isNaN(v) || q < 1 || v < 1 || v > 6) {
+            return socket.emit('errorMsg', 'Некорректная ставка!');
+        }
+
+        makeBidInternal(r, r.players[r.currentTurn], q, v);
+    });
     socket.on('callBluff', () => handleCall(socket, 'bluff'));
     socket.on('callSpot', () => handleCall(socket, 'spot'));
     
@@ -1341,6 +1360,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
