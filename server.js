@@ -968,7 +968,7 @@ io.on('connection', (socket) => {
         }
     });
 
-  socket.on('hatBuy', async (hatId) => {
+socket.on('hatBuy', async (hatId) => {
         if (!socket.tgUserId) return;
         const user = userCache.get(socket.tgUserId);
         const hat = HATS[hatId];
@@ -994,14 +994,6 @@ io.on('connection', (socket) => {
             handlePlayerDisconnect(socket.id, room, false);
         }
     });
-
-        // 2. Обрабатываем отключение в комнате (НЕ добровольный выход)
-        const room = getRoomBySocketId(socket.id);
-        if (room) {
-            handlePlayerDisconnect(socket.id, room, false);
-        }
-    });
-});
 
     socket.on('shopEquip', async (itemId) => {
         if (!socket.tgUserId) return;
@@ -1369,6 +1361,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
