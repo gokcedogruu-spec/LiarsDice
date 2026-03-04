@@ -113,6 +113,7 @@ let state = {
     currentRoomBets: { coins: 0, xp: 0 },
     pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false, crazy: false }, // + crazy
     coins: 0, inventory: [], equipped: {}
+    lastRoomId: localStorage.getItem('lastRoomId') || null, 
 };
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 const XP_STEPS = [0, 100, 250, 500, 1000];
@@ -135,7 +136,22 @@ window.addEventListener('load', () => {
     if (tg?.initDataUnsafe?.user) { state.username = tg.initDataUnsafe.user.first_name; loginSuccess(); }
 });
 
-socket.on('connect', () => { if (state.username) loginSuccess(); });
+socket.on('connect', () => { 
+    console.log("✅ Соединение установлено!");
+    document.getElementById('screen-reconnect').classList.remove('active');
+    
+    if (state.username) {
+        loginSuccess(); // Авто-логин при восстановлении связи
+    }
+});
+
+socket.on('disconnect', () => {
+    console.log("❌ Соединение потеряно...");
+    // Показываем экран переподключения, если мы были в игре или лобби
+    if (state.roomId) {
+        document.getElementById('screen-reconnect').classList.add('active');
+    }
+});
 
 function bindClick(id, handler) { const el = document.getElementById(id); if (el) el.addEventListener('click', handler); }
 
@@ -881,7 +897,42 @@ socket.on('emoteReceived', (data) => { const el = document.querySelector(`.playe
 socket.on('skillResult', (data) => { const modal = document.getElementById('modal-skill-alert'); const iconEl = document.getElementById('skill-alert-title'); let icon = '⚡'; if (data.type === 'ears') icon = '👂'; else if (data.type === 'lucky') icon = '🎲'; else if (data.type === 'kill') icon = '🔫'; iconEl.textContent = icon; document.getElementById('skill-alert-text').textContent = data.text; modal.classList.add('active'); });
 window.closeSkillAlert = () => { document.getElementById('modal-skill-alert').classList.remove('active'); };
 socket.on('errorMsg', (msg) => { if (msg === 'NO_FUNDS') { document.getElementById('modal-res-alert').classList.add('active'); } else { uiAlert(msg, "ОШИБКА"); } });
-socket.on('roomUpdate', (room) => { state.roomId = room.roomId; if (room.status === 'LOBBY') { showScreen('lobby'); document.getElementById('lobby-room-id').textContent = room.roomId; if (room.config) { document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`; state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp }; let betStr = ''; if(room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `; if(room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`; document.getElementById('lobby-bets').textContent = betStr; } const list = document.getElementById('lobby-players'); list.innerHTML = ''; room.players.forEach(p => { list.innerHTML += `<div class="player-item" onclick="requestPlayerStats('${p.id}')"><div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div><span>${p.ready?'✅':'⏳'}</span></div>`; }); const me = room.players.find(p => p.id === socket.id); const startBtn = document.getElementById('btn-start-game'); if (startBtn) startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none'; } });
+socket.on('roomUpdate', (room) => {
+    // 1. Запоминаем ID комнаты в программе и в памяти телефона
+    state.roomId = room.roomId;
+    localStorage.setItem('lastRoomId', room.roomId); 
+
+    if (room.status === 'LOBBY') {
+        showScreen('lobby');
+        document.getElementById('lobby-room-id').textContent = room.roomId;
+
+        if (room.config) {
+            document.getElementById('lobby-rules').textContent = `🎲${room.config.dice} 👤${room.config.players} ⏱️${room.config.time}с`;
+            state.currentRoomBets = { coins: room.config.betCoins, xp: room.config.betXp };
+            
+            let betStr = '';
+            if (room.config.betCoins > 0) betStr += `💰 ${room.config.betCoins}  `;
+            if (room.config.betXp > 0) betStr += `⭐ ${room.config.betXp}`;
+            document.getElementById('lobby-bets').textContent = betStr;
+        }
+
+        const list = document.getElementById('lobby-players');
+        list.innerHTML = '';
+        room.players.forEach(p => {
+            list.innerHTML += `
+                <div class="player-item" onclick="requestPlayerStats('${p.id}')">
+                    <div><b>${p.name}</b><span class="rank-sub">${p.rank}</span></div>
+                    <span>${p.ready ? '✅' : '⏳'}</span>
+                </div>`;
+        });
+
+        const me = room.players.find(p => p.id === socket.id);
+        const startBtn = document.getElementById('btn-start-game');
+        if (startBtn) {
+            startBtn.style.display = (me?.isCreator && room.players.length > 1) ? 'block' : 'none';
+        }
+    }
+});
 socket.on('gameEvent', (evt) => { const log = document.getElementById('game-log'); if(log) log.innerHTML = `<div>${evt.text}</div>`; if(evt.type === 'alert' && tg) tg.HapticFeedback.notificationOccurred('warning'); });
 socket.on('yourDice', (dice) => { const skin = state.equipped.skin || 'skin_white'; document.getElementById('my-dice').innerHTML = dice.map(d => `<div class="die ${skin} face-${d}"></div>`).join(''); });
 
@@ -1330,6 +1381,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
