@@ -160,46 +160,41 @@ bindClick('btn-login', () => {
     const val = document.getElementById('input-username').value.trim();
     if (val) { state.username = val; socket.tgUserId = 123; loginSuccess(); }
 });
-
 function loginSuccess() {
-    // Данные пользователя
     const userPayload = tg?.initDataUnsafe?.user || { id: 123, first_name: state.username, username: 'browser' };
-    
-    // ПРОВЕРКА: Есть ли параметр start_param (это ID комнаты из ссылки)
     const startParam = tg?.initDataUnsafe?.start_param;
+    const savedRoomId = localStorage.getItem('lastRoomId');
+
+    const handleLogin = (savedData = null) => {
+        socket.emit('login', { tgUser: userPayload, savedData });
+        socket.emit('friendAction', { action: 'get' });
+
+        // Если зашли по ссылке приглашения
+        if (startParam && startParam !== "") {
+            setTimeout(() => {
+                uiConfirm(`Войти в комнату ${startParam}?`, () => {
+                    socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
+                });
+            }, 800);
+        } 
+        // Если просто вернулись в приложение (после шаринга)
+        else if (savedRoomId && savedRoomId !== "null" && savedRoomId !== "undefined") {
+            console.log("🔄 Возвращаемся в комнату:", savedRoomId);
+            // Добавляем задержку 500мс, чтобы сервер успел обработать логин
+            setTimeout(() => {
+                socket.emit('joinOrCreateRoom', { roomId: savedRoomId, tgUser: userPayload });
+            }, 500);
+        }
+    };
 
     if (tg && tg.CloudStorage) {
         tg.CloudStorage.getItem('liarsDiceHardcore', (err, val) => {
-            let savedData = null; try { if (val) savedData = JSON.parse(val); } catch (e) {}
-            
-            // 1. Логинимся
-            socket.emit('login', { tgUser: userPayload, savedData });
-
-            // 2. ЗАГРУЖАЕМ ДРУЗЕЙ
-            socket.emit('friendAction', { action: 'get' });
-
-            // 3. Если пришли по ссылке — предлагаем войти
-            if (startParam) {
-                // Небольшая задержка для красоты
-                setTimeout(() => {
-                    uiConfirm(`Войти в комнату ${startParam}?`, () => {
-                        socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
-                    });
-                }, 800);
-            }
+            let savedData = null; 
+            try { if (val) savedData = JSON.parse(val); } catch (e) {}
+            handleLogin(savedData);
         });
     } else { 
-        // Логика для браузера (тесты)
-        socket.emit('login', { tgUser: userPayload, savedData: null });
-
-        // ЗАГРУЖАЕМ ДРУЗЕЙ (FIX для браузера)
-        socket.emit('friendAction', { action: 'get' });
-        
-        if (startParam) {
-             setTimeout(() => {
-                socket.emit('joinOrCreateRoom', { roomId: startParam, tgUser: userPayload });
-            }, 800);
-        }
+        handleLogin(null);
     }
 }
 
@@ -1382,6 +1377,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
