@@ -109,18 +109,19 @@ let state = {
     username: null, roomId: null, myId: null,
     bidQty: 1, bidVal: 2, timerFrame: null,
     createDice: 5, createPlayers: 10, createTime: 30,
-    rules: { jokers: false, spot: false, strict: false, crazy: false },     // + crazy
+    rules: { jokers: false, spot: false, strict: false, crazy: false },
     currentRoomBets: { coins: 0, xp: 0 },
-    pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false, crazy: false }, // + crazy
-    coins: 0, inventory: [], equipped: {}
-    lastRoomId: localStorage.getItem('lastRoomId') || null, 
+    pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false, crazy: false },
+    coins: 0, inventory: [], equipped: {}, // ДОБАВИЛ ЗАПЯТУЮ ТУТ
+    lastRoomId: localStorage.getItem('lastRoomId') || null
 };
+
+// Добавил 'reconnect' в список
+const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin', 'reconnect'];
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 const XP_STEPS = [0, 100, 250, 500, 1000];
 
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#5D4037'); tg.setBackgroundColor('#5D4037'); }
-
-const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin'];
 
 function showScreen(name) {
     screens.forEach(s => { const el = document.getElementById(`screen-${s}`); if(el) el.classList.remove('active'); });
@@ -1381,6 +1382,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
