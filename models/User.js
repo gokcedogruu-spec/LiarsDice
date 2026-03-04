@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
     id: { type: Number, required: true, unique: true },
     name: String,
-    username: String,
+    username: { type: String, index: true },
     xp: { type: Number, default: 0 },
     coins: { type: Number, default: 100 },
     matches: { type: Number, default: 0 },
