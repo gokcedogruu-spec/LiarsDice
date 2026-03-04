@@ -10,6 +10,7 @@ const path = require('path');
 // Подключаем наши новые файлы
 const User = require('./models/User');
 const { RANKS, HATS } = require('./config/constants');
+const { generateRoomId, rollDice, getRankInfo, findUserIdByUsername } = require('./utils/helpers');
 
 const app = express();
 const server = http.createServer(app);
@@ -126,30 +127,6 @@ async function saveUser(userId) {
     }
 }
 
-async function findUserIdByUsername(input) {
-    if (!input) return null;
-    const target = input.toLowerCase().replace('@', '').trim();
-    if (/^\d+$/.test(target)) {
-        const idNum = parseInt(target);
-        const u = await User.findOne({ id: idNum });
-        return u ? u.id : null;
-    }
-    const u = await User.findOne({ username: new RegExp(`^${target}$`, 'i') });
-    return u ? u.id : null;
-}
-
-function getRankInfo(xp, streak) {
-    let current = RANKS[0]; let next = null;
-    for (let i = 0; i < RANKS.length; i++) {
-        const r = RANKS[i];
-        let match = false;
-        if (r.name === "Легенда морей") { if (xp >= r.min && streak >= r.reqStreak) match = true; }
-        else { if (xp >= r.min) match = true; }
-        if (match) { current = r; next = RANKS[i+1] || null; }
-    }
-    return { current, next };
-}
-
 function findSocketIdByUserId(uid) {
     const set = userSockets.get(uid);
     if (!set || set.size === 0) return null;
@@ -175,8 +152,6 @@ async function pushProfileUpdate(userId) {
 }
 
 // --- GAME LOGIC ---
-function generateRoomId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
-function rollDice(count) { return Array.from({length: count}, () => Math.floor(Math.random() * 6) + 1).sort((a,b)=>a-b); }
 
 function resolveBackground(room) {
     if (room.isPvE) {
@@ -1404,6 +1379,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
