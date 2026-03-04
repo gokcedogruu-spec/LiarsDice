@@ -892,7 +892,19 @@ window.useSkill = (type) => { socket.emit('useSkill', type); }; // FIX: ADDED GL
 socket.on('emoteReceived', (data) => { const el = document.querySelector(`.player-chip[data-id='${data.id}']`); if (el) { const img = document.createElement('img'); img.className = 'emote-bubble-img'; img.src = `https://raw.githubusercontent.com/gokcedogruu-spec/LiarsDice/main/emotions/default_${data.emoji}.png`; el.appendChild(img); setTimeout(() => { if(img.parentNode) img.remove(); }, 3000); if(tg) tg.HapticFeedback.selectionChanged(); } });
 socket.on('skillResult', (data) => { const modal = document.getElementById('modal-skill-alert'); const iconEl = document.getElementById('skill-alert-title'); let icon = '⚡'; if (data.type === 'ears') icon = '👂'; else if (data.type === 'lucky') icon = '🎲'; else if (data.type === 'kill') icon = '🔫'; iconEl.textContent = icon; document.getElementById('skill-alert-text').textContent = data.text; modal.classList.add('active'); });
 window.closeSkillAlert = () => { document.getElementById('modal-skill-alert').classList.remove('active'); };
-socket.on('errorMsg', (msg) => { if (msg === 'NO_FUNDS') { document.getElementById('modal-res-alert').classList.add('active'); } else { uiAlert(msg, "ОШИБКА"); } });
+socket.on('errorMsg', (msg) => { 
+    if (msg === 'NO_FUNDS') { 
+        document.getElementById('modal-res-alert').classList.add('active'); 
+    } else { 
+        uiAlert(msg, "ОШИБКА"); 
+        
+        // ЕСЛИ КОМНАТА НЕ НАЙДЕНА — СТИРАЕМ ЕЁ ИЗ ПАМЯТИ
+        if (msg.includes('не найдена')) {
+            localStorage.removeItem('lastRoomId');
+            state.roomId = null;
+        }
+    } 
+});
 socket.on('roomUpdate', (room) => {
     // 1. Запоминаем ID комнаты в программе и в памяти телефона
     state.roomId = room.roomId;
@@ -1377,6 +1389,7 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
 
 
 
