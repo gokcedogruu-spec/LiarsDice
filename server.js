@@ -11,6 +11,15 @@ const path = require('path');
 const User = require('./models/User');
 const { RANKS, HATS } = require('./config/constants');
 const { generateRoomId, rollDice, getRankInfo, findUserIdByUsername } = require('./utils/helpers');
+const { 
+    userCache, 
+    userSockets, 
+    addUserSocket, 
+    removeUserSocket, 
+    findSocketIdByUserId, 
+    loadUser, 
+    saveUser 
+} = require('./services/userService');
 
 const app = express();
 const server = http.createServer(app);
@@ -70,69 +79,10 @@ app.use(express.static(publicPath));
 app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'index.html')));
 app.get('/ping', (req, res) => res.status(200).send('pong'));
 
-const userCache = new Map();
 const rooms = new Map();
 
-// userId -> Set(socketId)
-// Нужен, чтобы быстро находить сокеты по Telegram id без перебора всех соединений
-const userSockets = new Map();
-
-/**
- * Привязать сокет к пользователю
- */
-function addUserSocket(userId, socketId) {
-    let set = userSockets.get(userId);
-    if (!set) {
-        set = new Set();
-        userSockets.set(userId, set);
-    }
-    set.add(socketId);
-}
-
-/**
- * Отвязать сокет от пользователя (на disconnect)
- */
-function removeUserSocket(userId, socketId) {
-    const set = userSockets.get(userId);
-    if (!set) return;
-    set.delete(socketId);
-    if (set.size === 0) {
-        userSockets.delete(userId);
-    }
-}
 
 // --- HELPERS ---
-async function loadUser(tgUser) {
-    let user = await User.findOne({ id: tgUser.id });
-    if (!user) {
-        user = new User({ id: tgUser.id, name: tgUser.first_name, username: tgUser.username ? tgUser.username.toLowerCase() : null });
-        await user.save();
-    } else {
-        if (user.name !== tgUser.first_name || user.username !== (tgUser.username ? tgUser.username.toLowerCase() : null)) {
-            user.name = tgUser.first_name;
-            user.username = tgUser.username ? tgUser.username.toLowerCase() : null;
-            await user.save();
-        }
-    }
-    const uObj = user.toObject();
-    userCache.set(tgUser.id, uObj);
-    return uObj;
-}
-
-async function saveUser(userId) {
-    const data = userCache.get(userId);
-    if (data) {
-        const { _id, ...updateData } = data;
-        await User.updateOne({ id: userId }, updateData);
-    }
-}
-
-function findSocketIdByUserId(uid) {
-    const set = userSockets.get(uid);
-    if (!set || set.size === 0) return null;
-    // Берём первый активный сокет пользователя
-    return set.values().next().value;
-}
 
 function getRoomBySocketId(id) { for (const [k,v] of rooms) if (v.players.find(p=>p.id===id)) return v; return null; }
 
@@ -1379,6 +1329,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
