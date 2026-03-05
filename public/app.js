@@ -1393,19 +1393,36 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 
 // --- ЛОГИКА ОБУЧЕНИЯ ---
 let tutStep = 0;
+let tutQty = 1;
+let tutVal = 4;
+
 const tutScript = [
     { text: "Цель игры: угадать, сколько кубиков одного номинала лежит на столе у ВСЕХ игроков.", btn: "ДАЛЕЕ" },
     { text: "Посмотри на свои кости внизу. У тебя есть одна 'Четверка' и одна 'Двойка'.", btn: "ПОНЯЛ" },
-    { text: "Бот Джек делает ставку: он думает, что на столе минимум ДВЕ 'Четверки'.", action: "show_bid" },
-    { text: "Твой ход! У тебя есть одна четверка, и скорее всего у ботов есть еще одна. Давай повысим ставку до ТРЕХ.", action: "highlight_qty" },
-    { text: "Отлично! Теперь нажми кнопку 'СТАВКА', чтобы подтвердить ход.", action: "highlight_bid" },
-    { text: "Бот Билл нервничает... Он ставит ПЯТЬ 'Четверок'. Это явный блеф! У нас на столе всего 6 кубов.", action: "show_bluff_bid" },
-    { text: "Нажми 'НЕ ВЕРЮ!', чтобы проверить его!", action: "highlight_liar" },
-    { text: "Вскрытие! На столе оказалось всего три четверки. Билл проиграл и теряет кубик! Ты победил!", btn: "УРА!" }
+    { text: "Ходит Бот Джек. Он делает ставку: думает, что на столе минимум ДВЕ 'Четверки'.", action: "jack_bid" },
+    { text: "Ход переходит к Боту Биллу. Он должен либо повысить ставку, либо сказать 'Не верю'.", action: "bill_turn" },
+    { text: "Билл повышает ставку! Он ставит ТРИ 'Четверки'.", action: "bill_bid" },
+    { text: "Твой ход! Панель стала яркой. У тебя есть одна четверка, давай повысим ставку до ЧЕТЫРЕХ.", action: "my_turn_qty" },
+    { text: "Отлично! Теперь нажми кнопку 'СТАВКА', чтобы подтвердить ход.", action: "my_turn_bid" },
+    { text: "Снова ходит Джек. Он нервничает... и ставит ПЯТЬ 'Четверок'. Это явный блеф! На столе всего 6 кубов.", action: "jack_bluff" },
+    { text: "Твой ход! Нажми 'НЕ ВЕРЮ!', чтобы проверить его!", action: "my_turn_bluff" },
+    { text: "Вскрытие! На столе оказалось всего три четверки. Джек проиграл раунд и теряет кубик!", action: "reveal" },
+    { text: "В реальной игре раунды идут, пока у игроков есть кубики. Тот, кто останется последним — забирает банк!", btn: "Я ГОТОВ!" }
 ];
 
 window.startTutorial = () => {
-    tutStep = 0;
+    tutStep = 0; tutQty = 1; tutVal = 4;
+    document.getElementById('tut-bid-display').style.visibility = "hidden";
+    document.getElementById('tut-game-log').innerHTML = "";
+    document.getElementById('tut-bot-jack').classList.remove('turn');
+    document.getElementById('tut-bot-bill').classList.remove('turn');
+    document.getElementById('tut-controls').style.opacity = "0.3";
+    document.getElementById('tut-controls').style.pointerEvents = "none";
+    document.getElementById('tut-jack-dice').textContent = "🎲 2";
+    
+    // Очищаем вскрытые кости, если они были
+    document.querySelectorAll('.tut-revealed').forEach(el => el.remove());
+
     showScreen('tutorial');
     updateTutorial();
 };
@@ -1425,45 +1442,111 @@ function updateTutorial() {
     // Сброс подсветок
     document.querySelectorAll('.highlight-action').forEach(el => el.classList.remove('highlight-action'));
 
-    if (step.action === "show_bid") {
+    if (step.action === "jack_bid") {
+        document.getElementById('tut-bot-jack').classList.add('turn');
+        document.getElementById('tut-game-log').innerHTML = "<div>Бот Джек ставит: 2x[4]</div>";
         document.getElementById('tut-bid-display').style.visibility = "visible";
+        document.getElementById('tut-bid-qty').innerHTML = '2<span class="bid-x">x</span>';
+        document.getElementById('tut-bid-face').className = "die skin_white face-4 bid-die-icon";
+        
         nextBtn.style.display = "block";
-        nextBtn.textContent = "ПРИНЯТО";
+        nextBtn.textContent = "ДАЛЕЕ";
     }
-    if (step.action === "highlight_qty") {
+    if (step.action === "bill_turn") {
+        document.getElementById('tut-bot-jack').classList.remove('turn');
+        document.getElementById('tut-bot-bill').classList.add('turn');
+        nextBtn.style.display = "block";
+        nextBtn.textContent = "СМОТРЕТЬ";
+    }
+    if (step.action === "bill_bid") {
+        document.getElementById('tut-game-log').innerHTML = "<div>Бот Билл ставит: 3x[4]</div>";
+        document.getElementById('tut-bid-qty').innerHTML = '3<span class="bid-x">x</span>';
+        nextBtn.style.display = "block";
+        nextBtn.textContent = "МОЙ ХОД";
+    }
+    if (step.action === "my_turn_qty") {
+        document.getElementById('tut-bot-bill').classList.remove('turn');
+        // Делаем панель активной
+        const controls = document.getElementById('tut-controls');
+        controls.style.opacity = "1";
+        controls.style.pointerEvents = "auto";
+        
+        // Подсвечиваем плюс
         const plus = document.getElementById('tut-qty-plus');
         plus.classList.add('highlight-action');
         plus.onclick = () => {
-            document.getElementById('tut-qty-val').textContent = "3";
+            tutQty = 4;
+            document.getElementById('tut-qty-val').textContent = tutQty;
             tutStep++;
             updateTutorial();
         };
     }
-    if (step.action === "highlight_bid") {
+    if (step.action === "my_turn_bid") {
         const bidBtn = document.getElementById('tut-btn-bid');
         bidBtn.classList.add('highlight-action');
         bidBtn.onclick = () => {
-            document.getElementById('tut-bid-qty').innerHTML = '3<span class="bid-x">x</span>';
+            document.getElementById('tut-game-log').innerHTML = "<div>Вы ставите: 4x[4]</div>";
+            document.getElementById('tut-bid-qty').innerHTML = '4<span class="bid-x">x</span>';
+            // Выключаем панель
+            document.getElementById('tut-controls').style.opacity = "0.3";
+            document.getElementById('tut-controls').style.pointerEvents = "none";
             tutStep++;
             updateTutorial();
         };
     }
-    if (step.action === "show_bluff_bid") {
+    if (step.action === "jack_bluff") {
+        document.getElementById('tut-bot-jack').classList.add('turn');
+        document.getElementById('tut-game-log').innerHTML = "<div>Бот Джек ставит: 5x[4]</div>";
         document.getElementById('tut-bid-qty').innerHTML = '5<span class="bid-x">x</span>';
         nextBtn.style.display = "block";
-        nextBtn.textContent = "НУ-НУ...";
+        nextBtn.textContent = "ПОЙМАТЬ ЕГО!";
     }
-    if (step.action === "highlight_liar") {
+    if (step.action === "my_turn_bluff") {
+        document.getElementById('tut-bot-jack').classList.remove('turn');
+        const controls = document.getElementById('tut-controls');
+        controls.style.opacity = "1";
+        controls.style.pointerEvents = "auto";
+        
         const liarBtn = document.getElementById('tut-btn-bluff');
         liarBtn.classList.add('highlight-action');
         liarBtn.onclick = () => {
-            tutStep++;
-            updateTutorial();
+            // Эффекты блефа
+            if(tg) tg.HapticFeedback.notificationOccurred('error');
+            document.getElementById('tut-red-flash-overlay').classList.add('red-flash-active');
+            setTimeout(() => document.getElementById('tut-red-flash-overlay').classList.remove('red-flash-active'), 1000);
+            
+            const cloud = document.getElementById('tut-bluff-cloud');
+            cloud.classList.remove('hidden');
+            cloud.classList.add('bluff-cloud-active');
+            setTimeout(() => {
+                cloud.classList.remove('bluff-cloud-active');
+                cloud.classList.add('hidden');
+                tutStep++;
+                updateTutorial();
+            }, 2500);
+            
+            controls.style.opacity = "0.3";
+            controls.style.pointerEvents = "none";
         };
+    }
+    if (step.action === "reveal") {
+        document.getElementById('tut-game-log').innerHTML = "<div style='color:#ef233c'>На столе 3. Блеф! Джек теряет куб.</div>";
+        document.getElementById('tut-bid-display').style.visibility = "hidden";
+        
+        // Показываем кости ботов
+        const jackChip = document.getElementById('tut-bot-jack');
+        jackChip.innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-4"></div><div class="mini-die skin_white face-1"></div></div>`;
+        
+        const billChip = document.getElementById('tut-bot-bill');
+        billChip.innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-4"></div><div class="mini-die skin_white face-3"></div></div>`;
+        
+        document.getElementById('tut-jack-dice').textContent = "🎲 1"; // Потерял куб
+
+        nextBtn.style.display = "block";
+        nextBtn.textContent = "ПОНЯТНО";
     }
 }
 
-// Обработчик кнопки "Далее" в обучении
 document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('tutorial-next-btn');
     if (nextBtn) {
@@ -1478,17 +1561,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Проверка при первом входе (показывать ли предложение пройти обучение)
 setTimeout(() => {
-    // Если в памяти нет отметки 'tutorialDone' и мы уже залогинились
     if (!localStorage.getItem('tutorialDone') && state.username) {
         uiConfirm("Ты здесь впервые, моряк! Пройти обучение?", () => {
             startTutorial();
         });
-        // Сразу ставим отметку, чтобы окно не спамило при каждом обновлении страницы
         localStorage.setItem('tutorialDone', 'true');
     }
 }, 2500);
+
 
 
 
