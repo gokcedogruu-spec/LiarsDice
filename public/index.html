@@ -37,6 +37,7 @@
         <!-- 2. HOME -->
         <div id="screen-home" class="screen center-content">
             <button class="btn-icon btn-rules" onclick="openRules()">?</button>
+            <button class="btn-icon btn-tutorial" onclick="startTutorial()" style="right: 165px; color: #ff9f1c; border-color: #ff9f1c;">🎓</button>
             <button class="btn-icon btn-encyclopedia" onclick="openEncyclopedia()">📖</button>
             <button id="btn-friends-menu" class="btn-icon btn-friends" onclick="openFriends()">👥</button>
             <button class="btn-icon btn-leaderboard" onclick="openLeaderboard()">🏆</button>
@@ -328,6 +329,68 @@
             </div>
         </div>
 
+        <!-- ЭКРАН ОБУЧЕНИЯ -->
+        <div id="screen-tutorial" class="screen game-layout">
+            <div class="tutorial-overlay">
+                <div id="tutorial-msg-box" class="tutorial-msg-box pop-in">
+                    <p id="tutorial-text">Добро пожаловать на борт, салага! Сейчас научу тебя играть в кости.</p>
+                    <button id="tutorial-next-btn" class="btn btn-blue" style="margin-top:10px; min-height:30px; font-size:0.8rem;">ДАЛЕЕ</button>
+                </div>
+            </div>
+            
+            <button class="btn-mini" onclick="stopTutorial()" style="position:absolute; top:10px; left:10px; z-index:10001; background:#ef233c;">✕</button>
+
+            <div class="rivals-bar-container" style="opacity: 0.5;">
+                <div class="rivals-row">
+                    <div class="player-chip"><b>Бот Джек</b><span class="rank-game">Матрос</span><div class="dice-count">🎲 2</div></div>
+                    <div class="player-chip"><b>Бот Билл</b><span class="rank-game">Юнга</span><div class="dice-count">🎲 2</div></div>
+                </div>
+            </div>
+
+            <div class="table-center">
+                <div class="bid-bubble" id="tut-bid-display" style="visibility: hidden;">
+                    <div class="bid-container">
+                        <div class="bid-qty" id="tut-bid-qty">2<span class="bid-x">x</span></div>
+                        <div class="die skin_white face-4 bid-die-icon"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="my-controls-area">
+                <div class="my-dice-panel">
+                    <div class="panel-label">ТВОИ КОСТИ</div>
+                    <div class="my-dice-row">
+                        <div class="die skin_white face-4"></div>
+                        <div class="die skin_white face-2"></div>
+                    </div>
+                </div>
+                <div id="tut-controls" class="action-panel" style="opacity: 0.3; pointer-events: none;">
+                    <div class="bid-controls">
+                        <div class="bid-stepper">
+                            <label>КОЛ-ВО</label>
+                            <div class="stepper-row">
+                                <button class="btn-mini" id="tut-qty-minus">-</button>
+                                <span class="bid-val" id="tut-qty-val">1</span>
+                                <button class="btn-mini" id="tut-qty-plus">+</button>
+                            </div>
+                        </div>
+                        <div class="bid-stepper">
+                            <label>ЧИСЛО</label>
+                            <div class="stepper-row">
+                                <button class="btn-mini">-</button>
+                                <span class="dice-face">4</span>
+                                <button class="btn-mini">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="main-actions">
+                        <button id="tut-btn-bid" class="btn btn-orange">СТАВКА</button>
+                        <button id="tut-btn-bluff" class="btn btn-red">НЕ ВЕРЮ!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 9. PLAYER INFO MODAL -->
         <div id="modal-player" class="modal-overlay" onclick="closePlayerModal(event)">
             <div class="modal-content pop-in">
@@ -482,6 +545,7 @@
     <script src="app.js?v=15"></script>
 </body>
 </html>
+
 
 
 
