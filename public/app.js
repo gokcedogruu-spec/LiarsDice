@@ -113,11 +113,12 @@ let state = {
     currentRoomBets: { coins: 0, xp: 0 },
     pve: { difficulty: 'medium', bots: 3, dice: 5, jokers: false, spot: false, strict: false, crazy: false },
     coins: 0, inventory: [], equipped: {}, // ДОБАВИЛ ЗАПЯТУЮ ТУТ
-    lastRoomId: localStorage.getItem('lastRoomId') || null
+    lastRoomId: localStorage.getItem('lastRoomId') || null,
+    tutorialStep: 0
 };
 
 // Добавил 'reconnect' в список
-const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin', 'reconnect'];
+const screens = ['loading', 'login', 'home', 'create-settings', 'pve-settings', 'lobby', 'game', 'result', 'shop', 'cabin', 'reconnect', 'tutorial'];
 const COIN_STEPS = [0, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 const XP_STEPS = [0, 100, 250, 500, 1000];
 
@@ -1389,6 +1390,106 @@ document.addEventListener('touchstart', handleButtonDown, { passive: true });
 ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(ev => {
     document.addEventListener(ev, handleButtonUp, true);
 });
+
+// --- ЛОГИКА ОБУЧЕНИЯ ---
+let tutStep = 0;
+const tutScript = [
+    { text: "Цель игры: угадать, сколько кубиков одного номинала лежит на столе у ВСЕХ игроков.", btn: "ДАЛЕЕ" },
+    { text: "Посмотри на свои кости внизу. У тебя есть одна 'Четверка' и одна 'Двойка'.", btn: "ПОНЯЛ" },
+    { text: "Бот Джек делает ставку: он думает, что на столе минимум ДВЕ 'Четверки'.", action: "show_bid" },
+    { text: "Твой ход! У тебя есть одна четверка, и скорее всего у ботов есть еще одна. Давай повысим ставку до ТРЕХ.", action: "highlight_qty" },
+    { text: "Отлично! Теперь нажми кнопку 'СТАВКА', чтобы подтвердить ход.", action: "highlight_bid" },
+    { text: "Бот Билл нервничает... Он ставит ПЯТЬ 'Четверок'. Это явный блеф! У нас на столе всего 6 кубов.", action: "show_bluff_bid" },
+    { text: "Нажми 'НЕ ВЕРЮ!', чтобы проверить его!", action: "highlight_liar" },
+    { text: "Вскрытие! На столе оказалось всего три четверки. Билл проиграл и теряет кубик! Ты победил!", btn: "УРА!" }
+];
+
+window.startTutorial = () => {
+    tutStep = 0;
+    showScreen('tutorial');
+    updateTutorial();
+};
+
+window.stopTutorial = () => {
+    localStorage.setItem('tutorialDone', 'true');
+    showScreen('home');
+};
+
+function updateTutorial() {
+    const step = tutScript[tutStep];
+    document.getElementById('tutorial-text').textContent = step.text;
+    const nextBtn = document.getElementById('tutorial-next-btn');
+    nextBtn.textContent = step.btn || "ЖДУ...";
+    nextBtn.style.display = step.btn ? "block" : "none";
+
+    // Сброс подсветок
+    document.querySelectorAll('.highlight-action').forEach(el => el.classList.remove('highlight-action'));
+
+    if (step.action === "show_bid") {
+        document.getElementById('tut-bid-display').style.visibility = "visible";
+        nextBtn.style.display = "block";
+        nextBtn.textContent = "ПРИНЯТО";
+    }
+    if (step.action === "highlight_qty") {
+        const plus = document.getElementById('tut-qty-plus');
+        plus.classList.add('highlight-action');
+        plus.onclick = () => {
+            document.getElementById('tut-qty-val').textContent = "3";
+            tutStep++;
+            updateTutorial();
+        };
+    }
+    if (step.action === "highlight_bid") {
+        const bidBtn = document.getElementById('tut-btn-bid');
+        bidBtn.classList.add('highlight-action');
+        bidBtn.onclick = () => {
+            document.getElementById('tut-bid-qty').innerHTML = '3<span class="bid-x">x</span>';
+            tutStep++;
+            updateTutorial();
+        };
+    }
+    if (step.action === "show_bluff_bid") {
+        document.getElementById('tut-bid-qty').innerHTML = '5<span class="bid-x">x</span>';
+        nextBtn.style.display = "block";
+        nextBtn.textContent = "НУ-НУ...";
+    }
+    if (step.action === "highlight_liar") {
+        const liarBtn = document.getElementById('tut-btn-bluff');
+        liarBtn.classList.add('highlight-action');
+        liarBtn.onclick = () => {
+            tutStep++;
+            updateTutorial();
+        };
+    }
+}
+
+// Обработчик кнопки "Далее" в обучении
+document.addEventListener('DOMContentLoaded', () => {
+    const nextBtn = document.getElementById('tutorial-next-btn');
+    if (nextBtn) {
+        nextBtn.onclick = () => {
+            tutStep++;
+            if (tutStep >= tutScript.length) {
+                stopTutorial();
+            } else {
+                updateTutorial();
+            }
+        };
+    }
+});
+
+// Проверка при первом входе (показывать ли предложение пройти обучение)
+setTimeout(() => {
+    // Если в памяти нет отметки 'tutorialDone' и мы уже залогинились
+    if (!localStorage.getItem('tutorialDone') && state.username) {
+        uiConfirm("Ты здесь впервые, моряк! Пройти обучение?", () => {
+            startTutorial();
+        });
+        // Сразу ставим отметку, чтобы окно не спамило при каждом обновлении страницы
+        localStorage.setItem('tutorialDone', 'true');
+    }
+}, 2500);
+
 
 
 
