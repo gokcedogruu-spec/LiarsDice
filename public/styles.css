@@ -849,6 +849,25 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     }
 }
 
+/* Стили для обучения */
+.tutorial-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); z-index: 10000; pointer-events: none;
+}
+.tutorial-msg-box {
+    position: absolute; top: 25%; left: 50%; transform: translateX(-50%);
+    width: 90%; max-width: 320px; background: #3d405b; border: 3px solid var(--accent);
+    border-radius: 20px; padding: 20px; text-align: center; z-index: 10002;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto;
+}
+.tutorial-msg-box p { font-size: 1rem; line-height: 1.4; font-weight: bold; color: white; }
+.highlight-action {
+    position: relative; z-index: 10003 !important; box-shadow: 0 0 20px var(--accent) !important;
+    animation: pulseHighlight 1s infinite; pointer-events: auto !important; opacity: 1 !important;
+}
+@keyframes pulseHighlight { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+
 
 
 
