@@ -422,13 +422,23 @@ function finalizeRound(room, forcedLoser = null, forcedWinner = null) {
     const betCoins = room.config.betCoins || 0; 
     const betXp = room.config.betXp || 0;
 
+// Базовый урон - 1 кубик
+    let damage = 1;
+
+    // Проверяем, активировал ли победитель (killer) навык на доп. урон (Миазмы)
+    // Предполагается, что при нажатии на кнопку навыка вы записываете это в room.extraDamage
+    if (room.extraDamage) {
+        damage += room.extraDamage;
+        io.to(room.id).emit('gameEvent', { text: `☠️ Ядовитые миазмы! ${loser.name} теряет дополнительные кубики!`, type: 'error' });
+        room.extraDamage = 0; // Сбрасываем эффект после использования
+    }
+
     const passiveResult = skillsLogic.triggerPassiveSkill(room, loser, 'lose_die');
     if (passiveResult && passiveResult.prevented) {
-        // Навык спас кубик! Отправляем сообщение в лог игры (ИСПРАВЛЕНО НА gameEvent)
         io.to(room.id).emit('gameEvent', { text: `🌟 ${passiveResult.msg}`, type: 'alert' });
     } else {
-        // Навык не сработал или его нет, отнимаем кубик как обычно
-        loser.diceCount--;
+        // Отнимаем кубики с учетом возможного доп. урона
+        loser.diceCount -= damage;
     }
 
     if (loser.diceCount <= 0) {
@@ -1419,6 +1429,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
