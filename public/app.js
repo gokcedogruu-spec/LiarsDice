@@ -1403,33 +1403,46 @@ const tutScript = [
     { text: "Ходит Бот Джек. Он делает ставку: думает, что на столе минимум ДВЕ 'Четверки'.", action: "jack_bid_1" },
     { text: "Ход переходит к Боту Биллу. Он должен либо повысить ставку, либо сказать 'Не верю'.", action: "bill_turn_1" },
     { text: "Билл повышает ставку! Он ставит ТРИ 'Четверки'.", action: "bill_bid_1" },
-    { text: "Твой ход! У тебя есть одна четверка, давай повысим ставку до ЧЕТЫРЕХ.", action: "my_turn_qty_1" },
-    { text: "Отлично! Теперь нажми кнопку 'СТАВКА', чтобы подтвердить ход.", action: "my_turn_bid_1" },
+    { text: "Твой ход! У тебя есть одна четверка, давай повысим ставку до ЧЕТЫРЕХ.<br><br><b>Нажимай на '+' пока не станет 4.</b>", action: "my_turn_qty_1" },
+    { text: "Отлично! Теперь нажми кнопку <b>'СТАВКА'</b>, чтобы подтвердить ход.", action: "my_turn_bid_1" },
     { text: "Снова ходит Джек. Он нервничает... и ставит ПЯТЬ 'Четверок'. Это явный блеф! На столе всего 6 кубов.", action: "jack_bluff_1" },
-    { text: "Твой ход! Нажми 'НЕ ВЕРЮ!', чтобы проверить его!", action: "my_turn_bluff_1" },
+    { text: "Твой ход! Нажми <b>'НЕ ВЕРЮ!'</b>, чтобы проверить его!", action: "my_turn_bluff_1" },
     { text: "Вскрытие! На столе оказалось всего три четверки. Джек проиграл раунд и теряет кубик!", action: "reveal_1" },
     
     // РАУНД 2
     { text: "Начинается новый раунд! Кости перемешались. Теперь у Джека остался только 1 кубик.", action: "start_round_2" },
-    { text: "Твой ход первый. У тебя выпали две 'Пятерки'. Давай начнем агрессивно!", action: "my_turn_qty_2" },
-    { text: "Поставь ТРИ 'Пятерки'.", action: "my_turn_bid_2" },
+    { text: "Твой ход первый. У тебя выпали две 'Пятерки'. Давай начнем агрессивно!<br><br><b>Сделай ставку: 3x[5]</b><br>Используй плюсы.", action: "my_turn_qty_2" },
+    { text: "Отлично! Жми <b>'СТАВКА'</b>.", action: "my_turn_bid_2" },
     { text: "Джек в панике! У него всего 1 куб, и он не верит тебе.", action: "jack_bluff_2" },
     { text: "Вскрытие! У тебя две пятерки, у Билла одна. Ставка сыграла! Джек теряет последний куб и выбывает!", action: "reveal_2" },
     
     // РАУНД 3 (Финал)
     { text: "Остались только ты и Билл. У него 2 куба, у тебя 2. Финальная дуэль!", action: "start_round_3" },
     { text: "Билл ставит ДВЕ 'Тройки'.", action: "bill_bid_3" },
-    { text: "У тебя нет троек вообще. Скорее всего он блефует. Жми 'НЕ ВЕРЮ!'", action: "my_turn_bluff_3" },
+    { text: "У тебя нет троек вообще. Скорее всего он блефует. Жми <b>'НЕ ВЕРЮ!'</b>", action: "my_turn_bluff_3" },
     { text: "Вскрытие! У Билла нет троек, он блефовал! Билл теряет куб.", action: "reveal_3" },
     
     // РАУНД 4 (Добивание)
     { text: "У Билла остался 1 куб. Добиваем!", action: "start_round_4" },
     { text: "Билл ставит ОДНУ 'Шестерку'.", action: "bill_bid_4" },
-    { text: "У тебя есть шестерка. Повышай до ДВУХ 'Шестерок'!", action: "my_turn_bid_4" },
+    { text: "У тебя есть шестерка. Повышай до ДВУХ 'Шестерок'!<br><br><b>Нажми '+' на количестве.</b>", action: "my_turn_qty_4" },
+    { text: "Жми <b>'СТАВКА'</b>.", action: "my_turn_bid_4" },
     { text: "Билл не верит!", action: "bill_bluff_4" },
     { text: "Вскрытие! У тебя шестерка, у Билла шестерка. Ставка сыграла! Билл теряет последний куб!", action: "reveal_4" },
     { text: "Победа!", action: "victory" }
 ];
+
+// Функция для создания пузыря ставки (как в реальной игре)
+function tutSpawnRaiseBubble(playerId, qty, face, skin) {
+    const chip = document.querySelector(`.player-chip[data-id='${playerId}']`);
+    if (!chip) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'raise-bubble';
+    bubble.innerHTML = `<span class="raise-qty">${qty}×</span><div class="die ${skin} face-${face} bid-die-mini"></div>`;
+    chip.appendChild(bubble);
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {} }
+    setTimeout(() => { if (bubble.parentNode) bubble.remove(); }, 900);
+}
 
 window.startTutorial = () => {
     tutStep = 0; tutQty = 1; tutVal = 4;
@@ -1456,8 +1469,6 @@ window.startTutorial = () => {
 window.stopTutorial = () => {
     localStorage.setItem('tutorialDone', 'true');
     showScreen('home');
-    
-    // Показываем окно с поздравлением после выхода в меню
     setTimeout(() => {
         uiAlert("Поздравляем, вы прошли обучение! Попробуйте игру против ботов или с друзьями!", "ОБУЧЕНИЕ ПРОЙДЕНО");
     }, 500);
@@ -1465,41 +1476,74 @@ window.stopTutorial = () => {
 
 function updateTutorial() {
     const step = tutScript[tutStep];
-    document.getElementById('tutorial-text').textContent = step.text;
+    const msgBox = document.getElementById('tutorial-msg-box');
+    const textEl = document.getElementById('tutorial-text');
     const nextBtn = document.getElementById('tutorial-next-btn');
+
+    // Сброс и запуск анимации появления окна
+    msgBox.classList.remove('tut-pop-in', 'tut-pulse-anim');
+    void msgBox.offsetWidth; // Перезапуск CSS
+    msgBox.classList.add('tut-pop-in');
+    setTimeout(() => msgBox.classList.add('tut-pulse-anim'), 400);
+
+    textEl.innerHTML = step.text;
     nextBtn.textContent = step.btn || "ЖДУ...";
-    nextBtn.style.display = step.btn ? "block" : "none";
+    nextBtn.style.display = step.btn ? "inline-block" : "none";
 
     document.querySelectorAll('.highlight-action').forEach(el => el.classList.remove('highlight-action'));
+
+    // Функция для скрытия окна подсказки на время анимации
+    const delayMsg = (ms) => {
+        msgBox.style.display = 'none';
+        setTimeout(() => {
+            msgBox.style.display = 'block';
+            msgBox.classList.remove('tut-pop-in', 'tut-pulse-anim');
+            void msgBox.offsetWidth;
+            msgBox.classList.add('tut-pop-in');
+            setTimeout(() => msgBox.classList.add('tut-pulse-anim'), 400);
+        }, ms);
+    };
 
     // РАУНД 1
     if (step.action === "jack_bid_1") {
         document.getElementById('tut-bot-jack').classList.add('turn');
+        tutSpawnRaiseBubble('tut_jack', 2, 4, 'skin_white');
         document.getElementById('tut-game-log').innerHTML = "<div>Бот Джек ставит: 2x[4]</div>";
         document.getElementById('tut-bid-display').style.visibility = "visible";
         document.getElementById('tut-bid-qty').innerHTML = '2<span class="bid-x">x</span>';
         document.getElementById('tut-bid-face').className = "die skin_white face-4 bid-die-icon";
-        nextBtn.style.display = "block"; nextBtn.textContent = "ДАЛЕЕ";
+        delayMsg(1200); // Ждем пока пройдет анимация пузыря
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "ДАЛЕЕ";
     }
     if (step.action === "bill_turn_1") {
         document.getElementById('tut-bot-jack').classList.remove('turn');
         document.getElementById('tut-bot-bill').classList.add('turn');
-        nextBtn.style.display = "block"; nextBtn.textContent = "СМОТРЕТЬ";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "СМОТРЕТЬ";
     }
     if (step.action === "bill_bid_1") {
+        tutSpawnRaiseBubble('tut_bill', 3, 4, 'skin_white');
         document.getElementById('tut-game-log').innerHTML = "<div>Бот Билл ставит: 3x[4]</div>";
         document.getElementById('tut-bid-qty').innerHTML = '3<span class="bid-x">x</span>';
-        nextBtn.style.display = "block"; nextBtn.textContent = "МОЙ ХОД";
+        delayMsg(1200);
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "МОЙ ХОД";
     }
     if (step.action === "my_turn_qty_1") {
         document.getElementById('tut-bot-bill').classList.remove('turn');
         const controls = document.getElementById('tut-controls');
         controls.style.opacity = "1"; controls.style.pointerEvents = "auto";
+        
+        tutQty = 1; // Сбрасываем до 1
+        document.getElementById('tut-qty-val').textContent = tutQty;
+        
         const plus = document.getElementById('tut-qty-plus');
         plus.classList.add('highlight-action');
         plus.onclick = () => {
-            tutQty = 4; document.getElementById('tut-qty-val').textContent = tutQty;
-            tutStep++; updateTutorial();
+            if(tutQty < 4) tutQty++; 
+            document.getElementById('tut-qty-val').textContent = tutQty;
+            if(tutQty === 4) {
+                plus.onclick = null;
+                tutStep++; updateTutorial();
+            }
         };
     }
     if (step.action === "my_turn_bid_1") {
@@ -1510,14 +1554,17 @@ function updateTutorial() {
             document.getElementById('tut-bid-qty').innerHTML = '4<span class="bid-x">x</span>';
             document.getElementById('tut-controls').style.opacity = "0.3";
             document.getElementById('tut-controls').style.pointerEvents = "none";
+            delayMsg(1000);
             tutStep++; updateTutorial();
         };
     }
     if (step.action === "jack_bluff_1") {
         document.getElementById('tut-bot-jack').classList.add('turn');
+        tutSpawnRaiseBubble('tut_jack', 5, 4, 'skin_white');
         document.getElementById('tut-game-log').innerHTML = "<div>Бот Джек ставит: 5x[4]</div>";
         document.getElementById('tut-bid-qty').innerHTML = '5<span class="bid-x">x</span>';
-        nextBtn.style.display = "block"; nextBtn.textContent = "ПОЙМАТЬ ЕГО!";
+        delayMsg(1200);
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "ПОЙМАТЬ ЕГО!";
     }
     if (step.action === "my_turn_bluff_1") {
         document.getElementById('tut-bot-jack').classList.remove('turn');
@@ -1531,6 +1578,7 @@ function updateTutorial() {
             setTimeout(() => document.getElementById('tut-red-flash-overlay').classList.remove('red-flash-active'), 1000);
             const cloud = document.getElementById('tut-bluff-cloud');
             cloud.classList.remove('hidden'); cloud.classList.add('bluff-cloud-active');
+            msgBox.style.display = 'none'; // Прячем окно на время анимации
             setTimeout(() => {
                 cloud.classList.remove('bluff-cloud-active'); cloud.classList.add('hidden');
                 tutStep++; updateTutorial();
@@ -1539,12 +1587,12 @@ function updateTutorial() {
         };
     }
     if (step.action === "reveal_1") {
-        document.getElementById('tut-game-log').innerHTML = "<div style='color:#ef233c'>На столе 3. Блеф! Джек теряет куб.</div>";
+        document.getElementById('tut-game-log').innerHTML = "<div class='tut-log-text'>На столе 3.<br>Блеф! Джек теряет куб.</div>";
         document.getElementById('tut-bid-display').style.visibility = "hidden";
         document.getElementById('tut-bot-jack').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-4"></div><div class="mini-die skin_white face-1"></div></div>`;
         document.getElementById('tut-bot-bill').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-4"></div><div class="mini-die skin_white face-3"></div></div>`;
         document.getElementById('tut-jack-dice').textContent = "🎲 1";
-        nextBtn.style.display = "block"; nextBtn.textContent = "ДАЛЕЕ";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "ДАЛЕЕ";
     }
 
     // РАУНД 2
@@ -1552,18 +1600,29 @@ function updateTutorial() {
         document.querySelectorAll('.tut-revealed').forEach(el => el.remove());
         document.getElementById('tut-my-dice').innerHTML = `<div class="die skin_white face-5"></div><div class="die skin_white face-5"></div>`;
         document.getElementById('tut-game-log').innerHTML = "<div>РАУНД 2</div>";
-        nextBtn.style.display = "block"; nextBtn.textContent = "МОЙ ХОД";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "МОЙ ХОД";
     }
     if (step.action === "my_turn_qty_2") {
         const controls = document.getElementById('tut-controls');
         controls.style.opacity = "1"; controls.style.pointerEvents = "auto";
-        document.getElementById('tut-val-val').textContent = "5";
-        const plus = document.getElementById('tut-qty-plus');
-        plus.classList.add('highlight-action');
-        plus.onclick = () => {
-            tutQty = 3; document.getElementById('tut-qty-val').textContent = tutQty;
-            tutStep++; updateTutorial();
+        
+        tutQty = 1; tutVal = 2; // Сброс значений
+        document.getElementById('tut-qty-val').textContent = tutQty;
+        document.getElementById('tut-val-val').textContent = tutVal;
+        
+        const plusQty = document.getElementById('tut-qty-plus');
+        const plusVal = document.getElementById('tut-val-plus');
+        plusQty.classList.add('highlight-action');
+        plusVal.classList.add('highlight-action');
+        
+        const checkNext = () => {
+            if (tutQty === 3 && tutVal === 5) {
+                plusQty.onclick = null; plusVal.onclick = null;
+                tutStep++; updateTutorial();
+            }
         };
+        plusQty.onclick = () => { if(tutQty < 3) tutQty++; document.getElementById('tut-qty-val').textContent = tutQty; checkNext(); };
+        plusVal.onclick = () => { if(tutVal < 5) tutVal++; document.getElementById('tut-val-val').textContent = tutVal; checkNext(); };
     }
     if (step.action === "my_turn_bid_2") {
         const bidBtn = document.getElementById('tut-btn-bid');
@@ -1575,11 +1634,13 @@ function updateTutorial() {
             document.getElementById('tut-bid-face').className = "die skin_white face-5 bid-die-icon";
             document.getElementById('tut-controls').style.opacity = "0.3";
             document.getElementById('tut-controls').style.pointerEvents = "none";
+            delayMsg(1000);
             tutStep++; updateTutorial();
         };
     }
     if (step.action === "jack_bluff_2") {
         document.getElementById('tut-bot-jack').classList.add('turn');
+        msgBox.style.display = 'none';
         setTimeout(() => {
             if(tg) tg.HapticFeedback.notificationOccurred('error');
             document.getElementById('tut-red-flash-overlay').classList.add('red-flash-active');
@@ -1590,17 +1651,17 @@ function updateTutorial() {
                 cloud.classList.remove('bluff-cloud-active'); cloud.classList.add('hidden');
                 tutStep++; updateTutorial();
             }, 2500);
-        }, 1000);
+        }, 800);
     }
     if (step.action === "reveal_2") {
         document.getElementById('tut-bot-jack').classList.remove('turn');
-        document.getElementById('tut-game-log').innerHTML = "<div style='color:#06d6a0'>На столе 3. Ставка есть! Джек теряет куб.</div>";
+        document.getElementById('tut-game-log').innerHTML = "<div class='tut-log-success'>На столе 3.<br>Ставка есть! Джек теряет куб.</div>";
         document.getElementById('tut-bid-display').style.visibility = "hidden";
         document.getElementById('tut-bot-jack').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-2"></div></div>`;
         document.getElementById('tut-bot-bill').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-5"></div><div class="mini-die skin_white face-1"></div></div>`;
         document.getElementById('tut-jack-dice').textContent = "🎲 0";
         document.getElementById('tut-bot-jack').classList.add('dead');
-        nextBtn.style.display = "block"; nextBtn.textContent = "ДАЛЕЕ";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "ДАЛЕЕ";
     }
 
     // РАУНД 3
@@ -1608,15 +1669,17 @@ function updateTutorial() {
         document.querySelectorAll('.tut-revealed').forEach(el => el.remove());
         document.getElementById('tut-my-dice').innerHTML = `<div class="die skin_white face-1"></div><div class="die skin_white face-2"></div>`;
         document.getElementById('tut-game-log').innerHTML = "<div>РАУНД 3</div>";
-        nextBtn.style.display = "block"; nextBtn.textContent = "СМОТРЕТЬ";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "СМОТРЕТЬ";
     }
     if (step.action === "bill_bid_3") {
         document.getElementById('tut-bot-bill').classList.add('turn');
+        tutSpawnRaiseBubble('tut_bill', 2, 3, 'skin_white');
         document.getElementById('tut-game-log').innerHTML = "<div>Бот Билл ставит: 2x[3]</div>";
         document.getElementById('tut-bid-display').style.visibility = "visible";
         document.getElementById('tut-bid-qty').innerHTML = '2<span class="bid-x">x</span>';
         document.getElementById('tut-bid-face').className = "die skin_white face-3 bid-die-icon";
-        nextBtn.style.display = "block"; nextBtn.textContent = "МОЙ ХОД";
+        delayMsg(1200);
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "МОЙ ХОД";
     }
     if (step.action === "my_turn_bluff_3") {
         document.getElementById('tut-bot-bill').classList.remove('turn');
@@ -1630,6 +1693,7 @@ function updateTutorial() {
             setTimeout(() => document.getElementById('tut-red-flash-overlay').classList.remove('red-flash-active'), 1000);
             const cloud = document.getElementById('tut-bluff-cloud');
             cloud.classList.remove('hidden'); cloud.classList.add('bluff-cloud-active');
+            msgBox.style.display = 'none';
             setTimeout(() => {
                 cloud.classList.remove('bluff-cloud-active'); cloud.classList.add('hidden');
                 tutStep++; updateTutorial();
@@ -1638,11 +1702,11 @@ function updateTutorial() {
         };
     }
     if (step.action === "reveal_3") {
-        document.getElementById('tut-game-log').innerHTML = "<div style='color:#ef233c'>На столе 0. Блеф! Билл теряет куб.</div>";
+        document.getElementById('tut-game-log').innerHTML = "<div class='tut-log-text'>На столе 0.<br>Блеф! Билл теряет куб.</div>";
         document.getElementById('tut-bid-display').style.visibility = "hidden";
         document.getElementById('tut-bot-bill').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-4"></div><div class="mini-die skin_white face-5"></div></div>`;
         document.getElementById('tut-bill-dice').textContent = "🎲 1";
-        nextBtn.style.display = "block"; nextBtn.textContent = "ДАЛЕЕ";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "ДАЛЕЕ";
     }
 
     // РАУНД 4
@@ -1650,24 +1714,38 @@ function updateTutorial() {
         document.querySelectorAll('.tut-revealed').forEach(el => el.remove());
         document.getElementById('tut-my-dice').innerHTML = `<div class="die skin_white face-6"></div><div class="die skin_white face-3"></div>`;
         document.getElementById('tut-game-log').innerHTML = "<div>РАУНД 4</div>";
-        nextBtn.style.display = "block"; nextBtn.textContent = "СМОТРЕТЬ";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "СМОТРЕТЬ";
     }
     if (step.action === "bill_bid_4") {
         document.getElementById('tut-bot-bill').classList.add('turn');
+        tutSpawnRaiseBubble('tut_bill', 1, 6, 'skin_white');
         document.getElementById('tut-game-log').innerHTML = "<div>Бот Билл ставит: 1x[6]</div>";
         document.getElementById('tut-bid-display').style.visibility = "visible";
         document.getElementById('tut-bid-qty').innerHTML = '1<span class="bid-x">x</span>';
         document.getElementById('tut-bid-face').className = "die skin_white face-6 bid-die-icon";
-        nextBtn.style.display = "block"; nextBtn.textContent = "МОЙ ХОД";
+        delayMsg(1200);
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "МОЙ ХОД";
     }
-    if (step.action === "my_turn_bid_4") {
+    if (step.action === "my_turn_qty_4") {
         document.getElementById('tut-bot-bill').classList.remove('turn');
         const controls = document.getElementById('tut-controls');
         controls.style.opacity = "1"; controls.style.pointerEvents = "auto";
         
-        document.getElementById('tut-qty-val').textContent = "2";
-        document.getElementById('tut-val-val').textContent = "6";
+        tutQty = 1; tutVal = 6;
+        document.getElementById('tut-qty-val').textContent = tutQty;
+        document.getElementById('tut-val-val').textContent = tutVal;
         
+        const plusQty = document.getElementById('tut-qty-plus');
+        plusQty.classList.add('highlight-action');
+        plusQty.onclick = () => { 
+            if(tutQty < 2) tutQty++; 
+            document.getElementById('tut-qty-val').textContent = tutQty; 
+            if(tutQty === 2) { 
+                plusQty.onclick = null; tutStep++; updateTutorial(); 
+            } 
+        };
+    }
+    if (step.action === "my_turn_bid_4") {
         const bidBtn = document.getElementById('tut-btn-bid');
         bidBtn.classList.add('highlight-action');
         bidBtn.onclick = () => {
@@ -1675,11 +1753,13 @@ function updateTutorial() {
             document.getElementById('tut-bid-qty').innerHTML = '2<span class="bid-x">x</span>';
             document.getElementById('tut-controls').style.opacity = "0.3";
             document.getElementById('tut-controls').style.pointerEvents = "none";
+            delayMsg(1000);
             tutStep++; updateTutorial();
         };
     }
     if (step.action === "bill_bluff_4") {
         document.getElementById('tut-bot-bill').classList.add('turn');
+        msgBox.style.display = 'none';
         setTimeout(() => {
             if(tg) tg.HapticFeedback.notificationOccurred('error');
             document.getElementById('tut-red-flash-overlay').classList.add('red-flash-active');
@@ -1690,23 +1770,22 @@ function updateTutorial() {
                 cloud.classList.remove('bluff-cloud-active'); cloud.classList.add('hidden');
                 tutStep++; updateTutorial();
             }, 2500);
-        }, 1000);
+        }, 800);
     }
     if (step.action === "reveal_4") {
         document.getElementById('tut-bot-bill').classList.remove('turn');
-        document.getElementById('tut-game-log').innerHTML = "<div style='color:#06d6a0'>На столе 2. Ставка есть! Билл теряет куб.</div>";
+        document.getElementById('tut-game-log').innerHTML = "<div class='tut-log-success'>На столе 2.<br>Ставка есть! Билл теряет куб.</div>";
         document.getElementById('tut-bid-display').style.visibility = "hidden";
         document.getElementById('tut-bot-bill').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-6"></div></div>`;
         document.getElementById('tut-bill-dice').textContent = "🎲 0";
         document.getElementById('tut-bot-bill').classList.add('dead');
-        nextBtn.style.display = "block"; nextBtn.textContent = "ПОБЕДА!";
+        nextBtn.style.display = "inline-block"; nextBtn.textContent = "ПОБЕДА!";
     }
     if (step.action === "victory") {
         showScreen('result');
         document.getElementById('winner-name').textContent = state.username || "Игрок";
         document.getElementById('result-profit').innerHTML = `<div style="color:#06d6a0; font-size:1.2rem; margin-bottom:10px;">+100💰 +100⭐</div><div style="font-size:0.8rem; opacity:0.8;">Обучение пройдено!</div>`;
         
-        // Переопределяем кнопки на экране результатов только для туториала
         const restartBtn = document.getElementById('btn-restart');
         const homeBtn = document.getElementById('btn-home');
         
@@ -1729,7 +1808,6 @@ function updateTutorial() {
     }
 }
 
-// Обработчик кнопки "Далее" в обучении
 document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('tutorial-next-btn');
     if (nextBtn) {
@@ -1744,40 +1822,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Проверка при первом входе (показывать ли предложение пройти обучение)
 setTimeout(() => {
-    // Если в памяти нет отметки 'tutorialDone' и мы уже залогинились
     if (!localStorage.getItem('tutorialDone') && state.username) {
         uiConfirm("Ты здесь впервые, моряк! Пройти обучение?", () => {
             startTutorial();
         });
-        // Сразу ставим отметку, чтобы окно не спамило при каждом обновлении страницы
         localStorage.setItem('tutorialDone', 'true');
     }
 }, 2500);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
