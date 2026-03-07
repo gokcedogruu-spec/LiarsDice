@@ -849,23 +849,82 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     }
 }
 
-/* Стили для обучения */
+/* --- СТИЛИ ДЛЯ ОБУЧЕНИЯ (ОБНОВЛЕННЫЕ) --- */
 .tutorial-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.4); z-index: 10000; pointer-events: none;
 }
 .tutorial-msg-box {
-    position: absolute; top: 25%; left: 50%; transform: translateX(-50%);
-    width: 90%; max-width: 320px; background: #3d405b; border: 3px solid var(--accent);
-    border-radius: 20px; padding: 20px; text-align: center; z-index: 10002;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto;
+    position: absolute; 
+    top: 12%; /* Подняли выше, чтобы не закрывать стол */
+    left: 50%; 
+    transform: translateX(-50%) scale(0);
+    width: 85%; 
+    max-width: 260px; /* Уменьшили габариты */
+    background: rgba(61, 64, 91, 0.95); 
+    border: 2px solid var(--accent);
+    border-radius: 16px; 
+    padding: 12px 15px; /* Уменьшили отступы */
+    text-align: center; 
+    z-index: 10002;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+    pointer-events: auto;
 }
-.tutorial-msg-box p { font-size: 1rem; line-height: 1.4; font-weight: bold; color: white; }
+.tutorial-msg-box p { 
+    font-size: 0.85rem; /* Уменьшили текст */
+    line-height: 1.3; 
+    font-weight: 600; 
+    color: white; 
+    margin-bottom: 8px; 
+}
+.tutorial-msg-box button { 
+    min-height: 28px; 
+    font-size: 0.75rem; /* Уменьшили кнопку */
+    padding: 6px 15px; 
+    margin-top: 5px; 
+    width: auto;
+    display: inline-block;
+}
+/* Анимация плавного появления */
+.tut-pop-in {
+    animation: tutPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+/* Легкий пульс */
+.tut-pulse-anim {
+    animation: tutPulse 2s infinite ease-in-out;
+}
+@keyframes tutPopIn {
+    0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+    80% { transform: translateX(-50%) scale(1.05); opacity: 1; }
+    100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+@keyframes tutPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.03); }
+}
+/* Адаптивный текст для лога (чтобы "НЕ ВЕРЮ" читалось) */
+.tut-log-text {
+    color: #ff4d4d; 
+    font-size: 0.9rem; 
+    white-space: normal; /* Разрешаем перенос на новую строку */
+    line-height: 1.2; 
+    padding: 0 10px; 
+    text-shadow: 1px 1px 2px black;
+}
+.tut-log-success {
+    color: #06d6a0; 
+    font-size: 0.9rem; 
+    white-space: normal; 
+    line-height: 1.2; 
+    padding: 0 10px; 
+    text-shadow: 1px 1px 2px black;
+}
 .highlight-action {
     position: relative; z-index: 10003 !important; box-shadow: 0 0 20px var(--accent) !important;
     animation: pulseHighlight 1s infinite; pointer-events: auto !important; opacity: 1 !important;
 }
 @keyframes pulseHighlight { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
 
 
 
