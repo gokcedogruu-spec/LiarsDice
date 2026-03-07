@@ -987,145 +987,73 @@ socket.on('gameState', (gs) => {
     
     const bid = document.getElementById('current-bid-display');
 
-if (gs.currentBid) {
-    const bidder = gs.players.find(p => p.id === gs.currentBid.playerId);
-    const skin = bidder?.equipped?.skin || 'skin_white';
+    if (gs.currentBid) {
+        const bidder = gs.players.find(p => p.id === gs.currentBid.playerId);
+        const skin = bidder?.equipped?.skin || 'skin_white';
 
-    bid.innerHTML = `
-        <div class="bid-container">
-            <div class="bid-qty">
-                ${gs.currentBid.quantity}<span class="bid-x">x</span>
-            </div>
-            <div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div>
-        </div>
-    `;
-
-    // мини-пузырь: только если ставка изменилась
-    const lb = state.lastBid;
-    const cb = gs.currentBid;
-    const isNewBid =
-        !lb ||
-        lb.playerId !== cb.playerId ||
-        lb.quantity !== cb.quantity ||
-        lb.faceValue !== cb.faceValue;
-
-    if (isNewBid) {
-        spawnRaiseBubble(gs);
-        state.lastBid = { ...cb };
-    }
-
-    state.bidQty = cb.quantity;
-    state.bidVal = cb.faceValue;
-    updateInputs();
-} else {
-    state.lastBid = null;
-
-    const me = gs.players.find(p => p.id === socket.id);
-    if (me?.isTurn) {
         bid.innerHTML = `
-            <div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">
-                Ваш ход!
+            <div class="bid-container">
+                <div class="bid-qty">
+                    ${gs.currentBid.quantity}<span class="bid-x">x</span>
+                </div>
+                <div class="die ${skin} face-${gs.currentBid.faceValue} bid-die-icon"></div>
             </div>
         `;
+
+        // мини-пузырь: только если ставка изменилась
+        const lb = state.lastBid;
+        const cb = gs.currentBid;
+        const isNewBid =
+            !lb ||
+            lb.playerId !== cb.playerId ||
+            lb.quantity !== cb.quantity ||
+            lb.faceValue !== cb.faceValue;
+
+        if (isNewBid) {
+            spawnRaiseBubble(gs);
+            state.lastBid = { ...cb };
+        }
+
+        state.bidQty = cb.quantity;
+        state.bidVal = cb.faceValue;
+        updateInputs();
     } else {
-        const turnPlayer = gs.players.find(p => p.isTurn);
-        const name = turnPlayer ? turnPlayer.name : "Ожидание";
-        bid.innerHTML = `
-            <div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">
-                Ходит: ${name}
-            </div>
-        `;
-    }
+        state.lastBid = null;
 
-    state.bidQty = 1;
-    state.bidVal = 2;
-    updateInputs();
-}
+        const me = gs.players.find(p => p.id === socket.id);
+        if (me?.isTurn) {
+            bid.innerHTML = `
+                <div style="font-size:1.2rem; color:#ef233c; font-weight:bold;">
+                    Ваш ход!
+                </div>
+            `;
+        } else {
+            const turnPlayer = gs.players.find(p => p.isTurn);
+            const name = turnPlayer ? turnPlayer.name : "Ожидание";
+            bid.innerHTML = `
+                <div style="font-size:1.2rem; color:#2b2d42; font-weight:bold;">
+                    Ходит: ${name}
+                </div>
+            `;
+        }
+
+        state.bidQty = 1;
+        state.bidVal = 2;
+        updateInputs();
+    }
     
     const me = gs.players.find(p => p.id === socket.id); 
     const myTurn = me?.isTurn; 
     const controls = document.getElementById('game-controls'); 
     const spotBtn = document.getElementById('btn-call-spot'); 
     if (spotBtn) { if (gs.activeRules.spot) spotBtn.classList.remove('hidden-rule'); else spotBtn.classList.add('hidden-rule'); } 
-    // Удаляем старую панель навыков
-    const existingSkills = document.querySelector('.skills-bar');
-    if (existingSkills) existingSkills.remove();
-
-    // Навыки показываем только живому игроку
-    if (me && !me.isEliminated) {
-    const skillsDiv = document.createElement('div');
-    skillsDiv.className = 'skills-bar';
-
-    const hasActiveRankSkills = me.availableSkills && me.availableSkills.length > 0;
-    const currentHatId = me.equipped?.hat || null;
-    const crazyMode = !!gs.activeRules.crazy;
-    const hatSkill = crazyMode && currentHatId && HAT_SKILLS[currentHatId] ? HAT_SKILLS[currentHatId] : null;
-
-    // --- АКТИВНЫЕ НАВЫКИ ---
-    if (hasActiveRankSkills || (hatSkill && hatSkill.activeDesc)) {
-        const activeSection = document.createElement('div');
-        activeSection.className = 'skills-section';
-
-        activeSection.innerHTML = `
-            <div class="skills-title">АКТИВНЫЕ</div>
-            <div class="skills-row"></div>
-        `;
-        const row = activeSection.querySelector('.skills-row');
-
-        // Ранговые навыки (уши / счастливый / kill)
-        if (hasActiveRankSkills) {
-            me.availableSkills.forEach(skill => {
-                const btn = document.createElement('button');
-                btn.className = `btn-skill skill-${skill}`;
-                btn.setAttribute('onclick', `useSkill('${skill}')`);
-                row.appendChild(btn);
-            });
-        }
-
-        // Активный навык шляпы (кнопка с иконкой шляпы) – только в Безумном столе
-        if (hatSkill && hatSkill.activeDesc) {
-            const hatBtn = document.createElement('button');
-            hatBtn.className = 'btn-skill btn-skill-hat';
-            // маленькая иконка шляпы – используем ту же картинку, что и для ранга
-            const hatImgUrl = getRankImage(null, currentHatId);
-            hatBtn.style.backgroundImage = `url('${hatImgUrl}')`;
-            hatBtn.title = hatSkill.activeTitle || 'Навык шляпы';
-
-            // Пока только показываем описание навыка, без логики useHatSkill
-            hatBtn.onclick = () => openHatInfo(currentHatId, 'active');
-
-            row.appendChild(hatBtn);
-        }
-
-        skillsDiv.appendChild(activeSection);
+    
+    // --- ИНТЕГРАЦИЯ НОВОЙ СИСТЕМЫ НАВЫКОВ ---
+    if (typeof SkillsUI !== 'undefined') {
+        SkillsUI.init();
+        SkillsUI.updateVisibility(gs, me);
     }
-
-    // --- ПАССИВНЫЕ НАВЫКИ ШЛЯПЫ ---
-    if (hatSkill && hatSkill.passiveDesc) {
-        const passiveSection = document.createElement('div');
-        passiveSection.className = 'skills-section skills-passive';
-
-        passiveSection.innerHTML = `
-            <div class="skills-title">ПАССИВНЫЕ</div>
-            <div class="skills-row"></div>
-        `;
-        const rowP = passiveSection.querySelector('.skills-row');
-
-        const passBtn = document.createElement('button');
-        passBtn.className = 'btn-skill btn-skill-passive';
-        passBtn.textContent = 'i'; // маленькая инфо-кнопка
-        passBtn.onclick = () => openHatInfo(currentHatId, 'passive');
-
-        rowP.appendChild(passBtn);
-        skillsDiv.appendChild(passiveSection);
-    }
-
-    if (skillsDiv.children.length > 0) {
-    const dicePanel = document.querySelector('.my-dice-panel');
-    const parent = dicePanel?.parentNode || document.querySelector('.my-controls-area');
-    parent.insertBefore(skillsDiv, dicePanel || controls);
-}
-}
+    // ----------------------------------------
     
     if(myTurn) { 
         controls.classList.remove('hidden'); controls.classList.add('slide-up'); 
@@ -1840,6 +1768,7 @@ setTimeout(() => {
         localStorage.setItem('tutorialDone', 'true');
     }
 }, 2500);
+
 
 
 
