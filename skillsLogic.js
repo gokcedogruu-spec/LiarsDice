@@ -60,12 +60,17 @@ const SKILLS = {
 
 // Функция обработки нажатия на кнопку навыка
 function handleActiveSkill(game, player) {
-    if (!game.settings || !game.settings.crazyMode) {
+    if (!game.config || !game.config.crazy) { // ИСПРАВЛЕНО: у вас настройки лежат в game.config.crazy, а не game.settings.crazyMode
         return { error: 'Навыки работают только в режиме "Безумный стол"!' };
     }
     
-    // ВАЖНО: замените player.equippedHat на ту переменную, где у вас хранится надетая шляпа
-    const hatId = player.equippedHat; 
+    // ИСПРАВЛЕНО: правильный путь к надетой шляпе
+    const hatId = player.equipped?.hat; 
+    
+    if (!hatId) {
+        return { error: 'У вас не надета шляпа!' };
+    }
+
     const skill = SKILLS[hatId];
     
     if (!skill || !skill.executeActive) return { error: 'У вашей шляпы нет активного навыка.' };
@@ -82,6 +87,19 @@ function handleActiveSkill(game, player) {
         result.skillName = skill.activeName;
     }
     return result;
+}
+
+// Функция проверки пассивных навыков (вызывается сервером автоматически)
+function triggerPassiveSkill(game, player, eventType) {
+    if (!game.config || !game.config.crazy) return null; // ИСПРАВЛЕНО: game.config.crazy
+    
+    const hatId = player.equipped?.hat; // ИСПРАВЛЕНО
+    const skill = SKILLS[hatId];
+    
+    if (skill && skill.executePassive) {
+        return skill.executePassive(game, player, eventType);
+    }
+    return null;
 }
 
 // Функция проверки пассивных навыков (вызывается сервером автоматически)
