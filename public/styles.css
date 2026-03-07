@@ -856,15 +856,16 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 }
 .tutorial-msg-box {
     position: absolute; 
-    top: 12%; /* Подняли выше, чтобы не закрывать стол */
+    /* Убрали top: 12%, добавили bottom: 32% */
+    bottom: 32%; 
     left: 50%; 
     transform: translateX(-50%) scale(0);
     width: 85%; 
-    max-width: 260px; /* Уменьшили габариты */
+    max-width: 260px; 
     background: rgba(61, 64, 91, 0.95); 
     border: 2px solid var(--accent);
     border-radius: 16px; 
-    padding: 12px 15px; /* Уменьшили отступы */
+    padding: 12px 15px; 
     text-align: center; 
     z-index: 10002;
     box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
@@ -924,6 +925,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     animation: pulseHighlight 1s infinite; pointer-events: auto !important; opacity: 1 !important;
 }
 @keyframes pulseHighlight { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
 
 
 
