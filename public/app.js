@@ -1480,6 +1480,8 @@ function updateTutorial() {
     const textEl = document.getElementById('tutorial-text');
     const nextBtn = document.getElementById('tutorial-next-btn');
 
+    msgBox.style.display = 'block'; 
+
     // Сброс и запуск анимации появления окна
     msgBox.classList.remove('tut-pop-in', 'tut-pulse-anim');
     void msgBox.offsetWidth; // Перезапуск CSS
@@ -1489,6 +1491,8 @@ function updateTutorial() {
     textEl.innerHTML = step.text;
     nextBtn.textContent = step.btn || "ЖДУ...";
     nextBtn.style.display = step.btn ? "inline-block" : "none";
+    
+    // ... дальше идет остальной код функции ...
 
     document.querySelectorAll('.highlight-action').forEach(el => el.classList.remove('highlight-action'));
 
@@ -1836,5 +1840,6 @@ setTimeout(() => {
         localStorage.setItem('tutorialDone', 'true');
     }
 }, 2500);
+
 
 
