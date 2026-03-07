@@ -15,13 +15,20 @@ const SkillsUI = {
         }
     },
 
-    updateVisibility: function(room) {
+   updateVisibility: function(gs, me) {
         const btn = document.getElementById('btn-active-skill');
         if (!btn) return;
 
-        // Показываем только если включен "Безумный стол"
-        if (room.settings && room.settings.crazyMode) {
+        // Показываем кнопку только если:
+        // 1. Включен "Безумный стол" (crazy)
+        // 2. Игрок жив (!me.isEliminated)
+        // 3. У игрока надета шляпа (me.equipped && me.equipped.hat)
+        if (gs.activeRules && gs.activeRules.crazy && me && !me.isEliminated && me.equipped && me.equipped.hat) {
             btn.classList.remove('hidden');
+            
+            // Можно даже менять иконку кнопки в зависимости от надетой шляпы!
+            // const hatId = me.equipped.hat;
+            // btn.style.backgroundImage = `url('${getRankImage(null, hatId)}')`;
         } else {
             btn.classList.add('hidden');
         }
