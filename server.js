@@ -955,11 +955,12 @@ io.on('connection', (socket) => {
         }
     });
     
-    socket.on('use_active_skill', () => {
-        const room = getRoomOfPlayer(socket.id); // Ваша функция поиска комнаты
+socket.on('use_active_skill', () => {
+        const room = getRoomBySocketId(socket.id); // ИСПРАВЛЕНО ЗДЕСЬ
         const player = room?.players.find(p => p.id === socket.id);
         
-        if (!room || !player || room.status !== 'playing') return;
+        // ВАЖНО: У вас статусы пишутся большими буквами ('PLAYING', а не 'playing')
+        if (!room || !player || room.status !== 'PLAYING') return;
 
         const result = skillsLogic.handleActiveSkill(room, player);
         
@@ -970,13 +971,16 @@ io.on('connection', (socket) => {
             socket.emit('skill_result', { success: true, msg: result.msg });
             
             // Обновляем кубики игроку (если навык их изменил)
-            socket.emit('update_dice', player.dice); 
+            socket.emit('yourDice', player.dice); // ИСПРАВЛЕНО: у вас событие называется 'yourDice', а не 'update_dice'
             
             // Оповещаем всех за столом о применении навыка
-            io.to(room.id).emit('skill_broadcast', { 
-                playerName: player.username, 
-                publicMsg: result.publicMsg 
+            io.to(room.id).emit('gameEvent', { // ИСПРАВЛЕНО: используем вашу систему логов 'gameEvent'
+                type: 'alert',
+                text: `🎩 ${player.name} использует навык: ${result.publicMsg}` 
             });
+            
+            // Обновляем состояние игры для всех, чтобы обновилось количество кубиков на экране
+            broadcastGameState(room);
         }
     });
 
@@ -1386,6 +1390,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
