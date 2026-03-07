@@ -522,6 +522,21 @@ input[type="text"] { width: 100%; padding: 12px; border-radius: 15px; border: no
     box-shadow: 0 0 6px rgba(0,0,0,0.7);
 }
 
+.btn-skill {
+    background: linear-gradient(45deg, #ffd166, #ff9f1c);
+    color: #141414;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 15px;
+    font-weight: 800;
+    box-shadow: 0 4px 15px rgba(255, 209, 102, 0.4);
+    margin-top: 10px;
+    width: 100%;
+    animation: pulseHighlight 2s infinite;
+}
+.btn-skill.hidden {
+    display: none !important;
+}
 /* Кнопка навыка шляпы – маленькая шляпа */
 .btn-skill-hat {
     width: 44px;
@@ -925,6 +940,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     animation: pulseHighlight 1s infinite; pointer-events: auto !important; opacity: 1 !important;
 }
 @keyframes pulseHighlight { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
 
 
 
