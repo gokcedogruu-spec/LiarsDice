@@ -279,6 +279,20 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     });
     if (startIdx !== null) room.currentTurn = startIdx;
     else if (isFirst) { room.currentTurn = Math.floor(Math.random() * room.players.length); io.to(room.id).emit('gameEvent', { text: `🎲 Первый ход: ${room.players[room.currentTurn].name}`, type: 'info' }); }
+    if (room.config && room.config.crazy) {
+            const passives = [];
+            room.players.forEach(p => {
+                if (p.equipped && p.equipped.hat) {
+                    const skill = skillsLogic.SKILLS[p.equipped.hat];
+                    if (skill && skill.passiveName) {
+                        passives.push({ name: p.name, passiveName: skill.passiveName });
+                    }
+                }
+            });
+            if (passives.length > 0) {
+                io.to(room.id).emit('passive_skills_intro', passives);
+            }
+        }
     
     let safety = 0;
     while (room.players[room.currentTurn].diceCount === 0) {
@@ -408,29 +422,40 @@ function finalizeRound(room, forcedLoser = null, forcedWinner = null) {
     const betCoins = room.config.betCoins || 0; 
     const betXp = room.config.betXp || 0;
 
-const passiveResult = skillsLogic.triggerPassiveSkill(room, loser, 'lose_die');
-if (passiveResult && passiveResult.prevented) {
-    // Навык спас кубик! Отправляем сообщение в лог игры
-    io.to(room.id).emit('game_log', { msg: passiveResult.msg, color: '#06d6a0' });
-} else {
-    // Навык не сработал или его нет, отнимаем кубик как обычно
-    loser.diceCount--;
-}
+    const passiveResult = skillsLogic.triggerPassiveSkill(room, loser, 'lose_die');
+    if (passiveResult && passiveResult.prevented) {
+        // Навык спас кубик! Отправляем сообщение в лог игры (ИСПРАВЛЕНО НА gameEvent)
+        io.to(room.id).emit('gameEvent', { text: `🌟 ${passiveResult.msg}`, type: 'alert' });
+    } else {
+        // Навык не сработал или его нет, отнимаем кубик как обычно
+        loser.diceCount--;
+    }
 
     if (loser.diceCount <= 0) {
-        loser.diceCount = 0;
-        if (!loser.isBot && loser.tgId) {
-            updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0).then(res => { if(res) { pushProfileUpdate(loser.tgId); io.to(loser.id).emit('matchResults', res); } });
+        // --- ВТОРОЙ ШАНС (Шляпа падшей легенды) ---
+        if (loser.secondChance) {
+            loser.diceCount = 1;
+            loser.secondChance = false;
+            io.to(room.id).emit('gameEvent', { text: `🌟 ${loser.name} использует Второй шанс и возвращается с 1 кубиком!`, type: 'alert' });
+        } else {
+            // Игрок окончательно выбывает
+            loser.diceCount = 0;
+            if (!loser.isBot && loser.tgId) {
+                updateUserXP(loser.tgId, room.isPvE ? 'lose_pve' : 'lose_game', null, betCoins, betXp, 0).then(res => { if(res) { pushProfileUpdate(loser.tgId); io.to(loser.id).emit('matchResults', res); } });
+            }
+            const loserName = loser.name || "Игрок";
+            io.to(room.id).emit('gameEvent', { text: `💀 ${loserName} выбывает!`, type: 'error' });
         }
-        const loserName = loser.name || "Игрок";
-        io.to(room.id).emit('gameEvent', { text: `💀 ${loserName} выбывает!`, type: 'error' });
     }
 
     const active = room.players.filter(p => p.diceCount > 0);
     if (active.length === 1) {
-        const winner = active[0]; room.status = 'FINISHED';
+        const winner = active[0]; 
+        room.status = 'FINISHED';
         if (!winner.isBot && winner.tgId) {
-            const type = room.isPvE ? 'win_pve' : 'win_game'; const diff = room.isPvE ? room.config.difficulty : null; const multiplier = room.players.length - 1; 
+            const type = room.isPvE ? 'win_pve' : 'win_game'; 
+            const diff = room.isPvE ? room.config.difficulty : null; 
+            const multiplier = room.players.length - 1; 
             updateUserXP(winner.tgId, type, diff, betCoins, betXp, multiplier).then(res => { pushProfileUpdate(winner.tgId); io.to(winner.id).emit('matchResults', res); });
         }
         io.to(room.id).emit('gameOver', { winner: winner.name });
@@ -439,7 +464,11 @@ if (passiveResult && passiveResult.prevented) {
         if (nextIdx === -1 || loser.diceCount === 0) {
             let searchStart = nextIdx !== -1 ? nextIdx : room.currentTurn;
             let loopCount = 0;
-            do { searchStart = (searchStart + 1) % room.players.length; loopCount++; if(loopCount > 20) break; } while (room.players[searchStart].diceCount === 0);
+            do { 
+                searchStart = (searchStart + 1) % room.players.length; 
+                loopCount++; 
+                if(loopCount > 20) break; 
+            } while (room.players[searchStart].diceCount === 0);
             nextIdx = searchStart;
         }
         startNewRound(room, false, nextIdx);
@@ -1390,6 +1419,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
