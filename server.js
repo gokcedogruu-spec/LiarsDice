@@ -9,6 +9,7 @@ const path = require('path');
 
 // Подключаем наши новые файлы
 const User = require('./models/User');
+const skillsLogic = require('./skillsLogic');
 const { RANKS, HATS } = require('./config/constants');
 const { generateRoomId, rollDice, getRankInfo, findUserIdByUsername } = require('./utils/helpers');
 const { 
@@ -1352,6 +1353,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
