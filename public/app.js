@@ -1589,10 +1589,16 @@ function updateTutorial() {
     if (step.action === "reveal_1") {
         document.getElementById('tut-game-log').innerHTML = "<div class='tut-log-text'>На столе 3.<br>Блеф! Джек теряет куб.</div>";
         document.getElementById('tut-bid-display').style.visibility = "hidden";
+        
+        // Показываем кости
         document.getElementById('tut-bot-jack').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-4"></div><div class="mini-die skin_white face-1"></div></div>`;
         document.getElementById('tut-bot-bill').innerHTML += `<div class="revealed-dice-container tut-revealed"><div class="mini-die skin_white face-4"></div><div class="mini-die skin_white face-3"></div></div>`;
         document.getElementById('tut-jack-dice').textContent = "🎲 1";
-        nextBtn.style.display = "inline-block"; nextBtn.textContent = "ДАЛЕЕ";
+        
+        // Гарантированно показываем окно и кнопку без задержек, чтобы не зависало
+        msgBox.style.display = 'block';
+        nextBtn.style.display = "inline-block"; 
+        nextBtn.textContent = "ДАЛЕЕ";
     }
 
     // РАУНД 2
@@ -1830,4 +1836,5 @@ setTimeout(() => {
         localStorage.setItem('tutorialDone', 'true');
     }
 }, 2500);
+
 
