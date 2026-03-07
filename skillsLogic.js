@@ -1,79 +1,49 @@
-// --- skillsLogic.js ---
-
-// База всех навыков
+// База всех навыков (Используем РЕАЛЬНЫЕ ID шляп из игры)
 const SKILLS = {
-    // Пример: Редкая шляпа
-    'hat_rare_1': {
+    'hat_fallen': {
         type: 'rare',
         activeName: 'Переброс',
-        passiveName: 'Везунчик',
-        activeUses: 1, // Сколько раз за игру можно использовать активный навык
-        
-        // Активный навык: Перебрасывает все кубики игрока
+        activeUses: 1, // Сколько раз за игру можно использовать
         executeActive: (game, player) => {
+            // Перебрасываем все кубики игрока
             player.dice = player.dice.map(() => Math.floor(Math.random() * 6) + 1);
             return { 
                 success: true, 
                 msg: 'Вы перебросили свои кубики!', 
-                publicMsg: `${player.username} использовал навык "Переброс" и сменил свои кубики!` 
+                publicMsg: `${player.name} использовал навык "Переброс" и сменил свои кубики!` 
             };
-        },
-        
-        // Пассивный навык: 10% шанс не потерять кубик при проигрыше
-        executePassive: (game, player, eventType) => {
-            if (eventType === 'lose_die') {
-                if (Math.random() < 0.10) {
-                    return { prevented: true, msg: `Пассивный навык "Везунчик" спас кубик игрока ${player.username}!` };
-                }
-            }
-            return { prevented: false };
         }
     },
 
-    // Пример: Легендарная шляпа
-    'hat_leg_1': {
-        type: 'legendary',
+    'hat_rich': {
+        type: 'rare',
         activeName: 'Шулер',
-        passiveName: 'Щит',
         activeUses: 1,
-        
-        // Активный навык: Делает первый кубик шестеркой
         executeActive: (game, player) => {
+            // Делает первый кубик шестеркой
             if(player.dice.length > 0) player.dice[0] = 6;
             return { 
                 success: true, 
                 msg: 'Один ваш кубик чудесным образом стал шестеркой!', 
-                publicMsg: `${player.username} использовал "Шулер"! Что-то произошло с его костями...` 
+                publicMsg: `${player.name} использовал "Шулер"! Что-то произошло с его костями...` 
             };
-        },
-        
-        // Пассивный навык: Первый раз за игру спасает от потери кубика (100% шанс)
-        executePassive: (game, player, eventType) => {
-            if (eventType === 'lose_die' && !player.shieldUsed) {
-                player.shieldUsed = true; // Отмечаем, что щит сломан
-                return { prevented: true, msg: `Легендарный "Щит" поглотил урон! ${player.username} не теряет кубик.` };
-            }
-            return { prevented: false };
         }
     }
+    // Сюда потом добавите остальные шляпы (hat_underwater, hat_voodoo и т.д.)
 };
 
-// Функция обработки нажатия на кнопку навыка
 function handleActiveSkill(game, player) {
-    if (!game.config || !game.config.crazy) { // ИСПРАВЛЕНО: у вас настройки лежат в game.config.crazy, а не game.settings.crazyMode
+    if (!game.config || !game.config.crazy) {
         return { error: 'Навыки работают только в режиме "Безумный стол"!' };
     }
     
-    // ИСПРАВЛЕНО: правильный путь к надетой шляпе
     const hatId = player.equipped?.hat; 
-    
-    if (!hatId) {
-        return { error: 'У вас не надета шляпа!' };
-    }
+    if (!hatId) return { error: 'У вас не надета шляпа!' };
 
     const skill = SKILLS[hatId];
-    
-    if (!skill || !skill.executeActive) return { error: 'У вашей шляпы нет активного навыка.' };
+    if (!skill || !skill.executeActive) {
+        return { error: 'У этой шляпы пока нет активного навыка в коде сервера.' };
+    }
     
     // Проверка лимита использований
     player.skillsUsed = player.skillsUsed || {};
@@ -89,24 +59,10 @@ function handleActiveSkill(game, player) {
     return result;
 }
 
-// Функция проверки пассивных навыков (вызывается сервером автоматически)
 function triggerPassiveSkill(game, player, eventType) {
-    if (!game.config || !game.config.crazy) return null; // ИСПРАВЛЕНО: game.config.crazy
+    if (!game.config || !game.config.crazy) return null;
     
-    const hatId = player.equipped?.hat; // ИСПРАВЛЕНО
-    const skill = SKILLS[hatId];
-    
-    if (skill && skill.executePassive) {
-        return skill.executePassive(game, player, eventType);
-    }
-    return null;
-}
-
-// Функция проверки пассивных навыков (вызывается сервером автоматически)
-function triggerPassiveSkill(game, player, eventType) {
-    if (!game.settings || !game.settings.crazyMode) return null;
-    
-    const hatId = player.equippedHat;
+    const hatId = player.equipped?.hat;
     const skill = SKILLS[hatId];
     
     if (skill && skill.executePassive) {
