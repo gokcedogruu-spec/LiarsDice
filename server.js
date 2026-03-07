@@ -408,7 +408,14 @@ function finalizeRound(room, forcedLoser = null, forcedWinner = null) {
     const betCoins = room.config.betCoins || 0; 
     const betXp = room.config.betXp || 0;
 
+const passiveResult = skillsLogic.triggerPassiveSkill(room, loser, 'lose_die');
+if (passiveResult && passiveResult.prevented) {
+    // Навык спас кубик! Отправляем сообщение в лог игры
+    io.to(room.id).emit('game_log', { msg: passiveResult.msg, color: '#06d6a0' });
+} else {
+    // Навык не сработал или его нет, отнимаем кубик как обычно
     loser.diceCount--;
+}
 
     if (loser.diceCount <= 0) {
         loser.diceCount = 0;
@@ -947,6 +954,31 @@ io.on('connection', (socket) => {
             }
         }
     });
+    
+    socket.on('use_active_skill', () => {
+        const room = getRoomOfPlayer(socket.id); // Ваша функция поиска комнаты
+        const player = room?.players.find(p => p.id === socket.id);
+        
+        if (!room || !player || room.status !== 'playing') return;
+
+        const result = skillsLogic.handleActiveSkill(room, player);
+        
+        if (result.error) {
+            socket.emit('skill_result', { error: result.error });
+        } else {
+            // Отправляем личное сообщение игроку
+            socket.emit('skill_result', { success: true, msg: result.msg });
+            
+            // Обновляем кубики игроку (если навык их изменил)
+            socket.emit('update_dice', player.dice); 
+            
+            // Оповещаем всех за столом о применении навыка
+            io.to(room.id).emit('skill_broadcast', { 
+                playerName: player.username, 
+                publicMsg: result.publicMsg 
+            });
+        }
+    });
 
     socket.on('shopBuy', async (itemId) => {
         if (!socket.tgUserId) return;
@@ -1041,6 +1073,7 @@ socket.on('hatBuy', async (hatId) => {
             const rank = getRankInfo(userData.xp, userData.streak); 
             socket.emit('showPlayerStats', { id: userData.id, name: userData.name, rankName: rank.current.name, matches: userData.matches, wins: userData.wins, inventory: userData.inventory, equipped: userData.equipped }); 
         }
+        
     });
 
     socket.on('friendAction', async ({ action, payload }) => {
@@ -1353,6 +1386,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
