@@ -1769,6 +1769,45 @@ setTimeout(() => {
     }
 }, 2500);
 
+// --- ИНТРО ПАССИВНЫХ НАВЫКОВ ---
+socket.on('passive_skills_intro', (passives) => {
+    if (!document.getElementById('skill-intro-overlay')) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="skill-intro-overlay"></div>
+            <div id="skill-intro-modal">
+                <div class="intro-passive-name" id="intro-passive-text"></div>
+                <div class="intro-hat-name" id="intro-hat-text"></div>
+            </div>
+        `);
+    }
+
+    let delay = 0;
+    const introDuration = 3500;
+
+    passives.forEach((intro) => {
+        setTimeout(() => {
+            const overlay = document.getElementById('skill-intro-overlay');
+            const modal = document.getElementById('skill-intro-modal');
+            
+            document.getElementById('intro-passive-text').innerText = `${intro.passiveName}!`;
+            document.getElementById('intro-hat-text').innerText = `Вы играете с ${intro.hatName}`;
+            overlay.style.backgroundColor = intro.color;
+
+            document.body.classList.add('shake-screen');
+            overlay.style.opacity = '1';
+            modal.classList.add('show');
+            if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+
+            setTimeout(() => {
+                document.body.classList.remove('shake-screen');
+                overlay.style.opacity = '0';
+                modal.classList.remove('show');
+            }, 3000);
+
+        }, delay);
+        delay += introDuration;
+    });
+});
 
 
 
