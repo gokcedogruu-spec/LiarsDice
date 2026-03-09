@@ -1,8 +1,18 @@
-const SKILLS = {
-    'hat_rich': {
+'hat_rich': {
+        hatNameDisplay: 'Богачом', // Для текста в интро
+        introColor: 'rgba(255, 215, 0, 0.3)', // Золотой фильтр экрана
         passiveName: 'Казначей',
         activeName: 'Золотой сундук',
         activeUses: 1,
+        executePassive: (game, player, eventType) => {
+            // ПАССИВКА: 20% шанс не потерять кубик при проигрыше раунда
+            if (eventType === 'lose_die') {
+                if (Math.random() < 0.20) {
+                    return { prevented: true, msg: `${player.name} сохраняет кубик благодаря навыку "Казначей"!` };
+                }
+            }
+            return null;
+        },
         executeActive: (game, player) => {
             player.goldenChest = true;
             return { success: true, msg: 'Вы активировали Золотой сундук!', publicMsg: `${player.name} объявляет "Золотой сундук"! Ставки растут!` };
