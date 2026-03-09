@@ -1,11 +1,11 @@
-'hat_rich': {
-        hatNameDisplay: 'Богачом', // Для текста в интро
-        introColor: 'rgba(255, 215, 0, 0.3)', // Золотой фильтр экрана
+const SKILLS = {
+    'hat_rich': {
+        hatNameDisplay: 'Богачом',
+        introColor: 'rgba(255, 215, 0, 0.3)',
         passiveName: 'Казначей',
         activeName: 'Золотой сундук',
         activeUses: 1,
         executePassive: (game, player, eventType) => {
-            // ПАССИВКА: 20% шанс не потерять кубик при проигрыше раунда
             if (eventType === 'lose_die') {
                 if (Math.random() < 0.20) {
                     return { prevented: true, msg: `${player.name} сохраняет кубик благодаря навыку "Казначей"!` };
