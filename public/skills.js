@@ -55,17 +55,44 @@ const SkillsUI = {
 
             // Анимация пассивных навыков в начале игры (поочередно)
             socket.on('passive_skills_intro', (passives) => {
-                passives.forEach((p, index) => {
+                // Создаем элементы для интро, если их еще нет
+                if (!document.getElementById('skill-intro-overlay')) {
+                    document.body.insertAdjacentHTML('beforeend', `
+                        <div id="skill-intro-overlay"></div>
+                        <div id="skill-intro-modal">
+                            <div class="intro-passive-name" id="intro-passive-text"></div>
+                            <div class="intro-hat-name" id="intro-hat-text"></div>
+                        </div>
+                    `);
+                }
+
+                let delay = 0;
+                const introDuration = 3500; // Каждое интро висит 3.5 секунды
+
+                passives.forEach((intro) => {
                     setTimeout(() => {
-                        const cloud = document.getElementById('skill-cloud');
-                        if (cloud) {
-                            cloud.innerHTML = `<span style="color:#ffb703">${p.name}</span><br><span style="font-size:0.8rem">${p.passiveName}</span>`;
-                            cloud.classList.remove('hidden', 'skill-cloud-active');
-                            void cloud.offsetWidth; // перезапуск анимации
-                            cloud.classList.add('skill-cloud-active');
-                            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-                        }
-                    }, index * 2500); // Показываем каждые 2.5 секунды
+                        const overlay = document.getElementById('skill-intro-overlay');
+                        const modal = document.getElementById('skill-intro-modal');
+                        
+                        document.getElementById('intro-passive-text').innerText = `${intro.passiveName}!`;
+                        document.getElementById('intro-hat-text').innerText = `Вы играете с ${intro.hatName}`;
+                        overlay.style.backgroundColor = intro.color;
+
+                        // Включаем анимации
+                        document.body.classList.add('shake-screen');
+                        overlay.style.opacity = '1';
+                        modal.classList.add('show');
+                        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+
+                        // Выключаем через 3 секунды
+                        setTimeout(() => {
+                            document.body.classList.remove('shake-screen');
+                            overlay.style.opacity = '0';
+                            modal.classList.remove('show');
+                        }, 3000);
+
+                    }, delay);
+                    delay += introDuration;
                 });
             });
 
