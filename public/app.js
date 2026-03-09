@@ -1776,6 +1776,7 @@ socket.on('passive_skills_intro', (passives) => {
             <div id="skill-intro-overlay"></div>
             <div id="skill-intro-modal">
                 <div class="intro-passive-name" id="intro-passive-text"></div>
+                <div class="intro-skill-desc" id="intro-desc-text"></div>
                 <div class="intro-hat-name" id="intro-hat-text"></div>
             </div>
         `);
@@ -1790,6 +1791,7 @@ socket.on('passive_skills_intro', (passives) => {
             const modal = document.getElementById('skill-intro-modal');
             
             document.getElementById('intro-passive-text').innerText = `${intro.passiveName}!`;
+            document.getElementById('intro-desc-text').innerText = intro.introText || '';
             document.getElementById('intro-hat-text').innerText = `Вы играете с ${intro.hatName}`;
             overlay.style.backgroundColor = intro.color;
 
@@ -1808,6 +1810,7 @@ socket.on('passive_skills_intro', (passives) => {
         delay += introDuration;
     });
 });
+
 
 
 
