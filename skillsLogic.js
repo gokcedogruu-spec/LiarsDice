@@ -3,6 +3,7 @@ const SKILLS = {
         hatNameDisplay: 'Богачом',
         introColor: 'rgba(255, 215, 0, 0.3)',
         passiveName: 'Казначей',
+        introText: '20% шанс не потерять кубик при проигрыше',
         activeName: 'Золотой сундук',
         activeUses: 1,
         executePassive: (game, player, eventType) => {
@@ -19,9 +20,15 @@ const SKILLS = {
         }
     },
     'hat_fallen': {
+        hatNameDisplay: 'Упавшей легендой',
+        introColor: 'rgba(139, 0, 0, 0.4)', // Темно-красный фильтр
         passiveName: 'Упавшая легенда',
+        introText: 'При поражении серия побед делится пополам, а не сгорает',
         activeName: 'Второй шанс',
         activeUses: 1,
+        executePassive: (game, player, eventType) => {
+            return null; // Логика этой пассивки работает в server.js при выдаче опыта
+        },
         executeActive: (game, player) => {
             player.secondChance = true;
             return { success: true, msg: 'Активирован Второй шанс! При вылете вы вернетесь с 1 кубиком.', publicMsg: `${player.name} готов восстать из мертвых!` };
