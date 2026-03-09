@@ -279,30 +279,42 @@ function startNewRound(room, isFirst = false, startIdx = null) {
     });
     if (startIdx !== null) room.currentTurn = startIdx;
     else if (isFirst) { room.currentTurn = Math.floor(Math.random() * room.players.length); io.to(room.id).emit('gameEvent', { text: `🎲 Первый ход: ${room.players[room.currentTurn].name}`, type: 'info' }); }
-    if (room.config && room.config.crazy) {
-            const passives = [];
-            room.players.forEach(p => {
-                if (p.equipped && p.equipped.hat) {
-                    const skill = skillsLogic.SKILLS[p.equipped.hat];
-                    if (skill && skill.passiveName) {
-                        passives.push({ name: p.name, passiveName: skill.passiveName });
-                    }
-                }
-            });
-            if (passives.length > 0) {
-                io.to(room.id).emit('passive_skills_intro', passives);
-            }
-        }
     
-    let safety = 0;
-    while (room.players[room.currentTurn].diceCount === 0) {
-        room.currentTurn = (room.currentTurn + 1) % room.players.length;
-        safety++; if(safety > 20) break;
+    // --- ПРОВЕРКА ПАССИВОК И ИНТРО ---
+    let introDelay = 0;
+    if (room.config && room.config.crazy && isFirst) {
+        const passives = [];
+        room.players.forEach(p => {
+            if (p.equipped && p.equipped.hat) {
+                const skill = skillsLogic.SKILLS[p.equipped.hat];
+                if (skill && skill.passiveName) {
+                    passives.push({ 
+                        name: p.name, 
+                        passiveName: skill.passiveName,
+                        hatName: skill.hatNameDisplay || 'Неизвестной шляпой',
+                        color: skill.introColor || 'rgba(0,0,0,0.5)'
+                    });
+                }
+            }
+        });
+        if (passives.length > 0) {
+            io.to(room.id).emit('passive_skills_intro', passives);
+            introDelay = passives.length * 3500; // Ждем 3.5 сек на каждую шляпу
+        }
     }
-    room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
-    io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
-    broadcastGameState(room);
-    resetTurnTimer(room);
+    
+    // Откладываем раздачу кубиков и старт таймера, если есть интро
+    setTimeout(() => {
+        let safety = 0;
+        while (room.players[room.currentTurn].diceCount === 0) {
+            room.currentTurn = (room.currentTurn + 1) % room.players.length;
+            safety++; if(safety > 20) break;
+        }
+        room.players.forEach(p => { if (p.diceCount > 0 && !p.isBot) io.to(p.id).emit('yourDice', p.dice); });
+        io.to(room.id).emit('gameEvent', { text: `🎲 РАУНД!`, type: 'info' });
+        broadcastGameState(room);
+        resetTurnTimer(room);
+    }, introDelay);
 }
 
 function nextTurn(room) {
@@ -1429,6 +1441,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
