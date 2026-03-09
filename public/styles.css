@@ -964,7 +964,11 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
 
 .intro-passive-name {
     font-size: 28px; font-weight: 900; color: #ffd700;
-    margin-bottom: 10px; text-transform: uppercase; text-shadow: 2px 2px 0 #000;
+    margin-bottom: 5px; text-transform: uppercase; text-shadow: 2px 2px 0 #000;
+}
+
+.intro-skill-desc {
+    font-size: 14px; color: #fff; margin-bottom: 15px; font-style: italic; opacity: 0.9;
 }
 
 .intro-hat-name { font-size: 16px; color: #ddd; font-weight: bold; }
@@ -979,6 +983,7 @@ input[type="range"] { flex: 1; margin-left: 10px; cursor: pointer; }
     80% { transform: translate(-1px, -1px) rotate(1deg); }
     100% { transform: translate(1px, -2px) rotate(-1deg); }
 }
+
 
 
 
