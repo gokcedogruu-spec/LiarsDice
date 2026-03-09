@@ -11,12 +11,12 @@ const SkillsUI = {
             
             btn.addEventListener('click', () => {
                 this.openMenu();
-                if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
             });
             
             const controls = document.getElementById('game-controls');
             if(controls) {
-                controls.appendChild(btn); // Возвращаем кнопку вниз!
+                controls.appendChild(btn); 
             }
         }
 
@@ -53,49 +53,6 @@ const SkillsUI = {
                 }
             });
 
-            // Анимация пассивных навыков в начале игры (поочередно)
-            socket.on('passive_skills_intro', (passives) => {
-                // Создаем элементы для интро, если их еще нет
-                if (!document.getElementById('skill-intro-overlay')) {
-                    document.body.insertAdjacentHTML('beforeend', `
-                        <div id="skill-intro-overlay"></div>
-                        <div id="skill-intro-modal">
-                            <div class="intro-passive-name" id="intro-passive-text"></div>
-                            <div class="intro-hat-name" id="intro-hat-text"></div>
-                        </div>
-                    `);
-                }
-
-                let delay = 0;
-                const introDuration = 3500; // Каждое интро висит 3.5 секунды
-
-                passives.forEach((intro) => {
-                    setTimeout(() => {
-                        const overlay = document.getElementById('skill-intro-overlay');
-                        const modal = document.getElementById('skill-intro-modal');
-                        
-                        document.getElementById('intro-passive-text').innerText = `${intro.passiveName}!`;
-                        document.getElementById('intro-hat-text').innerText = `Вы играете с ${intro.hatName}`;
-                        overlay.style.backgroundColor = intro.color;
-
-                        // Включаем анимации
-                        document.body.classList.add('shake-screen');
-                        overlay.style.opacity = '1';
-                        modal.classList.add('show');
-                        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-
-                        // Выключаем через 3 секунды
-                        setTimeout(() => {
-                            document.body.classList.remove('shake-screen');
-                            overlay.style.opacity = '0';
-                            modal.classList.remove('show');
-                        }, 3000);
-
-                    }, delay);
-                    delay += introDuration;
-                });
-            });
-
             this.listenersAdded = true;
         }
     },
@@ -123,7 +80,7 @@ const SkillsUI = {
 
         let hasSkills = false;
 
-        // 1. Ранговые навыки (из me.availableSkills)
+        // 1. Ранговые навыки
         const rankSkillsMap = {
             'ears': { name: 'Чувствительные уши', icon: '👂' },
             'lucky': { name: 'Счастливый кубик', icon: '🎲' },
@@ -139,7 +96,7 @@ const SkillsUI = {
                     btn.className = 'btn btn-blue';
                     btn.innerHTML = `${s.icon} ${s.name}`;
                     btn.onclick = () => {
-                        socket.emit('useSkill', skillId); // Старый обработчик ранговых навыков
+                        socket.emit('useSkill', skillId); 
                         document.getElementById('modal-skills-menu').classList.remove('active');
                     };
                     container.appendChild(btn);
@@ -155,14 +112,13 @@ const SkillsUI = {
             btn.className = 'btn btn-orange';
             btn.innerHTML = `🎩 Навык шляпы`;
             
-            // Проверяем, использован ли навык шляпы (теперь skillsUsed это массив)
             if (me.skillsUsed && me.skillsUsed.includes(hatId)) {
                 btn.disabled = true;
                 btn.style.opacity = '0.5';
                 btn.innerHTML += ' (Использован)';
             } else {
                 btn.onclick = () => {
-                    socket.emit('use_active_skill'); // Обработчик навыка шляпы
+                    socket.emit('use_active_skill'); 
                     document.getElementById('modal-skills-menu').classList.remove('active');
                 };
             }
@@ -176,3 +132,48 @@ const SkillsUI = {
         document.getElementById('modal-skills-menu').classList.add('active');
     }
 };
+
+// ВЫНОСИМ СЛУШАТЕЛЬ ИНТРО СЮДА (В КОРЕНЬ ФАЙЛА, ЧТОБЫ ОН РАБОТАЛ ВСЕГДА)
+if (typeof socket !== 'undefined') {
+    socket.on('passive_skills_intro', (passives) => {
+        // Создаем элементы для интро, если их еще нет
+        if (!document.getElementById('skill-intro-overlay')) {
+            document.body.insertAdjacentHTML('beforeend', `
+                <div id="skill-intro-overlay"></div>
+                <div id="skill-intro-modal">
+                    <div class="intro-passive-name" id="intro-passive-text"></div>
+                    <div class="intro-hat-name" id="intro-hat-text"></div>
+                </div>
+            `);
+        }
+
+        let delay = 0;
+        const introDuration = 3500; // Каждое интро висит 3.5 секунды
+
+        passives.forEach((intro) => {
+            setTimeout(() => {
+                const overlay = document.getElementById('skill-intro-overlay');
+                const modal = document.getElementById('skill-intro-modal');
+                
+                document.getElementById('intro-passive-text').innerText = `${intro.passiveName}!`;
+                document.getElementById('intro-hat-text').innerText = `Вы играете с ${intro.hatName}`;
+                overlay.style.backgroundColor = intro.color;
+
+                // Включаем анимации
+                document.body.classList.add('shake-screen');
+                overlay.style.opacity = '1';
+                modal.classList.add('show');
+                if (typeof tg !== 'undefined' && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+
+                // Выключаем через 3 секунды
+                setTimeout(() => {
+                    document.body.classList.remove('shake-screen');
+                    overlay.style.opacity = '0';
+                    modal.classList.remove('show');
+                }, 3000);
+
+            }, delay);
+            delay += introDuration;
+        });
+    });
+}
