@@ -200,7 +200,17 @@ async function updateUserXP(userId, type, difficulty = null, betCoins = 0, betXp
         reportDetails.unshift(`Победа: ${baseWinCoins}💰 ${baseWinXP}⭐`);
 
     } else if (type === 'lose_game' || type === 'lose_pve') {
-        user.matches++; user.streak = 0; user.lossStreak++;
+        user.matches++; 
+        
+        // ПАССИВКА: Упавшая легенда (hat_fallen)
+        if (user.equipped && user.equipped.hat === 'hat_fallen') {
+            user.streak = Math.floor(user.streak / 2);
+            reportDetails.push(`Упавшая легенда: серия сохранена (${user.streak}🔥)`);
+        } else {
+            user.streak = 0; 
+        }
+        
+        user.lossStreak++;
         let rankPenalty = oldRankInfo.current.penalty || 0;
         let xpLossBase = rankPenalty + betXp;
         let coinLossBase = betCoins;
@@ -301,7 +311,8 @@ function startNewRound(room, isFirst = false, startIdx = null) {
                         name: p.name, 
                         passiveName: skill.passiveName,
                         hatName: skill.hatNameDisplay || 'Неизвестной шляпой',
-                        color: skill.introColor || 'rgba(0,0,0,0.5)'
+                        color: skill.introColor || 'rgba(0,0,0,0.5)',
+                        introText: skill.introText || ''
                     });
                 }
             }
@@ -1443,6 +1454,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Пингуем каждые 10 минут (10 * 60 * 1000 миллисекунд)
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+
 
 
 
