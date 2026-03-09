@@ -34,26 +34,49 @@ const SKILLS = {
             return { success: true, msg: 'Активирован Второй шанс! При вылете вы вернетесь с 1 кубиком.', publicMsg: `${player.name} готов восстать из мертвых!` };
         }
     },
-    'hat_underwater': {
+'hat_underwater': {
+        hatNameDisplay: 'Измученным капитаном',
+        introColor: 'rgba(0, 105, 148, 0.4)', // Глубокий синий
         passiveName: 'Дыхание под водой',
+        introText: 'Ваше базовое время на ход увеличено на 5 секунд',
         activeName: 'Глоток воздуха',
         activeUses: 1,
+        executePassive: (game, player, eventType) => {
+            return null; // Пассивка обрабатывается в server.js при запуске таймера
+        },
         executeActive: (game, player) => {
-            game.turnDeadline += game.turnDuration;
-            game.turnDuration *= 2;
-            return { success: true, msg: 'Ваше время на ход удвоено!', publicMsg: `${player.name} делает глубокий вдох... Время замедляется!` };
+            game.turnDeadline += 15000; // Добавляем 15 секунд
+            return { success: true, msg: 'Вы получили дополнительные 15 секунд на ход!', publicMsg: `${player.name} делает глубокий вдох... Время замедляется!` };
         }
     },
     'hat_voodoo': {
+        hatNameDisplay: 'Знатоком Вуду',
+        introColor: 'rgba(128, 0, 128, 0.4)', // Фиолетовый
         passiveName: 'Шёпот костей',
+        introText: 'При потере кубика есть 15% шанс забрать 1 кубик у случайного врага',
         activeName: 'Проклятье языка',
         activeUses: 1,
+        executePassive: (game, player, eventType) => {
+            if (eventType === 'lose_die') {
+                if (Math.random() < 0.15) {
+                    const enemies = game.players.filter(p => p.id !== player.id && p.diceCount > 0);
+                    if (enemies.length > 0) {
+                        const target = enemies[Math.floor(Math.random() * enemies.length)];
+                        target.diceCount--;
+                        if (target.dice.length > 0) target.dice.pop();
+                        return { prevented: false, msg: `💀 Шёпот костей! ${player.name} теряет кубик, но проклятье забирает кубик и у ${target.name}!` };
+                    }
+                }
+            }
+            return null;
+        },
         executeActive: (game, player) => {
             if (!game.currentBid) return { error: 'Никто еще не сделал ставку!' };
             const target = game.players.find(p => p.id === game.currentBid.playerId);
             if (!target) return { error: 'Цель не найдена!' };
+            
             target.cursedTongue = true;
-            return { success: true, msg: `Вы прокляли ${target.name}!`, publicMsg: `${player.name} наложил Проклятье языка на ${target.name}!` };
+            return { success: true, msg: `Вы прокляли ${target.name}! В этот ход он не сможет сказать "Верю".`, publicMsg: `🔮 ${player.name} наложил Проклятье языка на ${target.name}!` };
         }
     },
     'hat_king_voodoo': {
